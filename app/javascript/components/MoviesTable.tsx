@@ -414,7 +414,7 @@ function ColumnPicker({
         onClick={() => setOpen((o) => !o)}
         className="btn px-3 py-1.5 text-sm gap-1.5"
       >
-        Columns
+        Toggle Columns
         <span className="text-muted-foreground text-xs">({visible.size}/{totalCols})</span>
         <span className="text-muted-foreground">▾</span>
       </button>
@@ -797,11 +797,11 @@ export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div className="p-8 space-y-4">
-      {/* Top controls */}
-      <div className="flex items-center gap-4 flex-wrap">
+    <div className="space-y-4">
+      {/* Title bar */}
+      <div className="flex items-center gap-4 px-4 py-2" style={{ backgroundColor: '#1e2730' }}>
         <div className="flex items-center gap-3">
-          <img src={pladiLogo} alt="Pladi logo" className="h-12 w-auto" />
+          <img src={pladiLogo} alt="Pladi logo" className="h-10 w-auto" />
           <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
         </div>
         <div className="flex-1 flex justify-center">
@@ -821,9 +821,11 @@ export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
         <HamburgerMenu onLogout={onLogout} />
       </div>
 
+      <div className="px-8 space-y-4">
+
       {/* Library selector */}
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium">Select Library:</label>
+        <label className="text-sm font-medium text-muted-foreground">Select Library:</label>
         <select
           value={selectedTitle ?? ''}
           onChange={(e) => setSelectedTitle(e.target.value === '' ? null : e.target.value)}
@@ -839,7 +841,7 @@ export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
       {/* Advanced Filters */}
       <div className="space-y-2">
         <div className="flex items-center gap-4 flex-wrap">
-          <h2 className="text-sm font-semibold text-muted-foreground">Filters:</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">Filters:</h2>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -977,6 +979,7 @@ export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
           />
         </div>
       )}
+      </div>
     </div>
   )
 }
