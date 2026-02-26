@@ -10,7 +10,9 @@ Rails.application.routes.draw do
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
   namespace :api do
-    resources :movies, only: [:index]
+    resources :movies, only: [:index] do
+      collection { get :refresh }
+    end
   end
 
   root "application#index"

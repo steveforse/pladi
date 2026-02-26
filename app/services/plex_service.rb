@@ -5,10 +5,12 @@ class PlexService
   def sections
     machine_id = fetch_machine_identifier
     fetch_movie_sections.map do |section|
-      {
-        title: section["title"],
-        movies: fetch_section_movies(section["key"], machine_id).sort_by { |m| m[:title].downcase }
-      }
+      key   = section["key"]
+      mtime = section["updatedAt"]
+      movies = Rails.cache.fetch("plex/section/#{key}/#{mtime}", expires_in: 7.days) do
+        fetch_section_movies(key, machine_id).sort_by { |m| m[:title].downcase }
+      end
+      { title: section["title"], movies: movies }
     end
   end
 

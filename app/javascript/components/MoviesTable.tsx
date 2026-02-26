@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, Loader2 } from 'lucide-react'
 
 interface Movie {
   id: string
@@ -453,6 +453,7 @@ export default function MoviesTable() {
   const [sections, setSections] = useState<Section[]>([])
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [multiOnly, setMultiOnly] = useState(false)
   const [unmatchedOnly, setUnmatchedOnly] = useState(false)
@@ -481,6 +482,22 @@ export default function MoviesTable() {
         setSections(data)
         if (data.length > 0) setSelectedTitle(data[0].title)
         setLoading(false)
+        setRefreshing(true)
+        fetch('/api/movies/refresh')
+          .then((res) => {
+            if (!res.ok) throw new Error()
+            return res.json()
+          })
+          .then((fresh: Section[]) => {
+            setSections(fresh)
+            setSelectedTitle((prev) =>
+              prev === null || fresh.some((s) => s.title === prev)
+                ? prev
+                : (fresh[0]?.title ?? null)
+            )
+            setRefreshing(false)
+          })
+          .catch(() => setRefreshing(false))
       })
       .catch((err) => {
         setError(err.message)
@@ -661,6 +678,12 @@ export default function MoviesTable() {
       {/* Top controls */}
       <div className="flex items-center gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Plex Movie Library</h1>
+        {refreshing && (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Loader2 size={14} className="animate-spin" />
+            Updating...
+          </span>
+        )}
         <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
       </div>
 
