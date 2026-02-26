@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { GripVertical, Loader2 } from 'lucide-react'
+import pladiLogo from '@/assets/pladi_logo.png'
 
 interface Movie {
   id: string
@@ -677,7 +678,10 @@ export default function MoviesTable() {
     <div className="p-8 space-y-4">
       {/* Top controls */}
       <div className="flex items-center gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold">Plex Movie Library</h1>
+        <div className="flex items-center gap-3">
+          <img src={pladiLogo} alt="Pladi logo" className="h-12 w-auto" />
+          <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
+        </div>
         {refreshing && (
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Loader2 size={14} className="animate-spin" />
