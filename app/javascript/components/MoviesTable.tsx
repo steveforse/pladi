@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 
 interface Movie {
   title: string
+  year: number | null
   file_path: string | null
   container: string | null
   video_codec: string | null
@@ -35,7 +36,7 @@ interface Section {
   movies: Movie[]
 }
 
-type SortKey = keyof Pick<Movie, 'title' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
+type SortKey = keyof Pick<Movie, 'title' | 'year' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
 type SortDir = 'asc' | 'desc'
 
 function sortMovies(movies: Movie[], key: SortKey, dir: SortDir): Movie[] {
@@ -90,8 +91,11 @@ export default function MoviesTable() {
     let movies = activeSection.movies
     if (multiOnly) {
       const counts = new Map<string, number>()
-      for (const m of movies) counts.set(m.title, (counts.get(m.title) ?? 0) + 1)
-      movies = movies.filter((m) => (counts.get(m.title) ?? 0) > 1)
+      for (const m of movies) {
+        const key = `${m.title}__${m.year}`
+        counts.set(key, (counts.get(key) ?? 0) + 1)
+      }
+      movies = movies.filter((m) => (counts.get(`${m.title}__${m.year}`) ?? 0) > 1)
     }
     return sortMovies(movies, sortKey, sortDir)
   }, [activeSection, multiOnly, sortKey, sortDir])
@@ -160,6 +164,7 @@ export default function MoviesTable() {
               <thead>
                 <tr className="border-b bg-muted/50">
                   <Th label="Title" col="title" className="w-56" />
+                  <Th label="Year" col="year" />
                   <th className="px-4 py-3 text-left font-medium">File Path</th>
                   <Th label="Container" col="container" />
                   <Th label="Codec" col="video_codec" />
@@ -173,6 +178,7 @@ export default function MoviesTable() {
                 {visibleMovies.map((movie, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
+                    <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>
                     <td className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">
                       {movie.file_path ?? <span className="italic">—</span>}
                     </td>

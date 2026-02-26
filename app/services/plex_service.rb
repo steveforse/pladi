@@ -33,6 +33,7 @@ class PlexService
         (media["Part"] || []).map do |part|
           {
             title: item["title"],
+            year: item["year"],
             file_path: part["file"],
             container: media["container"],
             video_codec: media["videoCodec"],
