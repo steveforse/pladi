@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 
 interface Movie {
+  id: string
   title: string
+  original_title: string | null
   year: number | null
   file_path: string | null
   container: string | null
@@ -36,10 +38,10 @@ interface Section {
   movies: Movie[]
 }
 
-type SortKey = keyof Pick<Movie, 'title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
+type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
 type SortDir = 'asc' | 'desc'
 
-type ColumnId = 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration' | 'play'
+type ColumnId = 'id' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration' | 'play'
 
 interface ColumnDef {
   id: ColumnId
@@ -47,6 +49,8 @@ interface ColumnDef {
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
+  { id: 'id', label: 'ID' },
+  { id: 'original_title', label: 'Original Title' },
   { id: 'year', label: 'Year' },
   { id: 'file_path', label: 'File Path' },
   { id: 'container', label: 'Container' },
@@ -62,7 +66,7 @@ const ALL_COLUMNS: ColumnDef[] = [
 type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
 type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
 type FilterOp = NumericOp | StringOp
-type FilterFieldId = 'title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'
+type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'
 
 interface FilterFieldDef {
   id: FilterFieldId
@@ -72,8 +76,10 @@ interface FilterFieldDef {
 }
 
 const FILTER_FIELDS: FilterFieldDef[] = [
-  { id: 'title',       label: 'Title',    type: 'string' },
-  { id: 'year',        label: 'Year',     type: 'numeric' },
+  { id: 'id',             label: 'ID',             type: 'string' },
+  { id: 'title',          label: 'Title',          type: 'string' },
+  { id: 'original_title', label: 'Original Title', type: 'string' },
+  { id: 'year',           label: 'Year',           type: 'numeric' },
   { id: 'file_path',   label: 'File Path', type: 'string' },
   { id: 'container',   label: 'Container', type: 'string' },
   { id: 'video_codec', label: 'Codec',    type: 'string' },
@@ -113,6 +119,7 @@ function defaultOp(fieldType: 'numeric' | 'string'): FilterOp {
 
 function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
   const fieldDef = FILTER_FIELDS.find((f) => f.id === filter.field)!
+
   const raw = movie[filter.field as keyof Movie]
 
   if (fieldDef.type === 'numeric') {
@@ -373,10 +380,11 @@ export default function MoviesTable() {
   const [multiOnly, setMultiOnly] = useState(false)
   const [unmatchedOnly, setUnmatchedOnly] = useState(false)
   const [filenameMismatch, setFilenameMismatch] = useState(false)
+  const [originalTitleMismatch, setOriginalTitleMismatch] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(
-    new Set(ALL_COLUMNS.map((c) => c.id))
+    new Set(ALL_COLUMNS.map((c) => c.id).filter((id) => id !== 'original_title'))
   )
   const [filters, setFilters] = useState<ActiveFilter[]>([])
   const nextId = useRef(1)
@@ -408,11 +416,8 @@ export default function MoviesTable() {
 
     if (multiOnly) {
       const counts = new Map<string, number>()
-      for (const m of movies) {
-        const key = `${m.title}__${m.year}`
-        counts.set(key, (counts.get(key) ?? 0) + 1)
-      }
-      movies = movies.filter((m) => (counts.get(`${m.title}__${m.year}`) ?? 0) > 1)
+      for (const m of movies) counts.set(m.id, (counts.get(m.id) ?? 0) + 1)
+      movies = movies.filter((m) => (counts.get(m.id) ?? 0) > 1)
     }
 
     if (unmatchedOnly) {
@@ -423,12 +428,16 @@ export default function MoviesTable() {
       movies = movies.filter((m) => !titleMatchesFilename(m))
     }
 
+    if (originalTitleMismatch) {
+      movies = movies.filter((m) => m.original_title != null && m.original_title !== m.title)
+    }
+
     if (filters.length > 0) {
       movies = movies.filter((m) => filters.every((f) => matchesFilter(m, f)))
     }
 
     return sortMovies(movies, sortKey, sortDir)
-  }, [activeSection, multiOnly, unmatchedOnly, filenameMismatch, filters, sortKey, sortDir])
+  }, [activeSection, multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, filters, sortKey, sortDir])
 
   // Reset to page 1 whenever the filtered/sorted set changes
   const prevMovieCount = useRef(visibleMovies.length)
@@ -539,10 +548,19 @@ export default function MoviesTable() {
           />
           Title mismatches filename
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={originalTitleMismatch}
+            onChange={(e) => setOriginalTitleMismatch(e.target.checked)}
+          />
+          Title mismatches Original Title
+        </label>
       </div>
 
-      {/* Filters */}
+      {/* Advanced Filters */}
       <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-muted-foreground">Advanced Filters</h2>
         {filters.map((f) => (
           <FilterRow
             key={f.id}
@@ -570,7 +588,9 @@ export default function MoviesTable() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
+                  {col('id') && <Th label="ID" col="id" />}
                   <Th label="Title" col="title" className="w-56" />
+                  {col('original_title') && <Th label="Original Title" col="original_title" />}
                   {col('year') && <Th label="Year" col="year" />}
                   {col('file_path') && <Th label="File Path" col="file_path" />}
                   {col('container') && <Th label="Container" col="container" />}
@@ -582,9 +602,15 @@ export default function MoviesTable() {
                 </tr>
               </thead>
               <tbody>
-                {pagedMovies.map((movie, i) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
+                {pagedMovies.map((movie) => (
+                  <tr key={movie.id} className="border-b last:border-0 hover:bg-muted/30">
+                    {col('id') && (
+                      <td className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.id}</td>
+                    )}
                     <td className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
+                    {col('original_title') && (
+                      <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</td>
+                    )}
                     {col('year') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>}
                     {col('file_path') && (
                       <td className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">

@@ -32,7 +32,9 @@ class PlexService
       (item["Media"] || []).flat_map do |media|
         (media["Part"] || []).map do |part|
           {
+            id: item["ratingKey"],
             title: item["title"],
+            original_title: item["originalTitle"],
             year: item["year"],
             file_path: part["file"],
             container: media["container"],
