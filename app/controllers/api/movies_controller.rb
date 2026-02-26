@@ -1,5 +1,7 @@
 module Api
   class MoviesController < ApplicationController
+    before_action :require_authentication
+
     CACHE_KEY = "plex/sections"
 
     def index

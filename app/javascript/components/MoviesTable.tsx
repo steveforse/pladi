@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { GripVertical, Loader2 } from 'lucide-react'
+import { GripVertical, Loader2, Menu } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 
 interface Movie {
@@ -100,31 +100,48 @@ interface ColumnDef {
   label: string
 }
 
-const ALL_COLUMNS: ColumnDef[] = [
-  { id: 'id', label: 'ID' },
-  { id: 'original_title', label: 'Original Title' },
-  { id: 'year', label: 'Year' },
-  { id: 'content_rating', label: 'Rating' },
-  { id: 'audience_rating', label: 'Audience Rating' },
-  { id: 'genres', label: 'Genres' },
-  { id: 'directors', label: 'Directors' },
-  { id: 'summary', label: 'Summary' },
-  { id: 'file_path', label: 'File Path' },
-  { id: 'container', label: 'Container' },
-  { id: 'video_codec', label: 'Video Codec' },
-  { id: 'video_resolution', label: 'Resolution' },
-  { id: 'width', label: 'Width' },
-  { id: 'height', label: 'Height' },
-  { id: 'aspect_ratio', label: 'Aspect Ratio' },
-  { id: 'frame_rate', label: 'Frame Rate' },
-  { id: 'audio_codec', label: 'Audio Codec' },
-  { id: 'audio_channels', label: 'Channels' },
-  { id: 'bitrate', label: 'Bitrate' },
-  { id: 'size', label: 'Size' },
-  { id: 'duration', label: 'Duration' },
-  { id: 'updated_at', label: 'Last Updated' },
-  { id: 'play', label: 'Play' },
+interface ColumnGroup {
+  label: string
+  columns: ColumnDef[]
+}
+
+const COLUMN_GROUPS: ColumnGroup[] = [
+  { label: 'General', columns: [
+    { id: 'id', label: 'ID' },
+    { id: 'original_title', label: 'Original Title' },
+    { id: 'year', label: 'Year' },
+    { id: 'duration', label: 'Duration' },
+    { id: 'updated_at', label: 'Last Updated' },
+    { id: 'play', label: 'Play' },
+  ]},
+  { label: 'Plex Metadata', columns: [
+    { id: 'content_rating', label: 'Rating' },
+    { id: 'audience_rating', label: 'Audience Rating' },
+    { id: 'genres', label: 'Genres' },
+    { id: 'directors', label: 'Directors' },
+    { id: 'summary', label: 'Summary' },
+  ]},
+  { label: 'Video', columns: [
+    { id: 'video_codec', label: 'Video Codec' },
+    { id: 'video_resolution', label: 'Resolution' },
+    { id: 'width', label: 'Width' },
+    { id: 'height', label: 'Height' },
+    { id: 'aspect_ratio', label: 'Aspect Ratio' },
+    { id: 'frame_rate', label: 'Frame Rate' },
+  ]},
+  { label: 'Audio', columns: [
+    { id: 'audio_codec', label: 'Audio Codec' },
+    { id: 'audio_channels', label: 'Channels' },
+    { id: 'bitrate', label: 'Bitrate' },
+  ]},
+  { label: 'File', columns: [
+    { id: 'file_path', label: 'File Path' },
+    { id: 'container', label: 'Container' },
+    { id: 'size', label: 'Size' },
+  ]},
 ]
+
+const ALL_COLUMNS: ColumnDef[] = COLUMN_GROUPS.flatMap((g) => g.columns)
 
 // ── Filter types ────────────────────────────────────────────────────────────
 
@@ -140,31 +157,48 @@ interface FilterFieldDef {
   unit?: string
 }
 
-const FILTER_FIELDS: FilterFieldDef[] = [
-  { id: 'id',             label: 'ID',             type: 'string' },
-  { id: 'title',          label: 'Title',          type: 'string' },
-  { id: 'original_title', label: 'Original Title', type: 'string' },
-  { id: 'year',           label: 'Year',           type: 'numeric' },
-  { id: 'content_rating',  label: 'Rating',          type: 'string' },
-  { id: 'audience_rating', label: 'Audience Rating', type: 'numeric' },
-  { id: 'genres',          label: 'Genres',          type: 'string' },
-  { id: 'directors',       label: 'Directors',       type: 'string' },
-  { id: 'summary',         label: 'Summary',         type: 'string' },
-  { id: 'file_path',   label: 'File Path', type: 'string' },
-  { id: 'container',   label: 'Container', type: 'string' },
-  { id: 'video_codec',       label: 'Video Codec',  type: 'string' },
-  { id: 'video_resolution',  label: 'Resolution',   type: 'string' },
-  { id: 'width',             label: 'Width',        type: 'numeric', unit: 'px' },
-  { id: 'height',            label: 'Height',       type: 'numeric', unit: 'px' },
-  { id: 'aspect_ratio',      label: 'Aspect Ratio', type: 'numeric' },
-  { id: 'frame_rate',        label: 'Frame Rate',   type: 'string' },
-  { id: 'audio_codec',       label: 'Audio Codec',  type: 'string' },
-  { id: 'audio_channels', label: 'Channels',     type: 'numeric' },
-  { id: 'bitrate',        label: 'Bitrate',      type: 'numeric', unit: 'kbps' },
-  { id: 'size',        label: 'Size',     type: 'numeric', unit: 'MB' },
-  { id: 'duration',    label: 'Duration', type: 'numeric', unit: 'min' },
-  { id: 'updated_at',  label: 'Last Updated',  type: 'date' },
+interface FilterGroup {
+  label: string
+  fields: FilterFieldDef[]
+}
+
+const FILTER_FIELD_GROUPS: FilterGroup[] = [
+  { label: 'General', fields: [
+    { id: 'title',          label: 'Title',          type: 'string' },
+    { id: 'id',             label: 'ID',             type: 'string' },
+    { id: 'original_title', label: 'Original Title', type: 'string' },
+    { id: 'year',           label: 'Year',           type: 'numeric' },
+    { id: 'duration',       label: 'Duration',       type: 'numeric', unit: 'min' },
+    { id: 'updated_at',     label: 'Last Updated',   type: 'date' },
+  ]},
+  { label: 'Plex Metadata', fields: [
+    { id: 'content_rating',  label: 'Rating',          type: 'string' },
+    { id: 'audience_rating', label: 'Audience Rating', type: 'numeric' },
+    { id: 'genres',          label: 'Genres',          type: 'string' },
+    { id: 'directors',       label: 'Directors',       type: 'string' },
+    { id: 'summary',         label: 'Summary',         type: 'string' },
+  ]},
+  { label: 'Video', fields: [
+    { id: 'video_codec',      label: 'Video Codec',  type: 'string' },
+    { id: 'video_resolution', label: 'Resolution',   type: 'string' },
+    { id: 'width',            label: 'Width',        type: 'numeric', unit: 'px' },
+    { id: 'height',           label: 'Height',       type: 'numeric', unit: 'px' },
+    { id: 'aspect_ratio',     label: 'Aspect Ratio', type: 'numeric' },
+    { id: 'frame_rate',       label: 'Frame Rate',   type: 'string' },
+  ]},
+  { label: 'Audio', fields: [
+    { id: 'audio_codec',    label: 'Audio Codec', type: 'string' },
+    { id: 'audio_channels', label: 'Channels',    type: 'numeric' },
+    { id: 'bitrate',        label: 'Bitrate',     type: 'numeric', unit: 'kbps' },
+  ]},
+  { label: 'File', fields: [
+    { id: 'file_path',  label: 'File Path',  type: 'string' },
+    { id: 'container',  label: 'Container',  type: 'string' },
+    { id: 'size',       label: 'Size',       type: 'numeric', unit: 'MB' },
+  ]},
 ]
+
+const FILTER_FIELDS: FilterFieldDef[] = FILTER_FIELD_GROUPS.flatMap((g) => g.fields)
 
 const NUMERIC_OPS: { id: NumericOp; label: string }[] = [
   { id: 'gt',  label: '>' },
@@ -310,8 +344,12 @@ function FilterRow({
         onChange={(e) => handleFieldChange(e.target.value as FilterFieldId)}
         className="border rounded px-2 py-1 text-sm bg-background"
       >
-        {FILTER_FIELDS.map((f) => (
-          <option key={f.id} value={f.id}>{f.label}</option>
+        {FILTER_FIELD_GROUPS.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.fields.map((f) => (
+              <option key={f.id} value={f.id}>{f.label}</option>
+            ))}
+          </optgroup>
         ))}
       </select>
 
@@ -350,16 +388,17 @@ function FilterRow({
 }
 
 function ColumnPicker({
-  columns,
+  groups,
   visible,
   onChange,
 }: {
-  columns: ColumnDef[]
+  groups: ColumnGroup[]
   visible: Set<ColumnId>
   onChange: (id: ColumnId, checked: boolean) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const totalCols = groups.reduce((sum, g) => sum + g.columns.length, 0)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -376,21 +415,71 @@ function ColumnPicker({
         className="btn px-3 py-1.5 text-sm gap-1.5"
       >
         Columns
-        <span className="text-muted-foreground text-xs">({visible.size}/{columns.length})</span>
+        <span className="text-muted-foreground text-xs">({visible.size}/{totalCols})</span>
         <span className="text-muted-foreground">▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 z-10 bg-card border rounded-md shadow-lg p-2 min-w-36">
-          {columns.map((col) => (
-            <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted/50 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={visible.has(col.id)}
-                onChange={(e) => onChange(col.id, e.target.checked)}
-              />
-              {col.label}
-            </label>
+        <div className="absolute right-0 mt-1 z-10 bg-card border rounded-md shadow-lg p-2 min-w-44">
+          {groups.map((group, i) => (
+            <div key={group.label}>
+              {i > 0 && <div className="my-1 border-t" />}
+              <div className="px-2 pt-1 pb-0.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {group.label}
+              </div>
+              {group.columns.map((col) => (
+                <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted/50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visible.has(col.id)}
+                    onChange={(e) => onChange(col.id, e.target.checked)}
+                  />
+                  {col.label}
+                </label>
+              ))}
+            </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function HamburgerMenu({ onLogout }: { onLogout: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="btn px-2 py-1.5"
+        aria-label="Menu"
+      >
+        <Menu size={18} />
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 z-10 bg-card border rounded-md shadow-lg py-1 min-w-36">
+          <button
+            onClick={async () => {
+              setOpen(false)
+              await fetch('/session', {
+                method: 'DELETE',
+                headers: { 'X-CSRF-Token': getCsrfToken() },
+              })
+              onLogout()
+            }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-muted/50"
+          >
+            Sign out
+          </button>
         </div>
       )}
     </div>
@@ -465,7 +554,11 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-export default function MoviesTable() {
+function getCsrfToken(): string {
+  return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
+}
+
+export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
   const [sections, setSections] = useState<Section[]>([])
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -725,6 +818,7 @@ export default function MoviesTable() {
             Updating...
           </span>
         )}
+        <HamburgerMenu onLogout={onLogout} />
       </div>
 
       {/* Library selector */}
@@ -795,7 +889,7 @@ export default function MoviesTable() {
             + Add Filter
           </button>
           <div className="ml-auto">
-            <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
+            <ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} />
           </div>
         </div>
       </div>
