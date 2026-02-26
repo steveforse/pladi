@@ -9,6 +9,8 @@ interface Movie {
   file_path: string | null
   container: string | null
   video_codec: string | null
+  audio_codec: string | null
+  audio_channels: number | null
   bitrate: number | null
   size: number | null
   duration: number | null
@@ -26,6 +28,17 @@ function formatBitrate(kbps: number | null): string {
   return kbps >= 1000 ? `${(kbps / 1000).toFixed(1)} Mbps` : `${kbps} kbps`
 }
 
+function formatChannels(ch: number | null): string {
+  if (ch == null) return '—'
+  switch (ch) {
+    case 1: return '1.0 Mono'
+    case 2: return '2.0 Stereo'
+    case 6: return '5.1'
+    case 8: return '7.1'
+    default: return String(ch)
+  }
+}
+
 function formatDuration(ms: number | null): string {
   if (ms == null) return '—'
   const totalMin = Math.round(ms / 60_000)
@@ -39,14 +52,14 @@ interface Section {
   movies: Movie[]
 }
 
-type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
+type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration'>
 type SortDir = 'asc' | 'desc'
 
-type ColumnId = 'id' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration' | 'play'
+type ColumnId = 'id' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'play'
 type AllColumnId = 'title' | ColumnId
 
 const DEFAULT_COL_ORDER: AllColumnId[] = [
-  'id', 'title', 'original_title', 'year', 'file_path', 'container', 'video_codec', 'bitrate', 'size', 'duration', 'play',
+  'id', 'title', 'original_title', 'year', 'file_path', 'container', 'video_codec', 'audio_codec', 'audio_channels', 'bitrate', 'size', 'duration', 'play',
 ]
 
 interface ColumnDef {
@@ -60,7 +73,9 @@ const ALL_COLUMNS: ColumnDef[] = [
   { id: 'year', label: 'Year' },
   { id: 'file_path', label: 'File Path' },
   { id: 'container', label: 'Container' },
-  { id: 'video_codec', label: 'Codec' },
+  { id: 'video_codec', label: 'Video Codec' },
+  { id: 'audio_codec', label: 'Audio Codec' },
+  { id: 'audio_channels', label: 'Channels' },
   { id: 'bitrate', label: 'Bitrate' },
   { id: 'size', label: 'Size' },
   { id: 'duration', label: 'Duration' },
@@ -72,7 +87,7 @@ const ALL_COLUMNS: ColumnDef[] = [
 type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
 type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
 type FilterOp = NumericOp | StringOp
-type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'
+type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration'
 
 interface FilterFieldDef {
   id: FilterFieldId
@@ -88,8 +103,10 @@ const FILTER_FIELDS: FilterFieldDef[] = [
   { id: 'year',           label: 'Year',           type: 'numeric' },
   { id: 'file_path',   label: 'File Path', type: 'string' },
   { id: 'container',   label: 'Container', type: 'string' },
-  { id: 'video_codec', label: 'Codec',    type: 'string' },
-  { id: 'bitrate',     label: 'Bitrate',  type: 'numeric', unit: 'kbps' },
+  { id: 'video_codec',    label: 'Video Codec',  type: 'string' },
+  { id: 'audio_codec',    label: 'Audio Codec',  type: 'string' },
+  { id: 'audio_channels', label: 'Channels',     type: 'numeric' },
+  { id: 'bitrate',        label: 'Bitrate',      type: 'numeric', unit: 'kbps' },
   { id: 'size',        label: 'Size',     type: 'numeric', unit: 'MB' },
   { id: 'duration',    label: 'Duration', type: 'numeric', unit: 'min' },
 ]
@@ -417,11 +434,12 @@ export default function MoviesTable() {
       })
   }, [])
 
-  const activeSection = sections.find((s) => s.title === selectedTitle)
+  const activeMovies = selectedTitle === null
+    ? sections.flatMap((s) => s.movies)
+    : (sections.find((s) => s.title === selectedTitle)?.movies ?? [])
 
   const visibleMovies = useMemo(() => {
-    if (!activeSection) return []
-    let movies = activeSection.movies
+    let movies = activeMovies
 
     if (multiOnly) {
       const counts = new Map<string, number>()
@@ -446,7 +464,7 @@ export default function MoviesTable() {
     }
 
     return sortMovies(movies, sortKey, sortDir)
-  }, [activeSection, multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, filters, sortKey, sortDir])
+  }, [activeMovies, multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, filters, sortKey, sortDir])
 
   // Reset to page 1 whenever the filtered/sorted set changes
   const prevMovieCount = useRef(visibleMovies.length)
@@ -589,16 +607,27 @@ export default function MoviesTable() {
       {/* Top controls */}
       <div className="flex items-center gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Plex Movie Library</h1>
+        <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
+      </div>
+
+      {/* Library selector */}
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium">Select Library:</label>
         <select
           value={selectedTitle ?? ''}
-          onChange={(e) => setSelectedTitle(e.target.value)}
+          onChange={(e) => setSelectedTitle(e.target.value === '' ? null : e.target.value)}
           className="border rounded px-3 py-1.5 text-sm bg-background"
         >
           {sections.map((s) => (
             <option key={s.title} value={s.title}>{s.title}</option>
           ))}
+          <option value="">All libraries</option>
         </select>
-        <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
+      </div>
+
+      {/* Checkbox filters */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <span className="text-sm font-medium">Filters:</span>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -653,7 +682,7 @@ export default function MoviesTable() {
       </div>
 
       {/* Table */}
-      {activeSection && (
+      {sections.length > 0 && (
         <div className="space-y-2">
           <Paginator
             page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
@@ -671,8 +700,10 @@ export default function MoviesTable() {
                       case 'year':           return <Th key={id} label="Year"           col="year"           colId={id} />
                       case 'file_path':      return <Th key={id} label="File Path"      col="file_path"      colId={id} />
                       case 'container':      return <Th key={id} label="Container"      col="container"      colId={id} />
-                      case 'video_codec':    return <Th key={id} label="Codec"          col="video_codec"    colId={id} />
-                      case 'bitrate':        return <Th key={id} label="Bitrate"        col="bitrate"        colId={id} />
+                      case 'video_codec':    return <Th key={id} label="Video Codec"  col="video_codec"    colId={id} />
+                      case 'audio_codec':    return <Th key={id} label="Audio Codec"  col="audio_codec"    colId={id} />
+                      case 'audio_channels': return <Th key={id} label="Channels"     col="audio_channels" colId={id} />
+                      case 'bitrate':        return <Th key={id} label="Bitrate"      col="bitrate"        colId={id} />
                       case 'size':           return <Th key={id} label="Size"           col="size"           colId={id} />
                       case 'duration':       return <Th key={id} label="Duration"       col="duration"       colId={id} />
                       case 'play':           return <ThPlain key={id} colId={id} />
@@ -692,6 +723,8 @@ export default function MoviesTable() {
                         case 'file_path':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">{movie.file_path ?? <span className="italic">—</span>}</td>
                         case 'container':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.container ?? '—'}</td>
                         case 'video_codec':    return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.video_codec ?? '—'}</td>
+                        case 'audio_codec':    return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.audio_codec ?? '—'}</td>
+                        case 'audio_channels': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatChannels(movie.audio_channels)}</td>
                         case 'bitrate':        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatBitrate(movie.bitrate)}</td>
                         case 'size':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatSize(movie.size)}</td>
                         case 'duration':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDuration(movie.duration)}</td>
