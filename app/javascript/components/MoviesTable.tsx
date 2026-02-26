@@ -706,46 +706,43 @@ export default function MoviesTable() {
         </select>
       </div>
 
-      {/* Checkbox filters */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <span className="text-sm font-medium">Filters:</span>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={multiOnly}
-            onChange={(e) => setMultiOnly(e.target.checked)}
-          />
-          Multiple files only
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={unmatchedOnly}
-            onChange={(e) => setUnmatchedOnly(e.target.checked)}
-          />
-          Title mismatches file path
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={filenameMismatch}
-            onChange={(e) => setFilenameMismatch(e.target.checked)}
-          />
-          Title mismatches filename
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={originalTitleMismatch}
-            onChange={(e) => setOriginalTitleMismatch(e.target.checked)}
-          />
-          Title mismatches Original Title
-        </label>
-      </div>
-
       {/* Advanced Filters */}
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">Advanced Filters</h2>
+        <div className="flex items-center gap-4 flex-wrap">
+          <h2 className="text-sm font-semibold text-muted-foreground">Filters:</h2>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={multiOnly}
+              onChange={(e) => setMultiOnly(e.target.checked)}
+            />
+            Multiple files only
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={unmatchedOnly}
+              onChange={(e) => setUnmatchedOnly(e.target.checked)}
+            />
+            Title mismatches file path
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={filenameMismatch}
+              onChange={(e) => setFilenameMismatch(e.target.checked)}
+            />
+            Title mismatches filename
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={originalTitleMismatch}
+              onChange={(e) => setOriginalTitleMismatch(e.target.checked)}
+            />
+            Title mismatches Original Title
+          </label>
+        </div>
         {filters.map((f) => (
           <FilterRow
             key={f.id}
