@@ -54,7 +54,7 @@ function sortMovies(movies: Movie[], key: SortKey, dir: SortDir): Movie[] {
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return <span className="ml-1 text-muted-foreground/40">↕</span>
-  return <span className="ml-1">{dir === 'asc' ? '↑' : '↓'}</span>
+  return <span className="ml-1 text-primary">{dir === 'asc' ? '↑' : '↓'}</span>
 }
 
 export default function MoviesTable() {
