@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { GripVertical, Loader2, Menu } from 'lucide-react'
+import { Eye, EyeOff, GripVertical, Loader2, Menu } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 
 interface Movie {
@@ -78,6 +78,12 @@ function formatDuration(ms: number | null): string {
   const h = Math.floor(totalMin / 60)
   const m = totalMin % 60
   return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+interface PlexServerInfo {
+  id: number
+  name: string
+  url: string
 }
 
 interface Section {
@@ -444,7 +450,7 @@ function ColumnPicker({
   )
 }
 
-function HamburgerMenu({ onLogout }: { onLogout: () => void }) {
+function HamburgerMenu({ onLogout, onSettings }: { onLogout: () => void; onSettings: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -467,6 +473,12 @@ function HamburgerMenu({ onLogout }: { onLogout: () => void }) {
       </button>
       {open && (
         <div className="absolute right-0 mt-1 z-10 bg-card border rounded-md shadow-lg py-1 min-w-36">
+          <button
+            onClick={() => { setOpen(false); onSettings() }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-muted/50"
+          >
+            Settings
+          </button>
           <button
             onClick={async () => {
               setOpen(false)
@@ -558,7 +570,181 @@ function getCsrfToken(): string {
   return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
 }
 
-export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
+function TokenInput({ value, onChange, onBlur, placeholder, className }: {
+  value: string
+  onChange: (v: string) => void
+  onBlur?: (v: string) => void
+  placeholder?: string
+  className?: string
+}) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="relative flex items-center">
+      <input
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => onBlur?.(e.target.value)}
+        placeholder={placeholder}
+        className={`pr-8 ${className ?? ''}`}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        className="absolute right-2 text-muted-foreground hover:text-foreground"
+        tabIndex={-1}
+        aria-label={visible ? 'Hide token' : 'Show token'}
+      >
+        {visible ? <EyeOff size={14} /> : <Eye size={14} />}
+      </button>
+    </div>
+  )
+}
+
+function WelcomeScreen({
+  onLogout,
+  onServerAdded,
+}: {
+  onLogout: () => void
+  onServerAdded: (server: PlexServerInfo) => void
+}) {
+  const [name, setName] = useState('')
+  const [url, setUrl] = useState('')
+  const [token, setToken] = useState('')
+  const [fetchingName, setFetchingName] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function fetchName(currentUrl: string, currentToken: string) {
+    const trimmedUrl = currentUrl.trim()
+    const trimmedToken = currentToken.trim()
+    if (!trimmedUrl || !trimmedToken) return
+    setFetchingName(true)
+    try {
+      const res = await fetch(
+        `/api/plex_servers/lookup_name?url=${encodeURIComponent(trimmedUrl)}&token=${encodeURIComponent(trimmedToken)}`
+      )
+      if (res.ok) {
+        const data = await res.json()
+        if (data.name) setName(data.name)
+      }
+    } finally {
+      setFetchingName(false)
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/plex_servers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+        body: JSON.stringify({ plex_server: { name, url, token: token.trim() } }),
+      })
+      if (res.ok) {
+        const server: PlexServerInfo = await res.json()
+        onServerAdded(server)
+      } else {
+        const data = await res.json()
+        setError(data.errors?.join(', ') ?? 'Something went wrong.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#161b1f' }}>
+      {/* Title bar */}
+      <div className="flex items-center gap-4 px-4 py-2" style={{ backgroundColor: '#1e2730' }}>
+        <div className="flex items-center gap-3">
+          <img src={pladiLogo} alt="Pladi logo" className="h-10 w-auto" />
+          <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
+        </div>
+        <div className="flex-1" />
+        <button
+          onClick={async () => {
+            await fetch('/session', { method: 'DELETE', headers: { 'X-CSRF-Token': getCsrfToken() } })
+            onLogout()
+          }}
+          className="btn px-3 py-1.5 text-sm text-muted-foreground"
+        >
+          Sign out
+        </button>
+      </div>
+
+      {/* Welcome card */}
+      <div className="flex-1 flex items-center justify-center px-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold">Welcome to Pladi</h2>
+            <p className="text-muted-foreground text-sm">
+              Connect your first Plex server to get started.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="border rounded-lg p-6 space-y-4 bg-card">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Server URL</label>
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onBlur={(e) => fetchName(e.target.value, token)}
+                placeholder="https://plex.example.com"
+                required
+                className="w-full border rounded px-3 py-2 text-sm bg-background"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Plex token</label>
+              <TokenInput
+                value={token}
+                onChange={setToken}
+                onBlur={(v) => fetchName(url, v)}
+                placeholder="Your Plex auth token"
+                className="w-full border rounded px-3 py-2 text-sm bg-background"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Server name
+                {fetchingName && <span className="ml-2 text-xs text-muted-foreground font-normal">Fetching…</span>}
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Home Server"
+                required
+                className="w-full border rounded px-3 py-2 text-sm bg-background"
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn w-full py-2 text-sm font-medium justify-center"
+              style={{ backgroundColor: '#E5A00D', color: '#000', opacity: submitting ? 0.7 : 1 }}
+            >
+              {submitting ? 'Connecting…' : 'Connect server'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => void; onSettings: () => void }) {
+  const [plexServers, setPlexServers] = useState<PlexServerInfo[]>([])
+  const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
   const [sections, setSections] = useState<Section[]>([])
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -582,51 +768,79 @@ export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
   const dragColRef = useRef<AllColumnId | null>(null)
   const [dragOverCol, setDragOverCol] = useState<AllColumnId | null>(null)
 
+  // Fetch servers on mount, then load movies for the first server
   useEffect(() => {
-    const load = async () => {
+    const init = async () => {
       try {
-        const res = await fetch('/api/movies')
-        if (!res.ok) throw new Error(`Server error: ${res.status}`)
-        const data: Section[] = await res.json()
-        setSections(data)
-        if (data.length > 0) setSelectedTitle(data[0].title)
-        setLoading(false)
-
-        // Refresh section list from Plex
-        setRefreshing(true)
-        try {
-          const refreshRes = await fetch('/api/movies/refresh')
-          if (refreshRes.ok) {
-            const fresh: Section[] = await refreshRes.json()
-            setSections(fresh)
-            setSelectedTitle((prev) =>
-              prev === null || fresh.some((s) => s.title === prev)
-                ? prev
-                : (fresh[0]?.title ?? null)
-            )
-          }
-        } finally {
-          setRefreshing(false)
+        const serversRes = await fetch('/api/plex_servers')
+        if (!serversRes.ok) throw new Error(`Failed to load servers: ${serversRes.status}`)
+        const servers: PlexServerInfo[] = await serversRes.json()
+        setPlexServers(servers)
+        if (servers.length === 0) {
+          setLoading(false)
+          return
         }
-
-        // Enrich with per-movie metadata
-        setSyncing(true)
-        try {
-          const enrichRes = await fetch('/api/movies/enrich')
-          if (enrichRes.ok) {
-            const enriched: Section[] = await enrichRes.json()
-            setSections(enriched)
-          }
-        } finally {
-          setSyncing(false)
-        }
+        const firstId = servers[0].id
+        setSelectedServerId(firstId)
+        await loadMovies(firstId)
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Unknown error')
         setLoading(false)
       }
     }
-    load()
+    init()
   }, [])
+
+  async function loadMovies(serverId: number) {
+    setLoading(true)
+    setSections([])
+    setSelectedTitle(null)
+    try {
+      const res = await fetch(`/api/movies?server_id=${serverId}`)
+      if (!res.ok) throw new Error(`Server error: ${res.status}`)
+      const data: Section[] = await res.json()
+      setSections(data)
+      if (data.length > 0) setSelectedTitle(data[0].title)
+      setLoading(false)
+
+      // Refresh section list from Plex
+      setRefreshing(true)
+      try {
+        const refreshRes = await fetch(`/api/movies/refresh?server_id=${serverId}`)
+        if (refreshRes.ok) {
+          const fresh: Section[] = await refreshRes.json()
+          setSections(fresh)
+          setSelectedTitle((prev) =>
+            prev === null || fresh.some((s) => s.title === prev)
+              ? prev
+              : (fresh[0]?.title ?? null)
+          )
+        }
+      } finally {
+        setRefreshing(false)
+      }
+
+      // Enrich with per-movie metadata
+      setSyncing(true)
+      try {
+        const enrichRes = await fetch(`/api/movies/enrich?server_id=${serverId}`)
+        if (enrichRes.ok) {
+          const enriched: Section[] = await enrichRes.json()
+          setSections(enriched)
+        }
+      } finally {
+        setSyncing(false)
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      setLoading(false)
+    }
+  }
+
+  function handleServerChange(id: number) {
+    setSelectedServerId(id)
+    loadMovies(id)
+  }
 
   const activeMovies = selectedTitle === null
     ? sections.flatMap((s) => s.movies)
@@ -790,10 +1004,32 @@ export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
 
   if (error) {
     return (
-      <div className="p-8 text-destructive">
-        Failed to load movies: {error}
+      <div className="space-y-4">
+        <div className="flex items-center gap-4 px-4 py-2" style={{ backgroundColor: '#1e2730' }}>
+          <div className="flex items-center gap-3">
+            <img src={pladiLogo} alt="Pladi logo" className="h-10 w-auto" />
+            <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
+          </div>
+          <div className="flex-1" />
+          <HamburgerMenu onLogout={onLogout} onSettings={onSettings} />
+        </div>
+        <div className="px-8 py-4 space-y-3">
+          <p className="text-destructive text-sm">Failed to load movies: {error}</p>
+          <p className="text-muted-foreground text-sm">
+            Check your server URL and token in{' '}
+            <button onClick={onSettings} className="underline text-primary">Settings</button>.
+          </p>
+        </div>
       </div>
     )
+  }
+
+  if (plexServers.length === 0) {
+    return <WelcomeScreen onLogout={onLogout} onServerAdded={(server) => {
+      setPlexServers([server])
+      setSelectedServerId(server.id)
+      loadMovies(server.id)
+    }} />
   }
 
   return (
@@ -818,24 +1054,38 @@ export default function MoviesTable({ onLogout }: { onLogout: () => void }) {
             Updating...
           </span>
         )}
-        <HamburgerMenu onLogout={onLogout} />
+        <HamburgerMenu onLogout={onLogout} onSettings={onSettings} />
       </div>
 
       <div className="px-8 space-y-4">
 
-      {/* Library selector */}
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-muted-foreground">Select Library:</label>
-        <select
-          value={selectedTitle ?? ''}
-          onChange={(e) => setSelectedTitle(e.target.value === '' ? null : e.target.value)}
-          className="border rounded px-3 py-1.5 text-sm bg-background"
-        >
-          {sections.map((s) => (
-            <option key={s.title} value={s.title}>{s.title}</option>
-          ))}
-          <option value="">All libraries</option>
-        </select>
+      {/* Server + Library selector */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-muted-foreground">Server:</label>
+          <select
+            value={selectedServerId ?? ''}
+            onChange={(e) => handleServerChange(Number(e.target.value))}
+            className="border rounded px-3 py-1.5 text-sm bg-background"
+          >
+            {plexServers.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-muted-foreground">Library:</label>
+          <select
+            value={selectedTitle ?? ''}
+            onChange={(e) => setSelectedTitle(e.target.value === '' ? null : e.target.value)}
+            className="border rounded px-3 py-1.5 text-sm bg-background"
+          >
+            {sections.map((s) => (
+              <option key={s.title} value={s.title}>{s.title}</option>
+            ))}
+            <option value="">All libraries</option>
+          </select>
+        </div>
       </div>
 
       {/* Advanced Filters */}

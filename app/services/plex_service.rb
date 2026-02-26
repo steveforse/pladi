@@ -1,14 +1,22 @@
 class PlexService
-  BASE_URL = ENV.fetch("PLEX_URL", "https://plex.forse.co")
-  TOKEN = ENV["PLEX_TOKEN"]
   ENRICH_THREADS = ENV.fetch("PLEX_ENRICH_THREADS", "3").to_i
+
+  def initialize(server)
+    @base_url  = server.url
+    @token     = server.token
+    @server_id = server.id
+  end
+
+  def friendly_name
+    get("/").dig("MediaContainer", "friendlyName")
+  end
 
   def sections
     machine_id = fetch_machine_identifier
     fetch_movie_sections.map do |section|
       key   = section["key"]
       mtime = section["updatedAt"]
-      movies = Rails.cache.fetch("plex/section/#{key}/#{mtime}", expires_in: 7.days) do
+      movies = Rails.cache.fetch("plex/server/#{@server_id}/section/#{key}/#{mtime}", expires_in: 7.days) do
         fetch_section_movies(key, machine_id).sort_by { |m| m[:title].downcase }
       end
       { title: section["title"], movies: movies }
@@ -28,7 +36,7 @@ class PlexService
           break if movie.nil?
 
           detail = Rails.cache.fetch(
-            "plex/movie/detail/#{movie[:id]}/#{movie[:updated_at]}",
+            "plex/server/#{@server_id}/movie/detail/#{movie[:id]}/#{movie[:updated_at]}",
             expires_in: 30.days
           ) { fetch_movie_detail(movie[:id]) }
 
@@ -106,15 +114,19 @@ class PlexService
   end
 
   def get(path)
-    uri = URI("#{BASE_URL}#{path}")
+    uri = URI("#{@base_url}#{path}")
     request = Net::HTTP::Get.new(uri)
     request["Accept"] = "application/json"
-    request["X-Plex-Token"] = TOKEN
+    request["X-Plex-Token"] = @token
 
     response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
       http.request(request)
     end
 
+    raise "Plex returned HTTP #{response.code} — check your server URL and token" unless response.is_a?(Net::HTTPSuccess)
+
     JSON.parse(response.body)
+  rescue JSON::ParserError
+    raise "Plex returned an unexpected response — check your server URL and token"
   end
 end

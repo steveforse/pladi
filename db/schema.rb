@@ -10,7 +10,17 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_221603) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_26_225008) do
+  create_table "plex_servers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.integer "user_id", null: false
+    t.index ["user_id"], name: "index_plex_servers_on_user_id"
+  end
+
   create_table "sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "ip_address"
@@ -28,5 +38,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_221603) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "plex_servers", "users"
   add_foreign_key "sessions", "users"
 end

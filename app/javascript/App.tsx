@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import MoviesTable from '@/components/MoviesTable'
 import LoginPage from '@/components/LoginPage'
+import SettingsPage from '@/components/SettingsPage'
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated'
+type Page = 'movies' | 'settings'
 
 function LoadingScreen() {
   return (
@@ -14,6 +16,7 @@ function LoadingScreen() {
 
 export default function App() {
   const [authState, setAuthState] = useState<AuthState>('loading')
+  const [page, setPage] = useState<Page>('movies')
 
   useEffect(() => {
     fetch('/api/me').then((r) =>
@@ -24,5 +27,14 @@ export default function App() {
   if (authState === 'loading') return <LoadingScreen />
   if (authState === 'unauthenticated')
     return <LoginPage onLogin={() => setAuthState('authenticated')} />
-  return <MoviesTable onLogout={() => setAuthState('unauthenticated')} />
+
+  if (page === 'settings')
+    return <SettingsPage onBack={() => setPage('movies')} />
+
+  return (
+    <MoviesTable
+      onLogout={() => setAuthState('unauthenticated')}
+      onSettings={() => setPage('settings')}
+    />
+  )
 }
