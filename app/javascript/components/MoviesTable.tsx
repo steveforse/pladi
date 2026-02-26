@@ -36,7 +36,7 @@ interface Section {
   movies: Movie[]
 }
 
-type SortKey = keyof Pick<Movie, 'title' | 'year' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
+type SortKey = keyof Pick<Movie, 'title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
 type SortDir = 'asc' | 'desc'
 
 type ColumnId = 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration' | 'play'
@@ -57,23 +57,163 @@ const ALL_COLUMNS: ColumnDef[] = [
   { id: 'play', label: 'Play' },
 ]
 
-function sortMovies(movies: Movie[], key: SortKey, dir: SortDir): Movie[] {
-  return [...movies].sort((a, b) => {
-    const av = a[key]
-    const bv = b[key]
-    let cmp: number
-    if (av == null && bv == null) cmp = 0
-    else if (av == null) cmp = 1
-    else if (bv == null) cmp = -1
-    else if (typeof av === 'string' && typeof bv === 'string') cmp = av.localeCompare(bv)
-    else cmp = (av as number) - (bv as number)
-    return dir === 'asc' ? cmp : -cmp
-  })
+// ── Filter types ────────────────────────────────────────────────────────────
+
+type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
+type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
+type FilterOp = NumericOp | StringOp
+type FilterFieldId = 'title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'
+
+interface FilterFieldDef {
+  id: FilterFieldId
+  label: string
+  type: 'numeric' | 'string'
+  unit?: string
 }
 
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="ml-1 text-muted-foreground/40">↕</span>
-  return <span className="ml-1 text-primary">{dir === 'asc' ? '↑' : '↓'}</span>
+const FILTER_FIELDS: FilterFieldDef[] = [
+  { id: 'title',       label: 'Title',    type: 'string' },
+  { id: 'year',        label: 'Year',     type: 'numeric' },
+  { id: 'file_path',   label: 'File Path', type: 'string' },
+  { id: 'container',   label: 'Container', type: 'string' },
+  { id: 'video_codec', label: 'Codec',    type: 'string' },
+  { id: 'bitrate',     label: 'Bitrate',  type: 'numeric', unit: 'kbps' },
+  { id: 'size',        label: 'Size',     type: 'numeric', unit: 'MB' },
+  { id: 'duration',    label: 'Duration', type: 'numeric', unit: 'min' },
+]
+
+const NUMERIC_OPS: { id: NumericOp; label: string }[] = [
+  { id: 'gt',  label: '>' },
+  { id: 'gte', label: '≥' },
+  { id: 'lt',  label: '<' },
+  { id: 'lte', label: '≤' },
+  { id: 'eq',  label: '=' },
+  { id: 'neq', label: '≠' },
+]
+
+const STRING_OPS: { id: StringOp; label: string }[] = [
+  { id: 'includes', label: 'includes' },
+  { id: 'excludes', label: 'excludes' },
+  { id: 'eq',       label: '=' },
+  { id: 'neq',      label: '≠' },
+  { id: 'starts',   label: 'starts with' },
+  { id: 'ends',     label: 'ends with' },
+]
+
+interface ActiveFilter {
+  id: number
+  field: FilterFieldId
+  op: FilterOp
+  value: string
+}
+
+function defaultOp(fieldType: 'numeric' | 'string'): FilterOp {
+  return fieldType === 'numeric' ? 'gt' : 'includes'
+}
+
+function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
+  const fieldDef = FILTER_FIELDS.find((f) => f.id === filter.field)!
+  const raw = movie[filter.field as keyof Movie]
+
+  if (fieldDef.type === 'numeric') {
+    const filterNum = parseFloat(filter.value)
+    if (isNaN(filterNum)) return true // incomplete, skip
+    // Convert stored units to user-facing units for comparison
+    let movieNum: number | null
+    if (filter.field === 'size') {
+      movieNum = raw != null ? (raw as number) / 1_048_576 : null
+    } else if (filter.field === 'duration') {
+      movieNum = raw != null ? (raw as number) / 60_000 : null
+    } else {
+      movieNum = raw as number | null
+    }
+    if (movieNum == null) return false
+    switch (filter.op as NumericOp) {
+      case 'gt':  return movieNum >  filterNum
+      case 'gte': return movieNum >= filterNum
+      case 'lt':  return movieNum <  filterNum
+      case 'lte': return movieNum <= filterNum
+      case 'eq':  return movieNum === filterNum
+      case 'neq': return movieNum !== filterNum
+    }
+  } else {
+    const movieStr = ((raw as string | null) ?? '').toLowerCase()
+    const filterStr = filter.value.toLowerCase()
+    switch (filter.op as StringOp) {
+      case 'includes': return movieStr.includes(filterStr)
+      case 'excludes': return !movieStr.includes(filterStr)
+      case 'eq':       return movieStr === filterStr
+      case 'neq':      return movieStr !== filterStr
+      case 'starts':   return movieStr.startsWith(filterStr)
+      case 'ends':     return movieStr.endsWith(filterStr)
+    }
+  }
+  return true
+}
+
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+function FilterRow({
+  filter,
+  onChange,
+  onRemove,
+}: {
+  filter: ActiveFilter
+  onChange: (updated: ActiveFilter) => void
+  onRemove: () => void
+}) {
+  const fieldDef = FILTER_FIELDS.find((f) => f.id === filter.field)!
+  const ops = fieldDef.type === 'numeric' ? NUMERIC_OPS : STRING_OPS
+
+  function handleFieldChange(newField: FilterFieldId) {
+    const newDef = FILTER_FIELDS.find((f) => f.id === newField)!
+    onChange({ ...filter, field: newField, op: defaultOp(newDef.type), value: '' })
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <select
+        value={filter.field}
+        onChange={(e) => handleFieldChange(e.target.value as FilterFieldId)}
+        className="border rounded px-2 py-1 text-sm bg-background"
+      >
+        {FILTER_FIELDS.map((f) => (
+          <option key={f.id} value={f.id}>{f.label}</option>
+        ))}
+      </select>
+
+      <select
+        value={filter.op}
+        onChange={(e) => onChange({ ...filter, op: e.target.value as FilterOp })}
+        className="border rounded px-2 py-1 text-sm bg-background"
+      >
+        {ops.map((o) => (
+          <option key={o.id} value={o.id}>{o.label}</option>
+        ))}
+      </select>
+
+      <div className="flex items-center gap-1">
+        <input
+          type={fieldDef.type === 'numeric' ? 'number' : 'text'}
+          value={filter.value}
+          onChange={(e) => onChange({ ...filter, value: e.target.value })}
+          placeholder="value"
+          className="border rounded px-2 py-1 text-sm bg-background w-32"
+        />
+        {fieldDef.unit && (
+          <span className="text-xs text-muted-foreground">{fieldDef.unit}</span>
+        )}
+      </div>
+
+      <button
+        onClick={onRemove}
+        className="text-muted-foreground hover:text-destructive text-sm px-1"
+        aria-label="Remove filter"
+      >
+        ✕
+      </button>
+    </div>
+  )
 }
 
 function ColumnPicker({
@@ -124,6 +264,27 @@ function ColumnPicker({
   )
 }
 
+function sortMovies(movies: Movie[], key: SortKey, dir: SortDir): Movie[] {
+  return [...movies].sort((a, b) => {
+    const av = a[key]
+    const bv = b[key]
+    let cmp: number
+    if (av == null && bv == null) cmp = 0
+    else if (av == null) cmp = 1
+    else if (bv == null) cmp = -1
+    else if (typeof av === 'string' && typeof bv === 'string') cmp = av.localeCompare(bv)
+    else cmp = (av as number) - (bv as number)
+    return dir === 'asc' ? cmp : -cmp
+  })
+}
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span className="ml-1 text-muted-foreground/40">↕</span>
+  return <span className="ml-1 text-primary">{dir === 'asc' ? '↑' : '↓'}</span>
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
+
 export default function MoviesTable() {
   const [sections, setSections] = useState<Section[]>([])
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null)
@@ -135,6 +296,8 @@ export default function MoviesTable() {
   const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(
     new Set(ALL_COLUMNS.map((c) => c.id))
   )
+  const [filters, setFilters] = useState<ActiveFilter[]>([])
+  const nextId = useRef(1)
 
   useEffect(() => {
     fetch('/api/movies')
@@ -158,6 +321,7 @@ export default function MoviesTable() {
   const visibleMovies = useMemo(() => {
     if (!activeSection) return []
     let movies = activeSection.movies
+
     if (multiOnly) {
       const counts = new Map<string, number>()
       for (const m of movies) {
@@ -166,8 +330,13 @@ export default function MoviesTable() {
       }
       movies = movies.filter((m) => (counts.get(`${m.title}__${m.year}`) ?? 0) > 1)
     }
+
+    if (filters.length > 0) {
+      movies = movies.filter((m) => filters.every((f) => matchesFilter(m, f)))
+    }
+
     return sortMovies(movies, sortKey, sortDir)
-  }, [activeSection, multiOnly, sortKey, sortDir])
+  }, [activeSection, multiOnly, filters, sortKey, sortDir])
 
   function handleSort(key: SortKey) {
     if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -181,6 +350,21 @@ export default function MoviesTable() {
       else next.delete(id)
       return next
     })
+  }
+
+  function addFilter() {
+    setFilters((prev) => [
+      ...prev,
+      { id: nextId.current++, field: 'title', op: 'includes', value: '' },
+    ])
+  }
+
+  function updateFilter(id: number, updated: ActiveFilter) {
+    setFilters((prev) => prev.map((f) => (f.id === id ? updated : f)))
+  }
+
+  function removeFilter(id: number) {
+    setFilters((prev) => prev.filter((f) => f.id !== id))
   }
 
   function col(id: ColumnId) { return visibleCols.has(id) }
@@ -215,7 +399,8 @@ export default function MoviesTable() {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8 space-y-4">
+      {/* Top controls */}
       <div className="flex items-center gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Plex Movie Library</h1>
         <select
@@ -227,6 +412,7 @@ export default function MoviesTable() {
             <option key={s.title} value={s.title}>{s.title}</option>
           ))}
         </select>
+        <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -235,9 +421,27 @@ export default function MoviesTable() {
           />
           Multiple files only
         </label>
-        <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
       </div>
 
+      {/* Filters */}
+      <div className="space-y-2">
+        {filters.map((f) => (
+          <FilterRow
+            key={f.id}
+            filter={f}
+            onChange={(updated) => updateFilter(f.id, updated)}
+            onRemove={() => removeFilter(f.id)}
+          />
+        ))}
+        <button
+          onClick={addFilter}
+          className="border rounded px-3 py-1.5 text-sm bg-background hover:bg-muted/50 text-muted-foreground"
+        >
+          + Add Filter
+        </button>
+      </div>
+
+      {/* Table */}
       {activeSection && (
         <div>
           <div className="rounded-md border overflow-auto">
@@ -246,7 +450,7 @@ export default function MoviesTable() {
                 <tr className="border-b bg-muted/50">
                   <Th label="Title" col="title" className="w-56" />
                   {col('year') && <Th label="Year" col="year" />}
-                  {col('file_path') && <th className="px-4 py-3 text-left font-medium">File Path</th>}
+                  {col('file_path') && <Th label="File Path" col="file_path" />}
                   {col('container') && <Th label="Container" col="container" />}
                   {col('video_codec') && <Th label="Codec" col="video_codec" />}
                   {col('bitrate') && <Th label="Bitrate" col="bitrate" />}
