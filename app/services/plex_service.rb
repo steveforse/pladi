@@ -1,6 +1,7 @@
 class PlexService
   BASE_URL = ENV.fetch("PLEX_URL", "https://plex.forse.co")
   TOKEN = ENV["PLEX_TOKEN"]
+  ENRICH_THREADS = ENV.fetch("PLEX_ENRICH_THREADS", "3").to_i
 
   def sections
     machine_id = fetch_machine_identifier
@@ -11,6 +12,38 @@ class PlexService
         fetch_section_movies(key, machine_id).sort_by { |m| m[:title].downcase }
       end
       { title: section["title"], movies: movies }
+    end
+  end
+
+  def enrich_sections(sections)
+    all_movies = sections.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
+    queue  = all_movies.dup
+    mutex  = Mutex.new
+    details = {}
+
+    threads = ENRICH_THREADS.times.map do
+      Thread.new do
+        loop do
+          movie = mutex.synchronize { queue.shift }
+          break if movie.nil?
+
+          detail = Rails.cache.fetch(
+            "plex/movie/detail/#{movie[:id]}/#{movie[:updated_at]}",
+            expires_in: 30.days
+          ) { fetch_movie_detail(movie[:id]) }
+
+          mutex.synchronize { details[movie[:id]] = detail }
+        end
+      end
+    end
+
+    threads.each(&:join)
+
+    sections.map do |section|
+      {
+        title: section[:title],
+        movies: section[:movies].map { |m| m.merge(details[m[:id]] || {}) }
+      }
     end
   end
 
@@ -57,6 +90,19 @@ class PlexService
         end
       end
     end
+  end
+
+  def fetch_movie_detail(rating_key)
+    item = get("/library/metadata/#{rating_key}").dig("MediaContainer", "Metadata", 0) || {}
+    {
+      summary:         item["summary"],
+      content_rating:  item["contentRating"],
+      audience_rating: item["audienceRating"],
+      genres:          (item["Genre"]    || []).map { |g| g["tag"] }.join(", "),
+      directors:       (item["Director"] || []).map { |d| d["tag"] }.join(", ")
+    }
+  rescue StandardError
+    {}
   end
 
   def get(path)

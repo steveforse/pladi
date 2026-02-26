@@ -22,6 +22,11 @@ interface Movie {
   duration: number | null
   updated_at: number | null
   plex_url: string | null
+  summary: string | null
+  content_rating: string | null
+  audience_rating: number | null
+  genres: string | null
+  directors: string | null
 }
 
 function formatSize(bytes: number | null): string {
@@ -80,14 +85,14 @@ interface Section {
   movies: Movie[]
 }
 
-type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at'>
+type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'content_rating' | 'audience_rating' | 'genres' | 'directors'>
 type SortDir = 'asc' | 'desc'
 
-type ColumnId = 'id' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'play'
+type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'play'
 type AllColumnId = 'title' | ColumnId
 
 const DEFAULT_COL_ORDER: AllColumnId[] = [
-  'id', 'title', 'original_title', 'year', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'bitrate', 'size', 'duration', 'updated_at', 'play',
+  'id', 'title', 'original_title', 'year', 'content_rating', 'audience_rating', 'genres', 'directors', 'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'bitrate', 'size', 'duration', 'updated_at', 'play',
 ]
 
 interface ColumnDef {
@@ -99,6 +104,11 @@ const ALL_COLUMNS: ColumnDef[] = [
   { id: 'id', label: 'ID' },
   { id: 'original_title', label: 'Original Title' },
   { id: 'year', label: 'Year' },
+  { id: 'content_rating', label: 'Rating' },
+  { id: 'audience_rating', label: 'Audience Rating' },
+  { id: 'genres', label: 'Genres' },
+  { id: 'directors', label: 'Directors' },
+  { id: 'summary', label: 'Summary' },
   { id: 'file_path', label: 'File Path' },
   { id: 'container', label: 'Container' },
   { id: 'video_codec', label: 'Video Codec' },
@@ -121,7 +131,7 @@ const ALL_COLUMNS: ColumnDef[] = [
 type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
 type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
 type FilterOp = NumericOp | StringOp
-type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at'
+type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at'
 
 interface FilterFieldDef {
   id: FilterFieldId
@@ -135,6 +145,11 @@ const FILTER_FIELDS: FilterFieldDef[] = [
   { id: 'title',          label: 'Title',          type: 'string' },
   { id: 'original_title', label: 'Original Title', type: 'string' },
   { id: 'year',           label: 'Year',           type: 'numeric' },
+  { id: 'content_rating',  label: 'Rating',          type: 'string' },
+  { id: 'audience_rating', label: 'Audience Rating', type: 'numeric' },
+  { id: 'genres',          label: 'Genres',          type: 'string' },
+  { id: 'directors',       label: 'Directors',       type: 'string' },
+  { id: 'summary',         label: 'Summary',         type: 'string' },
   { id: 'file_path',   label: 'File Path', type: 'string' },
   { id: 'container',   label: 'Container', type: 'string' },
   { id: 'video_codec',       label: 'Video Codec',  type: 'string' },
@@ -455,6 +470,7 @@ export default function MoviesTable() {
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [multiOnly, setMultiOnly] = useState(false)
   const [unmatchedOnly, setUnmatchedOnly] = useState(false)
@@ -463,7 +479,7 @@ export default function MoviesTable() {
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(
-    new Set(ALL_COLUMNS.map((c) => c.id).filter((id) => !['original_title', 'width', 'height', 'aspect_ratio', 'frame_rate', 'updated_at'].includes(id)))
+    new Set(ALL_COLUMNS.map((c) => c.id).filter((id) => !['original_title', 'width', 'height', 'aspect_ratio', 'frame_rate', 'updated_at', 'content_rating', 'audience_rating', 'genres', 'directors', 'summary'].includes(id)))
   )
   const [filters, setFilters] = useState<ActiveFilter[]>([])
   const nextId = useRef(1)
@@ -474,36 +490,49 @@ export default function MoviesTable() {
   const [dragOverCol, setDragOverCol] = useState<AllColumnId | null>(null)
 
   useEffect(() => {
-    fetch('/api/movies')
-      .then((res) => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/movies')
         if (!res.ok) throw new Error(`Server error: ${res.status}`)
-        return res.json()
-      })
-      .then((data: Section[]) => {
+        const data: Section[] = await res.json()
         setSections(data)
         if (data.length > 0) setSelectedTitle(data[0].title)
         setLoading(false)
+
+        // Refresh section list from Plex
         setRefreshing(true)
-        fetch('/api/movies/refresh')
-          .then((res) => {
-            if (!res.ok) throw new Error()
-            return res.json()
-          })
-          .then((fresh: Section[]) => {
+        try {
+          const refreshRes = await fetch('/api/movies/refresh')
+          if (refreshRes.ok) {
+            const fresh: Section[] = await refreshRes.json()
             setSections(fresh)
             setSelectedTitle((prev) =>
               prev === null || fresh.some((s) => s.title === prev)
                 ? prev
                 : (fresh[0]?.title ?? null)
             )
-            setRefreshing(false)
-          })
-          .catch(() => setRefreshing(false))
-      })
-      .catch((err) => {
-        setError(err.message)
+          }
+        } finally {
+          setRefreshing(false)
+        }
+
+        // Enrich with per-movie metadata
+        setSyncing(true)
+        try {
+          const enrichRes = await fetch('/api/movies/enrich')
+          if (enrichRes.ok) {
+            const enriched: Section[] = await enrichRes.json()
+            setSections(enriched)
+          }
+        } finally {
+          setSyncing(false)
+        }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Unknown error')
         setLoading(false)
-      })
+      }
+    }
+    load()
   }, [])
 
   const activeMovies = selectedTitle === null
@@ -682,6 +711,14 @@ export default function MoviesTable() {
           <img src={pladiLogo} alt="Pladi logo" className="h-12 w-auto" />
           <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
         </div>
+        <div className="flex-1 flex justify-center">
+          {syncing && (
+            <div className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border" style={{ backgroundColor: '#E5A00D15', borderColor: '#E5A00D50', color: '#E5A00D' }}>
+              <Loader2 size={14} className="animate-spin" />
+              Syncing additional metadata from Plex...
+            </div>
+          )}
+        </div>
         {refreshing && (
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Loader2 size={14} className="animate-spin" />
@@ -780,6 +817,11 @@ export default function MoviesTable() {
                       case 'title':          return <Th key={id} label="Title"          col="title"          colId={id} className="w-56" />
                       case 'original_title': return <Th key={id} label="Original Title" col="original_title" colId={id} />
                       case 'year':           return <Th key={id} label="Year"           col="year"           colId={id} />
+                      case 'content_rating':  return <Th key={id} label="Rating"          col="content_rating"  colId={id} />
+                      case 'audience_rating': return <Th key={id} label="Audience Rating" col="audience_rating" colId={id} />
+                      case 'genres':          return <Th key={id} label="Genres"          col="genres"          colId={id} />
+                      case 'directors':       return <Th key={id} label="Directors"       col="directors"       colId={id} />
+                      case 'summary':         return <ThPlain key={id} label="Summary"    colId={id} />
                       case 'file_path':      return <Th key={id} label="File Path"      col="file_path"      colId={id} />
                       case 'container':      return <Th key={id} label="Container"      col="container"      colId={id} />
                       case 'video_codec':       return <Th key={id} label="Video Codec"   col="video_codec"       colId={id} />
@@ -808,6 +850,11 @@ export default function MoviesTable() {
                         case 'title':          return <td key={id} className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
                         case 'original_title': return <td key={id} className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</td>
                         case 'year':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>
+                        case 'content_rating':  return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.content_rating ?? '—'}</td>
+                        case 'audience_rating': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.audience_rating != null ? movie.audience_rating.toFixed(1) : '—'}</td>
+                        case 'genres':          return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.genres || '—'}</td>
+                        case 'directors':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.directors || '—'}</td>
+                        case 'summary':         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs max-w-xs" title={movie.summary ?? undefined}>{movie.summary ? movie.summary.slice(0, 120) + (movie.summary.length > 120 ? '…' : '') : '—'}</td>
                         case 'file_path':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">{movie.file_path ?? <span className="italic">—</span>}</td>
                         case 'container':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.container ?? '—'}</td>
                         case 'video_codec':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.video_codec ?? '—'}</td>

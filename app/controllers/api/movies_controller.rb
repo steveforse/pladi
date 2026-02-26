@@ -18,5 +18,11 @@ module Api
       Rails.cache.write(CACHE_KEY, data, expires_in: 24.hours)
       render json: data
     end
+
+    def enrich
+      service = PlexService.new
+      sections = service.sections
+      render json: service.enrich_sections(sections)
+    end
   end
 end

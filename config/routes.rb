@@ -11,7 +11,10 @@ Rails.application.routes.draw do
 
   namespace :api do
     resources :movies, only: [:index] do
-      collection { get :refresh }
+      collection do
+        get :refresh
+        get :enrich
+      end
     end
   end
 
