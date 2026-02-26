@@ -3,6 +3,7 @@ module Api
     skip_before_action :require_authentication, only: [:me]
 
     def me
+      resume_session
       if Current.user
         render json: { email_address: Current.user.email_address }
       else
