@@ -688,7 +688,6 @@ export default function MoviesTable() {
             Updating...
           </span>
         )}
-        <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
       </div>
 
       {/* Library selector */}
@@ -704,6 +703,9 @@ export default function MoviesTable() {
           ))}
           <option value="">All libraries</option>
         </select>
+        <div className="ml-auto">
+          <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
+        </div>
       </div>
 
       {/* Advanced Filters */}
