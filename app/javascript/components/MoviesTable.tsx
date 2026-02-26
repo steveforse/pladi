@@ -703,9 +703,6 @@ export default function MoviesTable() {
           ))}
           <option value="">All libraries</option>
         </select>
-        <div className="ml-auto">
-          <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
-        </div>
       </div>
 
       {/* Advanced Filters */}
@@ -753,12 +750,17 @@ export default function MoviesTable() {
             onRemove={() => removeFilter(f.id)}
           />
         ))}
-        <button
-          onClick={addFilter}
-          className="btn px-3 py-1.5 text-sm"
-        >
-          + Add Filter
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={addFilter}
+            className="btn px-3 py-1.5 text-sm"
+          >
+            + Add Filter
+          </button>
+          <div className="ml-auto">
+            <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
+          </div>
+        </div>
       </div>
 
       {/* Table */}
