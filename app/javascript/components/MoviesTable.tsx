@@ -1,8 +1,33 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 
 interface Movie {
   title: string
   file_path: string | null
+  container: string | null
+  video_codec: string | null
+  bitrate: number | null
+  size: number | null
+  duration: number | null
+  plex_url: string | null
+}
+
+function formatSize(bytes: number | null): string {
+  if (bytes == null) return '—'
+  const gb = bytes / 1_073_741_824
+  return gb >= 1 ? `${gb.toFixed(2)} GB` : `${(bytes / 1_048_576).toFixed(0)} MB`
+}
+
+function formatBitrate(kbps: number | null): string {
+  if (kbps == null) return '—'
+  return kbps >= 1000 ? `${(kbps / 1000).toFixed(1)} Mbps` : `${kbps} kbps`
+}
+
+function formatDuration(ms: number | null): string {
+  if (ms == null) return '—'
+  const totalMin = Math.round(ms / 60_000)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
 interface Section {
@@ -10,11 +35,36 @@ interface Section {
   movies: Movie[]
 }
 
+type SortKey = keyof Pick<Movie, 'title' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
+type SortDir = 'asc' | 'desc'
+
+function sortMovies(movies: Movie[], key: SortKey, dir: SortDir): Movie[] {
+  return [...movies].sort((a, b) => {
+    const av = a[key]
+    const bv = b[key]
+    let cmp: number
+    if (av == null && bv == null) cmp = 0
+    else if (av == null) cmp = 1
+    else if (bv == null) cmp = -1
+    else if (typeof av === 'string' && typeof bv === 'string') cmp = av.localeCompare(bv)
+    else cmp = (av as number) - (bv as number)
+    return dir === 'asc' ? cmp : -cmp
+  })
+}
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span className="ml-1 text-muted-foreground/40">↕</span>
+  return <span className="ml-1">{dir === 'asc' ? '↑' : '↓'}</span>
+}
+
 export default function MoviesTable() {
   const [sections, setSections] = useState<Section[]>([])
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [multiOnly, setMultiOnly] = useState(false)
+  const [sortKey, setSortKey] = useState<SortKey>('title')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   useEffect(() => {
     fetch('/api/movies')
@@ -33,17 +83,34 @@ export default function MoviesTable() {
       })
   }, [])
 
-  const [multiOnly, setMultiOnly] = useState(false)
-
   const activeSection = sections.find((s) => s.title === selectedTitle)
 
-  const visibleMovies = (() => {
+  const visibleMovies = useMemo(() => {
     if (!activeSection) return []
-    if (!multiOnly) return activeSection.movies
-    const counts = new Map<string, number>()
-    for (const m of activeSection.movies) counts.set(m.title, (counts.get(m.title) ?? 0) + 1)
-    return activeSection.movies.filter((m) => (counts.get(m.title) ?? 0) > 1)
-  })()
+    let movies = activeSection.movies
+    if (multiOnly) {
+      const counts = new Map<string, number>()
+      for (const m of movies) counts.set(m.title, (counts.get(m.title) ?? 0) + 1)
+      movies = movies.filter((m) => (counts.get(m.title) ?? 0) > 1)
+    }
+    return sortMovies(movies, sortKey, sortDir)
+  }, [activeSection, multiOnly, sortKey, sortDir])
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  function Th({ label, col, className }: { label: string; col: SortKey; className?: string }) {
+    return (
+      <th
+        className={`px-4 py-3 text-left font-medium whitespace-nowrap cursor-pointer select-none hover:bg-muted/70 ${className ?? ''}`}
+        onClick={() => handleSort(col)}
+      >
+        {label}<SortIcon active={sortKey === col} dir={sortDir} />
+      </th>
+    )
+  }
 
   if (loading) {
     return (
@@ -92,8 +159,14 @@ export default function MoviesTable() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium w-64">Title</th>
+                  <Th label="Title" col="title" className="w-56" />
                   <th className="px-4 py-3 text-left font-medium">File Path</th>
+                  <Th label="Container" col="container" />
+                  <Th label="Codec" col="video_codec" />
+                  <Th label="Bitrate" col="bitrate" />
+                  <Th label="Size" col="size" />
+                  <Th label="Duration" col="duration" />
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -102,6 +175,28 @@ export default function MoviesTable() {
                     <td className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
                     <td className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">
                       {movie.file_path ?? <span className="italic">—</span>}
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">
+                      {movie.container ?? '—'}
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">
+                      {movie.video_codec ?? '—'}
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                      {formatBitrate(movie.bitrate)}
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                      {formatSize(movie.size)}
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                      {formatDuration(movie.duration)}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {movie.plex_url && (
+                        <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+                          Play
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}

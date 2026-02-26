@@ -3,15 +3,20 @@ class PlexService
   TOKEN = ENV["PLEX_TOKEN"]
 
   def sections
+    machine_id = fetch_machine_identifier
     fetch_movie_sections.map do |section|
       {
         title: section["title"],
-        movies: fetch_section_movies(section["key"]).sort_by { |m| m[:title].downcase }
+        movies: fetch_section_movies(section["key"], machine_id).sort_by { |m| m[:title].downcase }
       }
     end
   end
 
   private
+
+  def fetch_machine_identifier
+    get("/identity").dig("MediaContainer", "machineIdentifier")
+  end
 
   def fetch_movie_sections
     data = get("/library/sections")
@@ -19,12 +24,25 @@ class PlexService
     directories.select { |d| d["type"] == "movie" }
   end
 
-  def fetch_section_movies(key)
+  def fetch_section_movies(key, machine_id)
     data = get("/library/sections/#{key}/all")
     items = data.dig("MediaContainer", "Metadata") || []
     items.flat_map do |item|
-      parts = (item["Media"] || []).flat_map { |m| m["Part"] || [] }
-      parts.map { |part| { title: item["title"], file_path: part["file"] } }
+      plex_url = "https://app.plex.tv/desktop/#!/server/#{machine_id}/details?key=#{CGI.escape("/library/metadata/#{item["ratingKey"]}")}"
+      (item["Media"] || []).flat_map do |media|
+        (media["Part"] || []).map do |part|
+          {
+            title: item["title"],
+            file_path: part["file"],
+            container: media["container"],
+            video_codec: media["videoCodec"],
+            bitrate: media["bitrate"],
+            size: part["size"],
+            duration: media["duration"],
+            plex_url: plex_url
+          }
+        end
+      end
     end
   end
 
