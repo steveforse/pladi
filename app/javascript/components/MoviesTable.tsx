@@ -151,6 +151,39 @@ function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
   return true
 }
 
+// ── Title / path matching ────────────────────────────────────────────────────
+
+function normalizeForMatch(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\(\d{4}\)/g, '')    // strip (year)
+    .replace(/\b\d{4}\b/g, '')    // strip bare 4-digit years
+    .replace(/[^a-z0-9\s]/g, ' ') // replace punctuation/dots with space
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function titleMatchesFilename(movie: Movie): boolean {
+  if (!movie.file_path || !movie.title) return true
+  const parts = movie.file_path.replace(/\\/g, '/').split('/')
+  const filename = parts[parts.length - 1] ?? ''
+  const nameNoExt = filename.replace(/\.[^.]+$/, '') // strip extension
+  const normTitle = normalizeForMatch(movie.title)
+  const normFile  = normalizeForMatch(nameNoExt)
+  if (!normFile) return false
+  return normFile.includes(normTitle) || normTitle.includes(normFile)
+}
+
+function titleMatchesPath(movie: Movie): boolean {
+  if (!movie.file_path || !movie.title) return true
+  const parts = movie.file_path.replace(/\\/g, '/').split('/')
+  const folderName = parts.length >= 2 ? parts[parts.length - 2] : ''
+  const normTitle  = normalizeForMatch(movie.title)
+  const normFolder = normalizeForMatch(folderName)
+  if (!normFolder) return false
+  return normFolder.includes(normTitle) || normTitle.includes(normFolder)
+}
+
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function FilterRow({
@@ -264,6 +297,53 @@ function ColumnPicker({
   )
 }
 
+function Paginator({
+  page,
+  totalPages,
+  pageSize,
+  total,
+  onPage,
+  onPageSize,
+}: {
+  page: number
+  totalPages: number
+  pageSize: number
+  total: number
+  onPage: (p: number) => void
+  onPageSize: (n: number) => void
+}) {
+  return (
+    <div className="flex items-center gap-4 flex-wrap">
+      <p className="text-xs text-muted-foreground">
+        {total} movies
+        {pageSize > 0 && total > pageSize && (
+          <> &mdash; page {page} of {totalPages}</>
+        )}
+      </p>
+      <div className="flex items-center gap-1 ml-auto">
+        <button onClick={() => onPage(1)} disabled={page === 1}
+          className="px-2 py-1 text-xs border rounded disabled:opacity-30 hover:bg-muted/50">«</button>
+        <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}
+          className="px-2 py-1 text-xs border rounded disabled:opacity-30 hover:bg-muted/50">‹</button>
+        <button onClick={() => onPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}
+          className="px-2 py-1 text-xs border rounded disabled:opacity-30 hover:bg-muted/50">›</button>
+        <button onClick={() => onPage(totalPages)} disabled={page === totalPages}
+          className="px-2 py-1 text-xs border rounded disabled:opacity-30 hover:bg-muted/50">»</button>
+      </div>
+      <select
+        value={pageSize}
+        onChange={(e) => onPageSize(Number(e.target.value))}
+        className="border rounded px-2 py-1 text-xs bg-background"
+      >
+        {[25, 50, 100, 250].map((n) => (
+          <option key={n} value={n}>{n} per page</option>
+        ))}
+        <option value={0}>All</option>
+      </select>
+    </div>
+  )
+}
+
 function sortMovies(movies: Movie[], key: SortKey, dir: SortDir): Movie[] {
   return [...movies].sort((a, b) => {
     const av = a[key]
@@ -291,6 +371,8 @@ export default function MoviesTable() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [multiOnly, setMultiOnly] = useState(false)
+  const [unmatchedOnly, setUnmatchedOnly] = useState(false)
+  const [filenameMismatch, setFilenameMismatch] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(
@@ -298,6 +380,8 @@ export default function MoviesTable() {
   )
   const [filters, setFilters] = useState<ActiveFilter[]>([])
   const nextId = useRef(1)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
 
   useEffect(() => {
     fetch('/api/movies')
@@ -331,12 +415,30 @@ export default function MoviesTable() {
       movies = movies.filter((m) => (counts.get(`${m.title}__${m.year}`) ?? 0) > 1)
     }
 
+    if (unmatchedOnly) {
+      movies = movies.filter((m) => !titleMatchesPath(m))
+    }
+
+    if (filenameMismatch) {
+      movies = movies.filter((m) => !titleMatchesFilename(m))
+    }
+
     if (filters.length > 0) {
       movies = movies.filter((m) => filters.every((f) => matchesFilter(m, f)))
     }
 
     return sortMovies(movies, sortKey, sortDir)
-  }, [activeSection, multiOnly, filters, sortKey, sortDir])
+  }, [activeSection, multiOnly, unmatchedOnly, filenameMismatch, filters, sortKey, sortDir])
+
+  // Reset to page 1 whenever the filtered/sorted set changes
+  const prevMovieCount = useRef(visibleMovies.length)
+  if (prevMovieCount.current !== visibleMovies.length) {
+    prevMovieCount.current = visibleMovies.length
+    if (page !== 1) setPage(1)
+  }
+
+  const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(visibleMovies.length / pageSize))
+  const pagedMovies = pageSize === 0 ? visibleMovies : visibleMovies.slice((page - 1) * pageSize, page * pageSize)
 
   function handleSort(key: SortKey) {
     if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -421,6 +523,22 @@ export default function MoviesTable() {
           />
           Multiple files only
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={unmatchedOnly}
+            onChange={(e) => setUnmatchedOnly(e.target.checked)}
+          />
+          Title mismatches file path
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={filenameMismatch}
+            onChange={(e) => setFilenameMismatch(e.target.checked)}
+          />
+          Title mismatches filename
+        </label>
       </div>
 
       {/* Filters */}
@@ -443,7 +561,11 @@ export default function MoviesTable() {
 
       {/* Table */}
       {activeSection && (
-        <div>
+        <div className="space-y-2">
+          <Paginator
+            page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
+            onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1) }}
+          />
           <div className="rounded-md border overflow-auto">
             <table className="w-full text-sm">
               <thead>
@@ -460,7 +582,7 @@ export default function MoviesTable() {
                 </tr>
               </thead>
               <tbody>
-                {visibleMovies.map((movie, i) => (
+                {pagedMovies.map((movie, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
                     {col('year') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>}
@@ -508,7 +630,10 @@ export default function MoviesTable() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">{visibleMovies.length} movies</p>
+          <Paginator
+            page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
+            onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1) }}
+          />
         </div>
       )}
     </div>
