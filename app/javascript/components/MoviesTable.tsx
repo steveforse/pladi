@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { GripVertical } from 'lucide-react'
 
 interface Movie {
   id: string
@@ -42,6 +43,11 @@ type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'f
 type SortDir = 'asc' | 'desc'
 
 type ColumnId = 'id' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration' | 'play'
+type AllColumnId = 'title' | ColumnId
+
+const DEFAULT_COL_ORDER: AllColumnId[] = [
+  'id', 'title', 'original_title', 'year', 'file_path', 'container', 'video_codec', 'bitrate', 'size', 'duration', 'play',
+]
 
 interface ColumnDef {
   id: ColumnId
@@ -390,6 +396,9 @@ export default function MoviesTable() {
   const nextId = useRef(1)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
+  const [colOrder, setColOrder] = useState<AllColumnId[]>(DEFAULT_COL_ORDER)
+  const dragColRef = useRef<AllColumnId | null>(null)
+  const [dragOverCol, setDragOverCol] = useState<AllColumnId | null>(null)
 
   useEffect(() => {
     fetch('/api/movies')
@@ -480,13 +489,79 @@ export default function MoviesTable() {
 
   function col(id: ColumnId) { return visibleCols.has(id) }
 
-  function Th({ label, col: c, className }: { label: string; col: SortKey; className?: string }) {
+  function handleColDragStart(id: AllColumnId) {
+    dragColRef.current = id
+  }
+
+  function handleColDragOver(e: React.DragEvent, id: AllColumnId) {
+    e.preventDefault()
+    setDragOverCol(id)
+  }
+
+  function handleColDrop(targetId: AllColumnId) {
+    const src = dragColRef.current
+    if (!src || src === targetId) { setDragOverCol(null); return }
+    setColOrder((prev) => {
+      const next = [...prev]
+      const from = next.indexOf(src)
+      const to   = next.indexOf(targetId)
+      next.splice(from, 1)
+      next.splice(to, 0, src)
+      return next
+    })
+    dragColRef.current = null
+    setDragOverCol(null)
+  }
+
+  function handleColDragEnd() {
+    dragColRef.current = null
+    setDragOverCol(null)
+  }
+
+  function DragHandle({ colId }: { colId: AllColumnId }) {
+    return (
+      <span
+        draggable
+        onDragStart={() => handleColDragStart(colId)}
+        onDragEnd={handleColDragEnd}
+        onClick={(e) => e.stopPropagation()}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground shrink-0"
+      >
+        <GripVertical size={14} />
+      </span>
+    )
+  }
+
+  function Th({ label, col: c, colId, className }: { label: string; col: SortKey; colId: AllColumnId; className?: string }) {
+    const isOver = dragOverCol === colId
     return (
       <th
-        className={`px-4 py-3 text-left font-medium whitespace-nowrap cursor-pointer select-none hover:bg-muted/70 ${className ?? ''}`}
-        onClick={() => handleSort(c)}
+        className={`px-4 py-3 text-left font-medium whitespace-nowrap ${isOver ? 'bg-primary/10' : 'hover:bg-muted/70'} ${className ?? ''}`}
+        onDragOver={(e) => handleColDragOver(e, colId)}
+        onDrop={() => handleColDrop(colId)}
       >
-        {label}<SortIcon active={sortKey === c} dir={sortDir} />
+        <div className="flex items-center gap-1">
+          <DragHandle colId={colId} />
+          <span className="cursor-pointer select-none" onClick={() => handleSort(c)}>
+            {label}<SortIcon active={sortKey === c} dir={sortDir} />
+          </span>
+        </div>
+      </th>
+    )
+  }
+
+  function ThPlain({ label, colId }: { label?: string; colId: AllColumnId }) {
+    const isOver = dragOverCol === colId
+    return (
+      <th
+        className={`px-4 py-3 text-left font-medium whitespace-nowrap ${isOver ? 'bg-primary/10' : ''}`}
+        onDragOver={(e) => handleColDragOver(e, colId)}
+        onDrop={() => handleColDrop(colId)}
+      >
+        <div className="flex items-center gap-1">
+          <DragHandle colId={colId} />
+          {label && <span>{label}</span>}
+        </div>
       </th>
     )
   }
@@ -588,69 +663,41 @@ export default function MoviesTable() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  {col('id') && <Th label="ID" col="id" />}
-                  <Th label="Title" col="title" className="w-56" />
-                  {col('original_title') && <Th label="Original Title" col="original_title" />}
-                  {col('year') && <Th label="Year" col="year" />}
-                  {col('file_path') && <Th label="File Path" col="file_path" />}
-                  {col('container') && <Th label="Container" col="container" />}
-                  {col('video_codec') && <Th label="Codec" col="video_codec" />}
-                  {col('bitrate') && <Th label="Bitrate" col="bitrate" />}
-                  {col('size') && <Th label="Size" col="size" />}
-                  {col('duration') && <Th label="Duration" col="duration" />}
-                  {col('play') && <th className="px-4 py-3"></th>}
+                  {colOrder.filter((id) => id === 'title' || col(id as ColumnId)).map((id) => {
+                    switch (id) {
+                      case 'id':             return <Th key={id} label="ID"             col="id"             colId={id} />
+                      case 'title':          return <Th key={id} label="Title"          col="title"          colId={id} className="w-56" />
+                      case 'original_title': return <Th key={id} label="Original Title" col="original_title" colId={id} />
+                      case 'year':           return <Th key={id} label="Year"           col="year"           colId={id} />
+                      case 'file_path':      return <Th key={id} label="File Path"      col="file_path"      colId={id} />
+                      case 'container':      return <Th key={id} label="Container"      col="container"      colId={id} />
+                      case 'video_codec':    return <Th key={id} label="Codec"          col="video_codec"    colId={id} />
+                      case 'bitrate':        return <Th key={id} label="Bitrate"        col="bitrate"        colId={id} />
+                      case 'size':           return <Th key={id} label="Size"           col="size"           colId={id} />
+                      case 'duration':       return <Th key={id} label="Duration"       col="duration"       colId={id} />
+                      case 'play':           return <ThPlain key={id} colId={id} />
+                    }
+                  })}
                 </tr>
               </thead>
               <tbody>
                 {pagedMovies.map((movie) => (
                   <tr key={movie.id} className="border-b last:border-0 hover:bg-muted/30">
-                    {col('id') && (
-                      <td className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.id}</td>
-                    )}
-                    <td className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
-                    {col('original_title') && (
-                      <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</td>
-                    )}
-                    {col('year') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>}
-                    {col('file_path') && (
-                      <td className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">
-                        {movie.file_path ?? <span className="italic">—</span>}
-                      </td>
-                    )}
-                    {col('container') && (
-                      <td className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">
-                        {movie.container ?? '—'}
-                      </td>
-                    )}
-                    {col('video_codec') && (
-                      <td className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">
-                        {movie.video_codec ?? '—'}
-                      </td>
-                    )}
-                    {col('bitrate') && (
-                      <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
-                        {formatBitrate(movie.bitrate)}
-                      </td>
-                    )}
-                    {col('size') && (
-                      <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
-                        {formatSize(movie.size)}
-                      </td>
-                    )}
-                    {col('duration') && (
-                      <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
-                        {formatDuration(movie.duration)}
-                      </td>
-                    )}
-                    {col('play') && (
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {movie.plex_url && (
-                          <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
-                            Play
-                          </a>
-                        )}
-                      </td>
-                    )}
+                    {colOrder.filter((id) => id === 'title' || col(id as ColumnId)).map((id) => {
+                      switch (id) {
+                        case 'id':             return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.id}</td>
+                        case 'title':          return <td key={id} className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
+                        case 'original_title': return <td key={id} className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</td>
+                        case 'year':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>
+                        case 'file_path':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">{movie.file_path ?? <span className="italic">—</span>}</td>
+                        case 'container':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.container ?? '—'}</td>
+                        case 'video_codec':    return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.video_codec ?? '—'}</td>
+                        case 'bitrate':        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatBitrate(movie.bitrate)}</td>
+                        case 'size':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatSize(movie.size)}</td>
+                        case 'duration':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDuration(movie.duration)}</td>
+                        case 'play':           return <td key={id} className="px-4 py-2 whitespace-nowrap">{movie.plex_url && <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Play</a>}</td>
+                      }
+                    })}
                   </tr>
                 ))}
               </tbody>
