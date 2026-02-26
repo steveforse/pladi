@@ -39,11 +39,17 @@ class PlexService
             file_path: part["file"],
             container: media["container"],
             video_codec: media["videoCodec"],
+            video_resolution: media["videoResolution"],
+            width: media["width"],
+            height: media["height"],
+            aspect_ratio: media["aspectRatio"],
+            frame_rate: media["videoFrameRate"],
             audio_codec: media["audioCodec"],
             audio_channels: media["audioChannels"],
             bitrate: media["bitrate"],
             size: part["size"],
             duration: media["duration"],
+            updated_at: item["updatedAt"],
             plex_url: plex_url
           }
         end
