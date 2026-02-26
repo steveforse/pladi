@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 
 interface Movie {
   title: string
@@ -39,6 +39,24 @@ interface Section {
 type SortKey = keyof Pick<Movie, 'title' | 'year' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration'>
 type SortDir = 'asc' | 'desc'
 
+type ColumnId = 'year' | 'file_path' | 'container' | 'video_codec' | 'bitrate' | 'size' | 'duration' | 'play'
+
+interface ColumnDef {
+  id: ColumnId
+  label: string
+}
+
+const ALL_COLUMNS: ColumnDef[] = [
+  { id: 'year', label: 'Year' },
+  { id: 'file_path', label: 'File Path' },
+  { id: 'container', label: 'Container' },
+  { id: 'video_codec', label: 'Codec' },
+  { id: 'bitrate', label: 'Bitrate' },
+  { id: 'size', label: 'Size' },
+  { id: 'duration', label: 'Duration' },
+  { id: 'play', label: 'Play' },
+]
+
 function sortMovies(movies: Movie[], key: SortKey, dir: SortDir): Movie[] {
   return [...movies].sort((a, b) => {
     const av = a[key]
@@ -58,6 +76,54 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   return <span className="ml-1 text-primary">{dir === 'asc' ? '↑' : '↓'}</span>
 }
 
+function ColumnPicker({
+  columns,
+  visible,
+  onChange,
+}: {
+  columns: ColumnDef[]
+  visible: Set<ColumnId>
+  onChange: (id: ColumnId, checked: boolean) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="border rounded px-3 py-1.5 text-sm bg-background hover:bg-muted/50 flex items-center gap-1.5"
+      >
+        Columns
+        <span className="text-muted-foreground text-xs">({visible.size}/{columns.length})</span>
+        <span className="text-muted-foreground">▾</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 z-10 bg-card border rounded-md shadow-lg p-2 min-w-36">
+          {columns.map((col) => (
+            <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted/50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={visible.has(col.id)}
+                onChange={(e) => onChange(col.id, e.target.checked)}
+              />
+              {col.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MoviesTable() {
   const [sections, setSections] = useState<Section[]>([])
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null)
@@ -66,6 +132,9 @@ export default function MoviesTable() {
   const [multiOnly, setMultiOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(
+    new Set(ALL_COLUMNS.map((c) => c.id))
+  )
 
   useEffect(() => {
     fetch('/api/movies')
@@ -105,13 +174,24 @@ export default function MoviesTable() {
     else { setSortKey(key); setSortDir('asc') }
   }
 
-  function Th({ label, col, className }: { label: string; col: SortKey; className?: string }) {
+  function handleColChange(id: ColumnId, checked: boolean) {
+    setVisibleCols((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  function col(id: ColumnId) { return visibleCols.has(id) }
+
+  function Th({ label, col: c, className }: { label: string; col: SortKey; className?: string }) {
     return (
       <th
         className={`px-4 py-3 text-left font-medium whitespace-nowrap cursor-pointer select-none hover:bg-muted/70 ${className ?? ''}`}
-        onClick={() => handleSort(col)}
+        onClick={() => handleSort(c)}
       >
-        {label}<SortIcon active={sortKey === col} dir={sortDir} />
+        {label}<SortIcon active={sortKey === c} dir={sortDir} />
       </th>
     )
   }
@@ -136,7 +216,7 @@ export default function MoviesTable() {
 
   return (
     <div className="p-8 space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Plex Movie Library</h1>
         <select
           value={selectedTitle ?? ''}
@@ -155,6 +235,7 @@ export default function MoviesTable() {
           />
           Multiple files only
         </label>
+        <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={handleColChange} />
       </div>
 
       {activeSection && (
@@ -164,46 +245,60 @@ export default function MoviesTable() {
               <thead>
                 <tr className="border-b bg-muted/50">
                   <Th label="Title" col="title" className="w-56" />
-                  <Th label="Year" col="year" />
-                  <th className="px-4 py-3 text-left font-medium">File Path</th>
-                  <Th label="Container" col="container" />
-                  <Th label="Codec" col="video_codec" />
-                  <Th label="Bitrate" col="bitrate" />
-                  <Th label="Size" col="size" />
-                  <Th label="Duration" col="duration" />
-                  <th className="px-4 py-3"></th>
+                  {col('year') && <Th label="Year" col="year" />}
+                  {col('file_path') && <th className="px-4 py-3 text-left font-medium">File Path</th>}
+                  {col('container') && <Th label="Container" col="container" />}
+                  {col('video_codec') && <Th label="Codec" col="video_codec" />}
+                  {col('bitrate') && <Th label="Bitrate" col="bitrate" />}
+                  {col('size') && <Th label="Size" col="size" />}
+                  {col('duration') && <Th label="Duration" col="duration" />}
+                  {col('play') && <th className="px-4 py-3"></th>}
                 </tr>
               </thead>
               <tbody>
                 {visibleMovies.map((movie, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
-                    <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>
-                    <td className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">
-                      {movie.file_path ?? <span className="italic">—</span>}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">
-                      {movie.container ?? '—'}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">
-                      {movie.video_codec ?? '—'}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
-                      {formatBitrate(movie.bitrate)}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
-                      {formatSize(movie.size)}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
-                      {formatDuration(movie.duration)}
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      {movie.plex_url && (
-                        <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
-                          Play
-                        </a>
-                      )}
-                    </td>
+                    {col('year') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>}
+                    {col('file_path') && (
+                      <td className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">
+                        {movie.file_path ?? <span className="italic">—</span>}
+                      </td>
+                    )}
+                    {col('container') && (
+                      <td className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">
+                        {movie.container ?? '—'}
+                      </td>
+                    )}
+                    {col('video_codec') && (
+                      <td className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">
+                        {movie.video_codec ?? '—'}
+                      </td>
+                    )}
+                    {col('bitrate') && (
+                      <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                        {formatBitrate(movie.bitrate)}
+                      </td>
+                    )}
+                    {col('size') && (
+                      <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                        {formatSize(movie.size)}
+                      </td>
+                    )}
+                    {col('duration') && (
+                      <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                        {formatDuration(movie.duration)}
+                      </td>
+                    )}
+                    {col('play') && (
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        {movie.plex_url && (
+                          <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+                            Play
+                          </a>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
