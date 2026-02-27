@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 class PlexSection
-  def initialize(http, machine_id)
-    @http       = http
-    @machine_id = machine_id
+  def initialize(server)
+    @http = PlexHttp.new(server.url, server.token)
   end
 
   def movies_for(key)
@@ -18,6 +17,12 @@ class PlexSection
   end
 
   private
+
+  def machine_id
+    @machine_id ||= @http
+      .get('/identity')
+      .dig('MediaContainer', 'machineIdentifier')
+  end
 
   def plex_url_for(movie_id)
     escaped = CGI.escape("/library/metadata/#{movie_id}")

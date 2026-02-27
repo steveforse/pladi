@@ -2,8 +2,10 @@
 
 class PlexService
   ENRICH_THREADS = ENV.fetch('PLEX_ENRICH_THREADS', '3').to_i
+  CACHE_TTL = 30.days
 
   def initialize(server)
+    @server    = server
     @http      = PlexHttp.new(server.url, server.token)
     @server_id = server.id
   end
@@ -13,36 +15,38 @@ class PlexService
   end
 
   def cached_sections
-    Rails.cache.fetch(sections_cache_key, expires_in: 24.hours) { sections }
+    Rails.cache.fetch(sections_cache_key, expires_in: CACHE_TTL) { sections }
   end
 
   def refresh_sections
-    sections.tap { |data| Rails.cache.write(sections_cache_key, data, expires_in: 24.hours) }
+    sections.tap { |data| Rails.cache.write(sections_cache_key, data, expires_in: CACHE_TTL) }
   end
 
   def sections
     fetch_movie_sections.map do |section|
-      key        = section['key']
+      section_id = section['key']
       updated_at = section['updatedAt']
-      movies = Rails.cache.fetch(section_cache_key(key, updated_at), expires_in: 7.days) do
-        PlexSection.new(@http, machine_identifier)
-          .movies_for(key)
+      movies = Rails.cache.fetch(section_cache_key(section_id, updated_at), expires_in: CACHE_TTL) do
+        PlexSection.new(@server)
+          .movies_for(section_id)
           .sort_by { |m| m[:title].downcase }
       end
-      { title: section['title'], movies: movies }
+      { id: section_id, updated_at: updated_at, title: section['title'], movies: movies }
     end
   end
 
   def enrich_sections(sections)
-    all_movies = sections.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
-    details    = fetch_details_concurrently(all_movies)
     sections.map do |section|
-      { title: section[:title], movies: section[:movies].map { |m| m.merge(details[m[:id]] || {}) } }
+      Rails.cache.fetch(enriched_section_cache_key(section[:id], section[:updated_at]), expires_in: CACHE_TTL) do
+        movies   = section[:movies]
+        details  = fetch_details_concurrently(movies)
+        section.merge(movies: movies.map { |m| m.merge(details[m[:id]] || {}) })
+      end
     end
   end
 
   def poster_for(movie_id)
-    Rails.cache.fetch(poster_cache_key(movie_id), expires_in: 30.days) do
+    Rails.cache.fetch(poster_cache_key(movie_id), expires_in: CACHE_TTL) do
       thumb_path = @http.get("/library/metadata/#{movie_id}").dig('MediaContainer', 'Metadata', 0, 'thumb')
       next nil unless thumb_path
 
@@ -57,7 +61,7 @@ class PlexService
   end
 
   def warm_poster(movie_id, thumb_path)
-    Rails.cache.fetch(poster_cache_key(movie_id), expires_in: 30.days) { @http.fetch_poster_bytes(thumb_path) }
+    Rails.cache.fetch(poster_cache_key(movie_id), expires_in: CACHE_TTL) { @http.fetch_poster_bytes(thumb_path) }
   rescue StandardError
     nil
   end
@@ -65,7 +69,7 @@ class PlexService
   private
 
   # Thread-pool enrichment — mutex/queue coordination resists further extraction.
-  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+  # rubocop:disable Metrics/MethodLength
   def fetch_details_concurrently(movies)
     queue  = movies.dup
     mutex  = Mutex.new
@@ -77,7 +81,7 @@ class PlexService
           movie = mutex.synchronize { queue.shift }
           break unless movie
 
-          detail = Rails.cache.fetch(movie_detail_cache_key(movie), expires_in: 30.days) do
+          detail = Rails.cache.fetch(movie_detail_cache_key(movie), expires_in: CACHE_TTL) do
             fetch_movie_detail(movie[:id])
           end
           mutex.synchronize { result[movie[:id]] = detail }
@@ -87,20 +91,20 @@ class PlexService
 
     result
   end
-  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
-
-  def machine_identifier
-    @machine_identifier ||= @http.get('/identity').dig('MediaContainer', 'machineIdentifier')
-  end
+  # rubocop:enable Metrics/MethodLength
 
   def sections_cache_key = "plex/server/#{@server_id}/sections"
-  def section_cache_key(key, updated_at) = "plex/server/#{@server_id}/section/#{key}/#{updated_at}"
+  def section_cache_key(section_id, updated_at) = "plex/server/#{@server_id}/section/#{section_id}/#{updated_at}"
+  def enriched_section_cache_key(section_id, updated_at) = "plex/server/#{@server_id}/section/#{section_id}/#{updated_at}/enriched"
   def poster_cache_key(movie_id) = "plex/server/#{@server_id}/poster/#{movie_id}"
   def movie_detail_cache_key(movie) = "plex/server/#{@server_id}/movie/detail/#{movie[:id]}/#{movie[:updated_at]}"
 
+  # An array of hashes representing the JSON payload for each movie section (but
+  # not the movies themselves, which are fetched separately section).
   def fetch_movie_sections
-    data = @http.get('/library/sections')
-    (data.dig('MediaContainer', 'Directory') || []).select { |d| d['type'] == 'movie' }
+    sections_payload = @http.get('/library/sections')
+    sections_payload = sections_payload.dig('MediaContainer', 'Directory') || []
+    sections_payload.select { |d| d['type'] == 'movie' }
   end
 
   def fetch_movie_detail(movie_id)

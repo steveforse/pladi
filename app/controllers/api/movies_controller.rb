@@ -6,11 +6,11 @@ module Api
     before_action :load_server
 
     def index
-      render json: service.cached_sections
+      render json: serialize_sections(service.cached_sections)
     end
 
     def refresh
-      render json: service.refresh_sections
+      render json: serialize_sections(service.refresh_sections)
     end
 
     def enrich
@@ -19,7 +19,7 @@ module Api
 
       WarmPostersJob.perform_later(@server.id, uncached) if uncached.any?
 
-      render json: { sections: enriched, cached_poster_ids: cached.pluck(:id) }
+      render json: { sections: serialize_sections(enriched), cached_poster_ids: cached.pluck(:id) }
     end
 
     def poster
@@ -32,6 +32,10 @@ module Api
     end
 
     private
+
+    def serialize_sections(sections)
+      sections.map { |s| s.slice(:title, :movies) }
+    end
 
     def collect_poster_movies(enriched)
       all_movies    = enriched.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
