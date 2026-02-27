@@ -94,11 +94,11 @@ interface Section {
 type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'content_rating' | 'audience_rating' | 'genres' | 'directors'>
 type SortDir = 'asc' | 'desc'
 
-type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'play'
+type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at'
 type AllColumnId = 'title' | ColumnId
 
 const DEFAULT_COL_ORDER: AllColumnId[] = [
-  'id', 'title', 'original_title', 'year', 'content_rating', 'audience_rating', 'genres', 'directors', 'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'bitrate', 'size', 'duration', 'updated_at', 'play',
+  'id', 'title', 'original_title', 'year', 'content_rating', 'audience_rating', 'genres', 'directors', 'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'bitrate', 'size', 'duration', 'updated_at',
 ]
 
 interface ColumnDef {
@@ -118,7 +118,6 @@ const COLUMN_GROUPS: ColumnGroup[] = [
     { id: 'year', label: 'Year' },
     { id: 'duration', label: 'Duration' },
     { id: 'updated_at', label: 'Last Updated' },
-    { id: 'play', label: 'Play' },
   ]},
   { label: 'Plex Metadata', columns: [
     { id: 'content_rating', label: 'Rating' },
@@ -1182,7 +1181,6 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
                       case 'size':           return <Th key={id} label="Size"           col="size"           colId={id} />
                       case 'duration':       return <Th key={id} label="Duration"  col="duration"    colId={id} />
                       case 'updated_at':     return <Th key={id} label="Last Updated"  col="updated_at"  colId={id} />
-                      case 'play':           return <ThPlain key={id} colId={id} />
                     }
                   })}
                 </tr>
@@ -1193,7 +1191,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
                     {colOrder.filter((id) => id === 'title' || col(id as ColumnId)).map((id) => {
                       switch (id) {
                         case 'id':             return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.id}</td>
-                        case 'title':          return <td key={id} className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
+                        case 'title':          return <td key={id} className="px-4 py-2 font-medium whitespace-nowrap">{movie.plex_url ? <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{movie.title}</a> : movie.title}</td>
                         case 'original_title': return <td key={id} className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</td>
                         case 'year':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>
                         case 'content_rating':  return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.content_rating ?? '—'}</td>
@@ -1215,7 +1213,6 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
                         case 'size':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatSize(movie.size)}</td>
                         case 'duration':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDuration(movie.duration)}</td>
                         case 'updated_at':     return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(movie.updated_at)}</td>
-                        case 'play':           return <td key={id} className="px-4 py-2 whitespace-nowrap">{movie.plex_url && <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Play</a>}</td>
                       }
                     })}
                   </tr>
