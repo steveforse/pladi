@@ -1,6 +1,9 @@
+<img width="642" height="644" alt="pladi logo" src="https://github.com/user-attachments/assets/5790d3ac-d0ee-4eb0-803f-2c0ad0787c66" />
+
 # Pladi
 
 A Plex media library browser. Connect your Plex servers, then browse and inspect your movie libraries with enriched metadata — resolution, codecs, genres, ratings, directors, and more.
+
 
 ## Stack
 
