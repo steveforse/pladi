@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PostersChannel < ApplicationCable::Channel
   def subscribed
     server = current_user.plex_servers.find_by(id: params[:server_id])

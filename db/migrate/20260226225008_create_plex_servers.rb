@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreatePlexServers < ActiveRecord::Migration[8.1]
   def change
     create_table :plex_servers do |t|

@@ -1,11 +1,13 @@
-Rails.application.routes.draw do
-  get "up" => "rails/health#show", as: :rails_health_check
-  mount ActionCable.server => "/cable"
+# frozen_string_literal: true
 
-  resource :session, only: [ :create, :destroy ]
+Rails.application.routes.draw do
+  get 'up' => 'rails/health#show', as: :rails_health_check
+  mount ActionCable.server => '/cable'
+
+  resource :session, only: %i[create destroy]
 
   namespace :api do
-    get :me, to: "auth#me"
+    get :me, to: 'auth#me'
     resources :movies, only: [:index] do
       collection do
         get :refresh
@@ -15,10 +17,10 @@ Rails.application.routes.draw do
         get :poster
       end
     end
-    resources :plex_servers, only: [:index, :create, :update, :destroy] do
+    resources :plex_servers, only: %i[index create update destroy] do
       collection { get :lookup_name }
     end
   end
 
-  root "application#index"
+  root 'application#index'
 end

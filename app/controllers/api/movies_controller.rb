@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   class MoviesController < ApplicationController
     before_action :require_authentication
@@ -19,13 +21,13 @@ module Api
 
       WarmPostersJob.perform_later(@server.id, uncached) if uncached.any?
 
-      render json: { sections: enriched, cached_poster_ids: cached.map { |m| m[:id] } }
+      render json: { sections: enriched, cached_poster_ids: cached.pluck(:id) }
     end
 
     def poster
       image = service.poster_for(params[:id])
       if image
-        send_data image[:data], type: image[:content_type], disposition: "inline"
+        send_data image[:data], type: image[:content_type], disposition: 'inline'
       else
         head :not_found
       end
@@ -40,7 +42,7 @@ module Api
     def load_server
       @server = Current.user.plex_servers.find(params[:server_id])
     rescue ActiveRecord::RecordNotFound
-      render json: { error: "Server not found" }, status: :not_found
+      render json: { error: 'Server not found' }, status: :not_found
     end
   end
 end
