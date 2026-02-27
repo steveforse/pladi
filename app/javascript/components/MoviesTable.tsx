@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 
@@ -21,6 +21,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   const {
     plexServers, selectedServerId, sections, selectedTitle,
     loading, refreshing, syncing, error, posterReady,
+    uncachedPosterMovies, warmPosters,
     handleServerChange, handleServerAdded, setSelectedTitle,
   } = useMoviesData()
 
@@ -45,6 +46,16 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(visibleMovies.length)
 
   const pagedMovies = pageSize === 0 ? visibleMovies : visibleMovies.slice((page - 1) * pageSize, page * pageSize)
+
+  // Once syncing completes and we have uncached posters, warm them with current page first
+  const wasSyncing = useRef(false)
+  useEffect(() => {
+    if (wasSyncing.current && !syncing && uncachedPosterMovies.length > 0) {
+      const priorityIds = pagedMovies.map((m) => String(m.id))
+      warmPosters(priorityIds)
+    }
+    wasSyncing.current = syncing
+  }, [syncing])
 
   if (loading) {
     return (

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createConsumer } from '@rails/actioncable'
 import type { PlexServerInfo, Section } from '@/lib/types'
 
+type PosterMovie = { id: string; thumb: string }
+
 export function useMoviesData() {
   const [plexServers, setPlexServers] = useState<PlexServerInfo[]>([])
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
@@ -12,6 +14,7 @@ export function useMoviesData() {
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [posterReady, setPosterReady] = useState<Set<string>>(new Set())
+  const [uncachedPosterMovies, setUncachedPosterMovies] = useState<PosterMovie[]>([])
   const consumerRef = useRef<ReturnType<typeof createConsumer> | null>(null)
 
   // Create Action Cable consumer once on mount, disconnect on unmount
@@ -76,6 +79,7 @@ export function useMoviesData() {
               return next
             })
           }
+          setUncachedPosterMovies(enrichData.uncached_poster_movies ?? [])
         }
       } finally {
         setSyncing(false)
@@ -120,6 +124,19 @@ export function useMoviesData() {
     loadMovies(server.id)
   }
 
+  async function warmPosters(priorityIds: string[]) {
+    if (!selectedServerId || uncachedPosterMovies.length === 0) return
+    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
+    await fetch(
+      `/api/movies/warm_posters?server_id=${selectedServerId}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ priority_ids: priorityIds, movies: uncachedPosterMovies }),
+      }
+    )
+  }
+
   return {
     plexServers,
     selectedServerId,
@@ -130,8 +147,10 @@ export function useMoviesData() {
     syncing,
     error,
     posterReady,
+    uncachedPosterMovies,
     handleServerChange,
     handleServerAdded,
     setSelectedTitle,
+    warmPosters,
   }
 }

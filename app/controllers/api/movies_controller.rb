@@ -17,9 +17,22 @@ module Api
       enriched = service.enrich_sections(service.cached_sections)
       cached, uncached = collect_poster_movies(enriched)
 
-      WarmPostersJob.perform_later(@server.id, uncached) if uncached.any?
+      render json: {
+        sections: serialize_sections(enriched),
+        cached_poster_ids: cached.map { |m| m[:id] },
+        uncached_poster_movies: uncached
+      }
+    end
 
-      render json: { sections: serialize_sections(enriched), cached_poster_ids: cached.pluck(:id) }
+    def warm_posters
+      priority_ids = Array(params[:priority_ids]).map(&:to_s)
+      all_movies   = Array(params[:movies])
+
+      prioritized = all_movies.sort_by { |m| priority_ids.include?(m[:id].to_s) ? 0 : 1 }
+
+      WarmPostersJob.perform_later(@server.id, prioritized) if prioritized.any?
+
+      head :ok
     end
 
     def poster

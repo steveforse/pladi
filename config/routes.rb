@@ -12,6 +12,7 @@ Rails.application.routes.draw do
       collection do
         get :refresh
         get :enrich
+        post :warm_posters
       end
       member do
         get :poster
