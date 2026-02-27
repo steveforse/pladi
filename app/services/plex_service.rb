@@ -23,9 +23,9 @@ class PlexService
   def sections
     mid = machine_identifier
     fetch_movie_sections.map do |section|
-      key   = section['key']
-      mtime = section['updatedAt']
-      movies = Rails.cache.fetch(section_cache_key(key, mtime), expires_in: 7.days) do
+      key        = section['key']
+      updated_at = section['updatedAt']
+      movies = Rails.cache.fetch(section_cache_key(key, updated_at), expires_in: 7.days) do
         PlexSection.new(@http, mid).movies_for(key).sort_by { |m| m[:title].downcase }
       end
       { title: section['title'], movies: movies }
@@ -40,9 +40,9 @@ class PlexService
     end
   end
 
-  def poster_for(rating_key)
-    Rails.cache.fetch(poster_cache_key(rating_key), expires_in: 30.days) do
-      thumb_path = @http.get("/library/metadata/#{rating_key}").dig('MediaContainer', 'Metadata', 0, 'thumb')
+  def poster_for(movie_id)
+    Rails.cache.fetch(poster_cache_key(movie_id), expires_in: 30.days) do
+      thumb_path = @http.get("/library/metadata/#{movie_id}").dig('MediaContainer', 'Metadata', 0, 'thumb')
       next nil unless thumb_path
 
       @http.fetch_poster_bytes(thumb_path)
@@ -51,12 +51,12 @@ class PlexService
     nil
   end
 
-  def poster_cached?(rating_key)
-    Rails.cache.exist?(poster_cache_key(rating_key))
+  def poster_cached?(movie_id)
+    Rails.cache.exist?(poster_cache_key(movie_id))
   end
 
-  def warm_poster(rating_key, thumb_path)
-    Rails.cache.fetch(poster_cache_key(rating_key), expires_in: 30.days) { @http.fetch_poster_bytes(thumb_path) }
+  def warm_poster(movie_id, thumb_path)
+    Rails.cache.fetch(poster_cache_key(movie_id), expires_in: 30.days) { @http.fetch_poster_bytes(thumb_path) }
   rescue StandardError
     nil
   end
@@ -92,18 +92,18 @@ class PlexService
     @machine_identifier ||= @http.get('/identity').dig('MediaContainer', 'machineIdentifier')
   end
 
-  def sections_cache_key              = "plex/server/#{@server_id}/sections"
-  def section_cache_key(key, mtime)   = "plex/server/#{@server_id}/section/#{key}/#{mtime}"
-  def poster_cache_key(rating_key)    = "plex/server/#{@server_id}/poster/#{rating_key}"
-  def movie_detail_cache_key(movie)   = "plex/server/#{@server_id}/movie/detail/#{movie[:id]}/#{movie[:updated_at]}"
+  def sections_cache_key = "plex/server/#{@server_id}/sections"
+  def section_cache_key(key, updated_at) = "plex/server/#{@server_id}/section/#{key}/#{updated_at}"
+  def poster_cache_key(movie_id) = "plex/server/#{@server_id}/poster/#{movie_id}"
+  def movie_detail_cache_key(movie) = "plex/server/#{@server_id}/movie/detail/#{movie[:id]}/#{movie[:updated_at]}"
 
   def fetch_movie_sections
     data = @http.get('/library/sections')
     (data.dig('MediaContainer', 'Directory') || []).select { |d| d['type'] == 'movie' }
   end
 
-  def fetch_movie_detail(rating_key)
-    item = @http.get("/library/metadata/#{rating_key}").dig('MediaContainer', 'Metadata', 0) || {}
+  def fetch_movie_detail(movie_id)
+    item = @http.get("/library/metadata/#{movie_id}").dig('MediaContainer', 'Metadata', 0) || {}
     {
       summary: item['summary'],
       content_rating: item['contentRating'],

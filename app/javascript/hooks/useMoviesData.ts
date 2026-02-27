@@ -26,8 +26,8 @@ export function useMoviesData() {
     setPosterReady(new Set())
     const sub = consumerRef.current.subscriptions.create(
       { channel: 'PostersChannel', server_id: selectedServerId },
-      { received(data: { rating_key: string }) {
-          setPosterReady((prev) => new Set([...prev, data.rating_key]))
+      { received(data: { movie_id: string }) {
+          setPosterReady((prev) => new Set([...prev, data.movie_id]))
       }}
     )
     return () => sub.unsubscribe()

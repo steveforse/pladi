@@ -19,8 +19,8 @@ class PlexSection
 
   private
 
-  def plex_url_for(rating_key)
-    escaped = CGI.escape("/library/metadata/#{rating_key}")
+  def plex_url_for(movie_id)
+    escaped = CGI.escape("/library/metadata/#{movie_id}")
     "https://app.plex.tv/desktop/#!/server/#{@machine_id}/details?key=#{escaped}"
   end
 
