@@ -26,7 +26,7 @@ module Api
 
     def warm_posters
       priority_ids = Array(params[:priority_ids]).map(&:to_s)
-      all_movies   = Array(params[:movies])
+      all_movies   = Array(params[:movies]).map { |m| m.permit(:id, :thumb).to_h }
 
       prioritized = all_movies.sort_by { |m| priority_ids.include?(m[:id].to_s) ? 0 : 1 }
 
@@ -53,7 +53,8 @@ module Api
     def collect_poster_movies(enriched)
       all_movies    = enriched.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
       poster_movies = all_movies.filter_map { |m| { id: m[:id], thumb: m[:thumb] } if m[:thumb] }
-      poster_movies.partition { |m| service.poster_cached?(m[:id]) }
+      cached_ids    = service.posters_cached(poster_movies.map { |m| m[:id] })
+      poster_movies.partition { |m| cached_ids.include?(m[:id]) }
     end
 
     def service

@@ -54,14 +54,14 @@ class PlexService
     nil
   end
 
-  def poster_cached?(movie_id)
-    Rails.cache.exist?(cache_key('poster', movie_id))
+  def posters_cached(movie_ids)
+    keys = movie_ids.index_by { |id| cache_key('poster', id) }
+    hits = Rails.cache.read_multi(*keys.keys)
+    keys.filter_map { |key, id| id if hits.key?(key) }.to_set
   end
 
   def warm_poster(movie_id, thumb_path)
-    Rails.cache.fetch(
-      cache_key('poster', movie_id), expires_in: CACHE_TTL
-    ) { @http.fetch_poster_bytes(thumb_path) }
+    Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) { @http.fetch_poster_bytes(thumb_path) }
   rescue StandardError
     nil
   end
