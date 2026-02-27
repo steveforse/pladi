@@ -1185,7 +1185,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
               </thead>
               <tbody>
                 {pagedMovies.map((movie) => (
-                  <tr key={movie.id} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
+                  <tr key={`${movie.id}|${movie.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
                     {colOrder.filter((id) => id === 'title' || col(id as ColumnId)).map((id) => {
                       switch (id) {
                         case 'id':             return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.id}</td>
