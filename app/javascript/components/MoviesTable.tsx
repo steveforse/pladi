@@ -1275,8 +1275,8 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
                   <tr key={`${movie.id}|${movie.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
                     {colOrder.filter((id) => id === 'title' || col(id as ColumnId)).map((id) => {
                       switch (id) {
-                        case 'id':             return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.id}</td>
-                        case 'title':          return <td key={id} className="px-4 py-2 font-medium whitespace-nowrap">{movie.plex_url ? <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{movie.title}</a> : movie.title}</td>
+                        case 'id':             return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.plex_url ? <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{movie.id}</a> : movie.id}</td>
+                        case 'title':          return <td key={id} className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
                         case 'original_title': return <td key={id} className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</td>
                         case 'year':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>
                         case 'content_rating':  return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.content_rating ?? '—'}</td>
