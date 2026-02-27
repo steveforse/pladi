@@ -55,7 +55,51 @@ class PlexService
     end
   end
 
+  def poster_for(rating_key)
+    thumb_path = Rails.cache.fetch(
+      "plex/server/#{@server_id}/thumb/#{rating_key}",
+      expires_in: 1.hour
+    ) do
+      get("/library/metadata/#{rating_key}").dig("MediaContainer", "Metadata", 0, "thumb")
+    end
+    return nil unless thumb_path
+
+    Rails.cache.fetch(
+      "plex/server/#{@server_id}/poster#{thumb_path}",
+      expires_in: 30.days
+    ) { fetch_poster_bytes(thumb_path) }
+  rescue StandardError
+    nil
+  end
+
+  def poster_cached?(thumb_path)
+    Rails.cache.exist?("plex/server/#{@server_id}/poster#{thumb_path}")
+  end
+
+  def warm_poster(thumb_path)
+    Rails.cache.fetch(
+      "plex/server/#{@server_id}/poster#{thumb_path}",
+      expires_in: 30.days
+    ) { fetch_poster_bytes(thumb_path) }
+  rescue StandardError
+    nil
+  end
+
   private
+
+  def fetch_poster_bytes(thumb_path)
+    uri = URI("#{@base_url}#{thumb_path}")
+    request = Net::HTTP::Get.new(uri)
+    request["X-Plex-Token"] = @token
+
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
+      http.request(request)
+    end
+
+    return nil unless response.is_a?(Net::HTTPSuccess)
+
+    { data: response.body.b, content_type: response["Content-Type"] || "image/jpeg" }
+  end
 
   def fetch_machine_identifier
     get("/identity").dig("MediaContainer", "machineIdentifier")
@@ -93,6 +137,7 @@ class PlexService
             size: part["size"],
             duration: media["duration"],
             updated_at: item["updatedAt"],
+            thumb: item["thumb"],
             plex_url: plex_url
           }
         end

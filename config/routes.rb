@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
+  mount ActionCable.server => "/cable"
 
   resource :session, only: [ :create, :destroy ]
 
@@ -9,6 +10,9 @@ Rails.application.routes.draw do
       collection do
         get :refresh
         get :enrich
+      end
+      member do
+        get :poster
       end
     end
     resources :plex_servers, only: [:index, :create, :update, :destroy] do

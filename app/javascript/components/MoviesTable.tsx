@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Eye, EyeOff, GripVertical, Loader2, Menu } from 'lucide-react'
+import { createConsumer } from '@rails/actioncable'
 import pladiLogo from '@/assets/pladi_logo.png'
 
 interface Movie {
@@ -21,6 +22,7 @@ interface Movie {
   size: number | null
   duration: number | null
   updated_at: number | null
+  thumb: string | null
   plex_url: string | null
   summary: string | null
   content_rating: string | null
@@ -94,11 +96,11 @@ interface Section {
 type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'content_rating' | 'audience_rating' | 'genres' | 'directors'>
 type SortDir = 'asc' | 'desc'
 
-type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at'
+type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'poster'
 type AllColumnId = 'title' | ColumnId
 
 const DEFAULT_COL_ORDER: AllColumnId[] = [
-  'id', 'title', 'original_title', 'year', 'content_rating', 'audience_rating', 'genres', 'directors', 'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'bitrate', 'size', 'duration', 'updated_at',
+  'id', 'poster', 'title', 'original_title', 'year', 'content_rating', 'audience_rating', 'genres', 'directors', 'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'bitrate', 'size', 'duration', 'updated_at',
 ]
 
 interface ColumnDef {
@@ -114,6 +116,7 @@ interface ColumnGroup {
 const COLUMN_GROUPS: ColumnGroup[] = [
   { label: 'General', columns: [
     { id: 'id', label: 'ID' },
+    { id: 'poster', label: 'Poster' },
     { id: 'original_title', label: 'Original Title' },
     { id: 'year', label: 'Year' },
     { id: 'duration', label: 'Duration' },
@@ -154,7 +157,7 @@ type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
 type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
 type NullOp = 'present' | 'missing'
 type FilterOp = NumericOp | StringOp | NullOp
-type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at'
+type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'poster'
 
 interface FilterFieldDef {
   id: FilterFieldId
@@ -176,6 +179,7 @@ const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'year',           label: 'Year',           type: 'numeric' },
     { id: 'duration',       label: 'Duration',       type: 'numeric', unit: 'min' },
     { id: 'updated_at',     label: 'Last Updated',   type: 'date' },
+    { id: 'poster',         label: 'Poster',         type: 'string' },
   ]},
   { label: 'Plex Metadata', fields: [
     { id: 'content_rating',  label: 'Rating',          type: 'string' },
@@ -243,7 +247,7 @@ function defaultOp(fieldType: 'numeric' | 'string' | 'date'): FilterOp {
 function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
   const fieldDef = FILTER_FIELDS.find((f) => f.id === filter.field)!
 
-  const raw = movie[filter.field as keyof Movie]
+  const raw = filter.field === 'poster' ? movie.thumb : movie[filter.field as keyof Movie]
 
   if (filter.op === 'missing') return raw == null || raw === ''
   if (filter.op === 'present') return raw != null && raw !== ''
@@ -817,6 +821,27 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   const [colOrder, setColOrder] = useState<AllColumnId[]>(DEFAULT_COL_ORDER)
   const dragColRef = useRef<AllColumnId | null>(null)
   const [dragOverCol, setDragOverCol] = useState<AllColumnId | null>(null)
+  const [posterReady, setPosterReady] = useState<Set<string>>(new Set())
+  const consumerRef = useRef<ReturnType<typeof createConsumer> | null>(null)
+
+  // Create Action Cable consumer once on mount, disconnect on unmount
+  useEffect(() => {
+    consumerRef.current = createConsumer()
+    return () => { consumerRef.current?.disconnect() }
+  }, [])
+
+  // Subscribe to PostersChannel whenever selectedServerId changes
+  useEffect(() => {
+    if (!selectedServerId || !consumerRef.current) return
+    setPosterReady(new Set())
+    const sub = consumerRef.current.subscriptions.create(
+      { channel: 'PostersChannel', server_id: selectedServerId },
+      { received(data: { rating_key: string }) {
+          setPosterReady((prev) => new Set([...prev, data.rating_key]))
+      }}
+    )
+    return () => sub.unsubscribe()
+  }, [selectedServerId])
 
   // Fetch servers on mount, then load movies for the first server
   useEffect(() => {
@@ -875,8 +900,15 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
       try {
         const enrichRes = await fetch(`/api/movies/enrich?server_id=${serverId}`)
         if (enrichRes.ok) {
-          const enriched: Section[] = await enrichRes.json()
-          setSections(enriched)
+          const data = await enrichRes.json()
+          setSections(data.sections)
+          if (data.cached_poster_ids?.length) {
+            setPosterReady((prev) => {
+              const next = new Set(prev)
+              for (const id of data.cached_poster_ids) next.add(id)
+              return next
+            })
+          }
         }
       } finally {
         setSyncing(false)
@@ -1266,6 +1298,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
                       case 'size':           return <Th key={id} label="Size"           col="size"           colId={id} />
                       case 'duration':       return <Th key={id} label="Duration"  col="duration"    colId={id} />
                       case 'updated_at':     return <Th key={id} label="Last Updated"  col="updated_at"  colId={id} />
+                      case 'poster':         return <ThPlain key={id} label="Poster" colId={id} />
                     }
                   })}
                 </tr>
@@ -1298,6 +1331,19 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
                         case 'size':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatSize(movie.size)}</td>
                         case 'duration':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDuration(movie.duration)}</td>
                         case 'updated_at':     return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(movie.updated_at)}</td>
+                        case 'poster':         return (
+                          <td key={id} className="px-2 py-1">
+                            {posterReady.has(movie.id) ? (
+                              <img
+                                src={`/api/movies/${movie.id}/poster?server_id=${selectedServerId}`}
+                                alt=""
+                                className="h-16 w-auto rounded"
+                              />
+                            ) : (
+                              <div className="h-16 w-11 rounded bg-muted animate-pulse" />
+                            )}
+                          </td>
+                        )
                       }
                     })}
                   </tr>
