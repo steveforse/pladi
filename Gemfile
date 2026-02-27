@@ -76,6 +76,9 @@ group :development, :test do
 end
 
 group :development do
+  # Process manager for Procfile.dev [https://github.com/ddollar/foreman]
+  gem 'foreman', require: false
+
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem 'web-console'
 
