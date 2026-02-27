@@ -56,29 +56,26 @@ class PlexService
   end
 
   def poster_for(rating_key)
-    thumb_path = Rails.cache.fetch(
-      "plex/server/#{@server_id}/thumb/#{rating_key}",
-      expires_in: 1.hour
-    ) do
-      get("/library/metadata/#{rating_key}").dig("MediaContainer", "Metadata", 0, "thumb")
-    end
-    return nil unless thumb_path
-
     Rails.cache.fetch(
-      "plex/server/#{@server_id}/poster#{thumb_path}",
+      "plex/server/#{@server_id}/poster/#{rating_key}",
       expires_in: 30.days
-    ) { fetch_poster_bytes(thumb_path) }
+    ) do
+      thumb_path = get("/library/metadata/#{rating_key}").dig("MediaContainer", "Metadata", 0, "thumb")
+      next nil unless thumb_path
+
+      fetch_poster_bytes(thumb_path)
+    end
   rescue StandardError
     nil
   end
 
-  def poster_cached?(thumb_path)
-    Rails.cache.exist?("plex/server/#{@server_id}/poster#{thumb_path}")
+  def poster_cached?(rating_key)
+    Rails.cache.exist?("plex/server/#{@server_id}/poster/#{rating_key}")
   end
 
-  def warm_poster(thumb_path)
+  def warm_poster(rating_key, thumb_path)
     Rails.cache.fetch(
-      "plex/server/#{@server_id}/poster#{thumb_path}",
+      "plex/server/#{@server_id}/poster/#{rating_key}",
       expires_in: 30.days
     ) { fetch_poster_bytes(thumb_path) }
   rescue StandardError

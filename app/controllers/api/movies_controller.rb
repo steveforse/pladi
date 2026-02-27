@@ -31,7 +31,7 @@ module Api
                                    .uniq { |m| m[:id] }
                                    .filter_map { |m| m[:thumb] && { id: m[:id], thumb: m[:thumb] } }
 
-      cached_ids, uncached = movies_with_thumbs.partition { |m| service.poster_cached?(m[:thumb]) }
+      cached_ids, uncached = movies_with_thumbs.partition { |m| service.poster_cached?(m[:id]) }
                                .then { |cached, rest| [cached.map { |m| m[:id] }, rest] }
 
       WarmPostersJob.perform_later(@server.id, uncached) if uncached.any?

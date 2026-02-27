@@ -7,7 +7,7 @@ class WarmPostersJob < ApplicationJob
     movies.each do |movie|
       thumb = movie["thumb"] || movie[:thumb]
       id = movie["id"] || movie[:id]
-      service.warm_poster(thumb)
+      service.warm_poster(id, thumb)
       ActionCable.server.broadcast("posters_#{server_id}", { rating_key: id })
     end
   end
