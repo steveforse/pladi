@@ -1,119 +1,56 @@
-<img width="642" height="644" alt="pladi logo" src="https://github.com/user-attachments/assets/5790d3ac-d0ee-4eb0-803f-2c0ad0787c66" />
+<div align="center">
+  <img width="160" alt="Pladi logo" src="https://github.com/user-attachments/assets/5790d3ac-d0ee-4eb0-803f-2c0ad0787c66" />
 
-# Pladi
+  <h1>Pladi</h1>
+  <p><strong>Plex Library API Data Inspector</strong></p>
+  <p>Find problems in your Plex movie library — bad matches, duplicates, unnecessary files, and more.</p>
+</div>
 
-A Plex media library browser. Connect your Plex servers, then browse and inspect your movie libraries with enriched metadata — resolution, codecs, genres, ratings, directors, and more.
+---
 
+## What It Does
 
-## Stack
+Pladi connects to your Plex server and gives you a detailed, sortable view of your movie library with the information you need to spot problems:
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | Rails 8.1, Ruby 4.0.1 |
-| Frontend | React 19, TypeScript, Vite 6 |
-| Styling | Tailwind CSS v4, shadcn/ui |
-| Database | SQLite3 (via Active Record) |
-| Cache / Queue | Solid Cache, Solid Queue, Solid Cable |
-| Deployment | Docker + Kamal |
-
-## Prerequisites
-
-- Ruby 4.0.1 (managed via [asdf](https://asdf-vm.com/) or rbenv)
-- Node.js (for the frontend build)
-- SQLite3
+- **Bad matches** — see titles, years, and Plex links to quickly verify metadata
+- **Duplicate files** — identify movies with multiple video files
+- **Unnecessary copies** — spot redundant encodes by comparing resolution, codec, and bitrate side-by-side
+- **Quality overview** — audit your library's codecs, resolutions, and audio across all sections at a glance
+- **Enriched metadata** — genres, ratings, directors, and content ratings pulled directly from Plex
 
 ## Getting Started
 
-```bash
-# Install dependencies
-bundle install
-npm install
+1. **Sign up** at the login page and add your Plex server URL and auth token in Settings.
+2. Your library loads automatically. Use **Refresh** to pull the latest data from Plex.
+3. Use **Enrich** to load full metadata (ratings, genres, directors) — this runs in the background and is cached.
 
-# Set up the database
-bundle exec rails db:migrate
-bundle exec rails db:seed   # optional — creates a demo user
+## Self-Hosting
 
-# Start both servers (Rails + Vite HMR)
-bundle exec rails server        # http://localhost:3000
-bundle exec vite dev            # Vite on port 3036
-```
-
-Or use the Procfile:
-
-```bash
-bin/dev
-```
-
-## Configuration
-
-Plex credentials are stored per-user in the database (Plex server URL + auth token). Add your server through the Settings page after logging in. No environment variables are required for basic development.
-
-Optional environment variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PLEX_ENRICH_THREADS` | `3` | Concurrent threads for metadata enrichment |
-
-## Testing
-
-```bash
-bundle exec rspec                          # all tests
-bundle exec rspec spec/models/             # single directory
-bundle exec rspec spec/models/user_spec.rb # single file
-```
-
-Tests use RSpec, FactoryBot, and Faker. Factories live in `spec/factories/`.
-
-## Linting & Security
-
-```bash
-bin/rubocop      # Ruby style (rubocop-rails + rubocop-rspec)
-bin/brakeman     # Rails security scan
-bundle exec bundler-audit check --update  # gem vulnerability audit
-```
-
-CI runs all three on every push and PR.
-
-## Production Build
-
-```bash
-bundle exec rails assets:precompile   # builds frontend into public/vite/
-```
-
-### Docker
+Pladi is a standard Rails 8 app. The easiest path is Docker:
 
 ```bash
 docker build -t pladi .
 docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name pladi pladi
 ```
 
-The image uses Thruster (HTTP caching/compression) in front of Puma, runs as a non-root user, and preloads jemalloc.
+For production deployments, [Kamal](https://kamal-deploy.org/) is preconfigured in `config/deploy.yml`.
 
-### Kamal
+## Development Setup
 
-Deployment config lives in `config/deploy.yml`. See the [Kamal docs](https://kamal-deploy.org/) for setup.
+```bash
+bundle install
+npm install
+bundle exec rails db:migrate
 
-## Architecture Overview
+# Run both servers
+bundle exec rails server   # API on port 3000
+bundle exec vite dev       # Frontend HMR on port 3036
+```
 
-**Authentication** — Rails 8 built-in auth. Signed-cookie sessions; `Current.session` via CurrentAttributes. `require_authentication` guards all API endpoints.
+Run tests: `bundle exec rspec`
 
-**Plex integration** — `PlexService` handles all Plex API calls. Movie lists and enriched metadata are cached in Solid Cache (30-day TTL, keyed by section `updatedAt` so stale data is never served after a library change). Metadata enrichment uses a configurable thread pool to parallelize detail fetches.
+Run linters: `bin/rubocop` and `bin/brakeman`
 
-**Frontend** — Single-page React app served by Rails. No router library — navigation is manual `pushState`/`popstate`. Two pages: movie browser and server settings.
+## Stack
 
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/me` | Current user or 401 |
-| `GET` | `/api/movies?server_id=` | Cached movie sections |
-| `GET` | `/api/movies/refresh?server_id=` | Force-refresh from Plex |
-| `GET` | `/api/movies/enrich?server_id=` | Sections with full metadata |
-| `GET` | `/api/movies/:id/poster?server_id=` | Poster image (cached) |
-| `GET` | `/api/plex_servers` | List user's servers |
-| `POST` | `/api/plex_servers` | Add a server |
-| `PATCH` | `/api/plex_servers/:id` | Update a server |
-| `DELETE` | `/api/plex_servers/:id` | Remove a server |
-| `GET` | `/api/plex_servers/lookup_name` | Resolve friendly name from URL+token |
-| `POST` | `/session` | Log in |
-| `DELETE` | `/session` | Log out |
+Rails 8.1 · React 19 · TypeScript · Tailwind CSS v4 · SQLite3 · Solid Cache/Queue
