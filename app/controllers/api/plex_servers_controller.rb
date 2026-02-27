@@ -21,7 +21,7 @@ module Api
     end
 
     def create
-      server = Current.user.plex_servers.build(create_params)
+      server = Current.user.plex_servers.build(server_params)
       if server.save
         render json: { id: server.id, name: server.name, url: server.url }, status: :created
       else
@@ -30,7 +30,7 @@ module Api
     end
 
     def update
-      attrs = update_params
+      attrs = server_params
       attrs.delete(:token) if attrs[:token].blank?
       if @server.update(attrs)
         render json: { id: @server.id, name: @server.name, url: @server.url }
@@ -52,11 +52,7 @@ module Api
       render json: { error: "Server not found" }, status: :not_found
     end
 
-    def create_params
-      params.require(:plex_server).permit(:name, :url, :token)
-    end
-
-    def update_params
+    def server_params
       params.require(:plex_server).permit(:name, :url, :token)
     end
   end
