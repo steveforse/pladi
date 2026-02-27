@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength
 class PlexService
   ENRICH_THREADS = ENV.fetch('PLEX_ENRICH_THREADS', '3').to_i
   CACHE_TTL = 30.days
@@ -15,39 +16,36 @@ class PlexService
   end
 
   def cached_sections
-    Rails.cache.fetch(sections_cache_key, expires_in: CACHE_TTL) { sections }
+    Rails.cache.fetch(cache_key('sections'), expires_in: CACHE_TTL) do
+      sections
+    end
   end
 
   def refresh_sections
-    sections.tap { |data| Rails.cache.write(sections_cache_key, data, expires_in: CACHE_TTL) }
+    sections.tap do |data|
+      Rails.cache.write(cache_key('sections'), data, expires_in: CACHE_TTL)
+    end
   end
 
   def sections
     fetch_movie_sections.map do |section|
       section_id = section['key']
       updated_at = section['updatedAt']
-      movies = Rails.cache.fetch(section_cache_key(section_id, updated_at), expires_in: CACHE_TTL) do
-        PlexSection.new(@server)
-          .movies_for(section_id)
-          .sort_by { |m| m[:title].downcase }
-      end
-      { id: section_id, updated_at: updated_at, title: section['title'], movies: movies }
+      movies = cached_movies_for(section_id, updated_at)
+      { id: section_id, updated_at: updated_at,
+        title: section['title'], movies: movies }
     end
   end
 
   def enrich_sections(sections)
-    sections.map do |section|
-      Rails.cache.fetch(enriched_section_cache_key(section[:id], section[:updated_at]), expires_in: CACHE_TTL) do
-        movies   = section[:movies]
-        details  = fetch_details_concurrently(movies)
-        section.merge(movies: movies.map { |m| m.merge(details[m[:id]] || {}) })
-      end
-    end
+    sections.map { |section| enrich_section(section) }
   end
 
   def poster_for(movie_id)
-    Rails.cache.fetch(poster_cache_key(movie_id), expires_in: CACHE_TTL) do
-      thumb_path = @http.get("/library/metadata/#{movie_id}").dig('MediaContainer', 'Metadata', 0, 'thumb')
+    Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) do
+      thumb_path = @http
+        .get("/library/metadata/#{movie_id}")
+        .dig('MediaContainer', 'Metadata', 0, 'thumb')
       next nil unless thumb_path
 
       @http.fetch_poster_bytes(thumb_path)
@@ -57,58 +55,88 @@ class PlexService
   end
 
   def poster_cached?(movie_id)
-    Rails.cache.exist?(poster_cache_key(movie_id))
+    Rails.cache.exist?(cache_key('poster', movie_id))
   end
 
   def warm_poster(movie_id, thumb_path)
-    Rails.cache.fetch(poster_cache_key(movie_id), expires_in: CACHE_TTL) { @http.fetch_poster_bytes(thumb_path) }
+    Rails.cache.fetch(
+      cache_key('poster', movie_id), expires_in: CACHE_TTL
+    ) { @http.fetch_poster_bytes(thumb_path) }
   rescue StandardError
     nil
   end
 
   private
 
-  # Thread-pool enrichment — mutex/queue coordination resists further extraction.
-  # rubocop:disable Metrics/MethodLength
+  def cache_key(*parts)
+    "plex/server/#{@server_id}/#{parts.join('/')}"
+  end
+
+  def cached_movies_for(section_id, updated_at)
+    Rails.cache.fetch(
+      cache_key('section', section_id, updated_at),
+      expires_in: CACHE_TTL
+    ) do
+      PlexSection.new(@server)
+        .movies_for(section_id)
+        .sort_by { |m| m[:title].downcase }
+    end
+  end
+
+  def enrich_section(section)
+    key = cache_key('section', section[:id], section[:updated_at], 'enriched')
+    Rails.cache.fetch(key, expires_in: CACHE_TTL) do
+      movies  = section[:movies]
+      details = fetch_details_concurrently(movies)
+      section.merge(
+        movies: movies.map { |m| m.merge(details[m[:id]] || {}) }
+      )
+    end
+  end
+
   def fetch_details_concurrently(movies)
     queue  = movies.dup
     mutex  = Mutex.new
     result = {}
 
     Array.new(ENRICH_THREADS) do
-      Thread.new do
-        loop do
-          movie = mutex.synchronize { queue.shift }
-          break unless movie
-
-          detail = Rails.cache.fetch(movie_detail_cache_key(movie), expires_in: CACHE_TTL) do
-            fetch_movie_detail(movie[:id])
-          end
-          mutex.synchronize { result[movie[:id]] = detail }
-        end
-      end
+      Thread.new { process_queue(queue, mutex, result) }
     end.each(&:join)
 
     result
   end
-  # rubocop:enable Metrics/MethodLength
 
-  def sections_cache_key = "plex/server/#{@server_id}/sections"
-  def section_cache_key(section_id, updated_at) = "plex/server/#{@server_id}/section/#{section_id}/#{updated_at}"
-  def enriched_section_cache_key(section_id, updated_at) = "plex/server/#{@server_id}/section/#{section_id}/#{updated_at}/enriched"
-  def poster_cache_key(movie_id) = "plex/server/#{@server_id}/poster/#{movie_id}"
-  def movie_detail_cache_key(movie) = "plex/server/#{@server_id}/movie/detail/#{movie[:id]}/#{movie[:updated_at]}"
+  def process_queue(queue, mutex, result)
+    loop do
+      movie = mutex.synchronize { queue.shift }
+      break unless movie
 
-  # An array of hashes representing the JSON payload for each movie section (but
-  # not the movies themselves, which are fetched separately section).
+      key    = cache_key('movie', 'detail', movie[:id], movie[:updated_at])
+      detail = Rails.cache.fetch(key, expires_in: CACHE_TTL) do
+        fetch_movie_detail(movie[:id])
+      end
+      mutex.synchronize { result[movie[:id]] = detail }
+    end
+  end
+
+  # An array of hashes representing the JSON payload for each movie section
+  # (but not the movies themselves, which are fetched separately per section).
   def fetch_movie_sections
-    sections_payload = @http.get('/library/sections')
-    sections_payload = sections_payload.dig('MediaContainer', 'Directory') || []
-    sections_payload.select { |d| d['type'] == 'movie' }
+    payload   = @http.get('/library/sections')
+    directory = payload.dig('MediaContainer', 'Directory') || []
+    directory.select { |d| d['type'] == 'movie' }
   end
 
   def fetch_movie_detail(movie_id)
-    item = @http.get("/library/metadata/#{movie_id}").dig('MediaContainer', 'Metadata', 0) || {}
+    item = @http
+      .get("/library/metadata/#{movie_id}")
+      .dig('MediaContainer', 'Metadata', 0) || {}
+    parse_movie_detail(item)
+  rescue StandardError
+    {}
+  end
+
+  def parse_movie_detail(item)
     {
       summary: item['summary'],
       content_rating: item['contentRating'],
@@ -116,7 +144,6 @@ class PlexService
       genres: (item['Genre'] || []).pluck('tag').join(', '),
       directors: (item['Director'] || []).pluck('tag').join(', ')
     }
-  rescue StandardError
-    {}
   end
 end
+# rubocop:enable Metrics/ClassLength
