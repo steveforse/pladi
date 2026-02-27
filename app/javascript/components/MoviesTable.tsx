@@ -152,7 +152,8 @@ const ALL_COLUMNS: ColumnDef[] = COLUMN_GROUPS.flatMap((g) => g.columns)
 
 type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
 type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
-type FilterOp = NumericOp | StringOp
+type NullOp = 'present' | 'missing'
+type FilterOp = NumericOp | StringOp | NullOp
 type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at'
 
 interface FilterFieldDef {
@@ -223,6 +224,11 @@ const STRING_OPS: { id: StringOp; label: string }[] = [
   { id: 'ends',     label: 'ends with' },
 ]
 
+const NULL_OPS: { id: NullOp; label: string }[] = [
+  { id: 'present', label: 'is present' },
+  { id: 'missing', label: 'is missing' },
+]
+
 interface ActiveFilter {
   id: number
   field: FilterFieldId
@@ -238,6 +244,9 @@ function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
   const fieldDef = FILTER_FIELDS.find((f) => f.id === filter.field)!
 
   const raw = movie[filter.field as keyof Movie]
+
+  if (filter.op === 'missing') return raw == null || raw === ''
+  if (filter.op === 'present') return raw != null && raw !== ''
 
   if (fieldDef.type === 'date') {
     if (!filter.value) return true
@@ -335,11 +344,14 @@ function FilterRow({
   onRemove: () => void
 }) {
   const fieldDef = FILTER_FIELDS.find((f) => f.id === filter.field)!
-  const ops = fieldDef.type === 'string' ? STRING_OPS : NUMERIC_OPS
+  const typeOps = fieldDef.type === 'string' ? STRING_OPS : NUMERIC_OPS
+  const isNullOp = filter.op === 'present' || filter.op === 'missing'
 
   function handleFieldChange(newField: FilterFieldId) {
     const newDef = FILTER_FIELDS.find((f) => f.id === newField)!
-    onChange({ ...filter, field: newField, op: defaultOp(newDef.type), value: '' })
+    // Preserve null ops across field changes since they apply to every field type
+    const newOp = isNullOp ? filter.op : defaultOp(newDef.type)
+    onChange({ ...filter, field: newField, op: newOp, value: '' })
   }
 
   return (
@@ -360,26 +372,33 @@ function FilterRow({
 
       <select
         value={filter.op}
-        onChange={(e) => onChange({ ...filter, op: e.target.value as FilterOp })}
+        onChange={(e) => onChange({ ...filter, op: e.target.value as FilterOp, value: '' })}
         className="border rounded px-2 py-1 text-sm bg-background"
       >
-        {ops.map((o) => (
+        {typeOps.map((o) => (
           <option key={o.id} value={o.id}>{o.label}</option>
         ))}
+        <optgroup label="—">
+          {NULL_OPS.map((o) => (
+            <option key={o.id} value={o.id}>{o.label}</option>
+          ))}
+        </optgroup>
       </select>
 
-      <div className="flex items-center gap-1">
-        <input
-          type={fieldDef.type === 'numeric' ? 'number' : fieldDef.type === 'date' ? 'date' : 'text'}
-          value={filter.value}
-          onChange={(e) => onChange({ ...filter, value: e.target.value })}
-          placeholder="value"
-          className="border rounded px-2 py-1 text-sm bg-background w-32"
-        />
-        {fieldDef.unit && (
-          <span className="text-xs text-muted-foreground">{fieldDef.unit}</span>
-        )}
-      </div>
+      {!isNullOp && (
+        <div className="flex items-center gap-1">
+          <input
+            type={fieldDef.type === 'numeric' ? 'number' : fieldDef.type === 'date' ? 'date' : 'text'}
+            value={filter.value}
+            onChange={(e) => onChange({ ...filter, value: e.target.value })}
+            placeholder="value"
+            className="border rounded px-2 py-1 text-sm bg-background w-32"
+          />
+          {fieldDef.unit && (
+            <span className="text-xs text-muted-foreground">{fieldDef.unit}</span>
+          )}
+        </div>
+      )}
 
       <button
         onClick={onRemove}
@@ -757,7 +776,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(
-    new Set(ALL_COLUMNS.map((c) => c.id).filter((id) => !['original_title', 'width', 'height', 'aspect_ratio', 'frame_rate', 'updated_at', 'content_rating', 'audience_rating', 'genres', 'directors', 'summary'].includes(id)))
+    new Set(ALL_COLUMNS.map((c) => c.id).filter((id) => !['original_title', 'width', 'height', 'aspect_ratio', 'frame_rate', 'updated_at', 'audience_rating', 'genres', 'directors', 'summary'].includes(id)))
   )
   const [filters, setFilters] = useState<ActiveFilter[]>([])
   const nextId = useRef(1)
