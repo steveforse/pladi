@@ -28,4 +28,14 @@
 #       enabled: "ON"
 
 en:
-  hello: "Hello world"
+  passwords:
+    rate_limit: "Try again later."
+    reset_sent: "Password reset instructions sent (if user with that email address exists)."
+    reset_success: "Password has been reset."
+    mismatch: "Passwords did not match."
+    invalid_token: "Password reset link is invalid or has expired."
+  passwords_mailer:
+    reset:
+      subject: "Reset your password"
+  sessions:
+    rate_limit: "Try again later."

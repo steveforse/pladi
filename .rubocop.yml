@@ -17,6 +17,10 @@ Layout/LineContinuationLeadingSpace:
 Metrics/AbcSize:
   Max: 18
 
+Metrics/BlockLength:
+  Exclude:
+    - 'config/environments/**'
+
 # Style
 Style/Documentation:
   Enabled: false

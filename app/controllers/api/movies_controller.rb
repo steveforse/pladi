@@ -14,10 +14,8 @@ module Api
     end
 
     def enrich
-      enriched         = service.enrich_sections(service.cached_sections)
-      all_movies       = enriched.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
-      poster_movies    = all_movies.filter_map { |m| { id: m[:id], thumb: m[:thumb] } if m[:thumb] }
-      cached, uncached = poster_movies.partition { |m| service.poster_cached?(m[:id]) }
+      enriched = service.enrich_sections(service.cached_sections)
+      cached, uncached = collect_poster_movies(enriched)
 
       WarmPostersJob.perform_later(@server.id, uncached) if uncached.any?
 
@@ -34,6 +32,12 @@ module Api
     end
 
     private
+
+    def collect_poster_movies(enriched)
+      all_movies    = enriched.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
+      poster_movies = all_movies.filter_map { |m| { id: m[:id], thumb: m[:thumb] } if m[:thumb] }
+      poster_movies.partition { |m| service.poster_cached?(m[:id]) }
+    end
 
     def service
       @service ||= PlexService.new(@server)
