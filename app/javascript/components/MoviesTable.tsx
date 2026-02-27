@@ -841,12 +841,10 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
     loadMovies(id)
   }
 
-  const activeMovies = selectedTitle === null
-    ? sections.flatMap((s) => s.movies)
-    : (sections.find((s) => s.title === selectedTitle)?.movies ?? [])
-
   const visibleMovies = useMemo(() => {
-    let movies = activeMovies
+    let movies = selectedTitle === null
+      ? sections.flatMap((s) => s.movies)
+      : (sections.find((s) => s.title === selectedTitle)?.movies ?? [])
 
     if (multiOnly) {
       const counts = new Map<string, number>()
@@ -871,7 +869,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
     }
 
     return sortMovies(movies, sortKey, sortDir)
-  }, [activeMovies, multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, filters, sortKey, sortDir])
+  }, [sections, selectedTitle, multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, filters, sortKey, sortDir])
 
   // Reset to page 1 whenever the filtered/sorted set changes
   const prevMovieCount = useRef(visibleMovies.length)
