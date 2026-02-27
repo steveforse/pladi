@@ -13,6 +13,9 @@ AllCops:
 Layout/LineContinuationLeadingSpace:
   Enabled: false
 
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: indented
+
 # Metrics
 Metrics/AbcSize:
   Max: 18

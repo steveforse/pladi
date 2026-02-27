@@ -21,12 +21,13 @@ class PlexService
   end
 
   def sections
-    mid = machine_identifier
     fetch_movie_sections.map do |section|
       key        = section['key']
       updated_at = section['updatedAt']
       movies = Rails.cache.fetch(section_cache_key(key, updated_at), expires_in: 7.days) do
-        PlexSection.new(@http, mid).movies_for(key).sort_by { |m| m[:title].downcase }
+        PlexSection.new(@http, machine_identifier)
+          .movies_for(key)
+          .sort_by { |m| m[:title].downcase }
       end
       { title: section['title'], movies: movies }
     end
