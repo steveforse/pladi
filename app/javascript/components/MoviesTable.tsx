@@ -332,6 +332,35 @@ function titleMatchesPath(movie: Movie): boolean {
   return normFolder.includes(normTitle) || normTitle.includes(normFolder)
 }
 
+// Matches a plausible release year in a file path (1900–2099)
+const PATH_YEAR_RE = /\b(19|20)\d{2}\b/
+
+function pathContainsYear(movie: Movie): boolean {
+  if (!movie.file_path) return false
+  return PATH_YEAR_RE.test(movie.file_path)
+}
+
+function pathYearMatchesMetadata(movie: Movie): boolean {
+  if (!movie.file_path || movie.year == null) return true
+  const parts = movie.file_path.replace(/\\/g, '/')
+  // Scan parent folder name then filename for the first plausible year
+  const segments = parts.split('/')
+  const searchIn = segments.slice(-2).join('/')
+  const match = searchIn.match(/\b((?:19|20)\d{2})\b/g)
+  if (!match) return true // no year in path — handled by a separate filter
+  const pathYear = parseInt(match[match.length - 1], 10)
+  return pathYear === movie.year
+}
+
+function fileIsInSubfolder(movie: Movie): boolean {
+  if (!movie.file_path) return true
+  const parts = movie.file_path.replace(/\\/g, '/').split('/')
+  if (parts.length < 3) return false // needs at least root/folder/file.ext
+  const parentFolder = parts[parts.length - 2]
+  // A proper movie subfolder should contain a year (e.g. "Inception (2010)")
+  return PATH_YEAR_RE.test(parentFolder)
+}
+
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function FilterRow({
@@ -773,6 +802,9 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   const [unmatchedOnly, setUnmatchedOnly] = useState(false)
   const [filenameMismatch, setFilenameMismatch] = useState(false)
   const [originalTitleMismatch, setOriginalTitleMismatch] = useState(false)
+  const [noYearInPath, setNoYearInPath] = useState(false)
+  const [yearPathMismatch, setYearPathMismatch] = useState(false)
+  const [notInSubfolder, setNotInSubfolder] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(
@@ -883,12 +915,24 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
       movies = movies.filter((m) => m.original_title != null && m.original_title !== m.title)
     }
 
+    if (noYearInPath) {
+      movies = movies.filter((m) => !pathContainsYear(m))
+    }
+
+    if (yearPathMismatch) {
+      movies = movies.filter((m) => !pathYearMatchesMetadata(m))
+    }
+
+    if (notInSubfolder) {
+      movies = movies.filter((m) => !fileIsInSubfolder(m))
+    }
+
     if (filters.length > 0) {
       movies = movies.filter((m) => filters.every((f) => matchesFilter(m, f)))
     }
 
     return sortMovies(movies, sortKey, sortDir)
-  }, [sections, selectedTitle, multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, filters, sortKey, sortDir])
+  }, [sections, selectedTitle, multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, filters, sortKey, sortDir])
 
   // Reset to page 1 whenever the filtered/sorted set changes
   const prevMovieCount = useRef(visibleMovies.length)
@@ -1139,6 +1183,30 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
               onChange={(e) => setOriginalTitleMismatch(e.target.checked)}
             />
             Title mismatches Original Title
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={noYearInPath}
+              onChange={(e) => setNoYearInPath(e.target.checked)}
+            />
+            No year in file path
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={yearPathMismatch}
+              onChange={(e) => setYearPathMismatch(e.target.checked)}
+            />
+            File path year mismatches metadata
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={notInSubfolder}
+              onChange={(e) => setNotInSubfolder(e.target.checked)}
+            />
+            Not in movie subfolder
           </label>
         </div>
         {filters.map((f) => (
