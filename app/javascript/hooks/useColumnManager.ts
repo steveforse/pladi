@@ -4,10 +4,8 @@ import { ALL_COLUMNS, DEFAULT_COL_ORDER } from '@/lib/columns'
 
 const STORAGE_KEY = 'pladi.columns'
 
-export const DEFAULT_VISIBLE = new Set(
-  ALL_COLUMNS.map((c) => c.id).filter(
-    (id) => !['original_title', 'width', 'height', 'aspect_ratio', 'frame_rate', 'updated_at', 'audience_rating', 'genres', 'directors', 'summary', 'sort_title', 'edition', 'originally_available', 'critic_rating', 'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'background'].includes(id)
-  )
+export const DEFAULT_VISIBLE = new Set<ColumnId>(
+  ['id', 'title', 'year', 'duration', 'video_codec', 'audio_codec', 'audio_channels', 'overall_bitrate', 'container', 'file_path', 'size', 'width', 'height']
 )
 
 function loadColumnsFromStorage(): { visibleCols: Set<ColumnId>; colOrder: AllColumnId[] } {
