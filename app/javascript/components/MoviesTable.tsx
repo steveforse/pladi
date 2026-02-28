@@ -243,17 +243,13 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
           )}
         </div>
 
-        {/* Column picker (always visible) */}
-        <div className="flex justify-end">
-          <ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} />
-        </div>
-
         {/* Table */}
         {sections.length > 0 && (
           <div className="space-y-2">
             <Paginator
               page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
               onPage={setPage} onPageSize={handlePageSize}
+              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} />}
             />
             <div className="rounded-md border overflow-auto">
               <table className="w-full text-sm">
@@ -288,6 +284,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
             <Paginator
               page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
               onPage={setPage} onPageSize={handlePageSize}
+              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} />}
             />
           </div>
         )}

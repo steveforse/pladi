@@ -7,6 +7,7 @@ export function Paginator({
   total,
   onPage,
   onPageSize,
+  leftSlot,
 }: {
   page: number
   totalPages: number
@@ -14,6 +15,7 @@ export function Paginator({
   total: number
   onPage: (p: number) => void
   onPageSize: (n: number) => void
+  leftSlot?: React.ReactNode
 }) {
   return (
     <div className="flex items-center gap-4 flex-wrap">
@@ -24,6 +26,7 @@ export function Paginator({
         )}
       </p>
       <div className="flex items-center gap-1 ml-auto">
+        {leftSlot && <div className="mr-3">{leftSlot}</div>}
         <button onClick={() => onPage(1)} disabled={page === 1}
           className="btn px-2 py-1 text-xs">«</button>
         <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}
