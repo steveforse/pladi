@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ActiveFilter, Section, SortKey, SortDir } from '@/lib/types'
 import { matchesFilter } from '@/lib/filters'
 import { sortMovies } from '@/lib/sorting'
@@ -10,18 +10,60 @@ import {
   fileIsInSubfolder,
 } from '@/lib/pathMatching'
 
+const STORAGE_KEY = 'pladi.filters'
+
+function loadFiltersFromStorage(): {
+  multiOnly: boolean
+  unmatchedOnly: boolean
+  filenameMismatch: boolean
+  originalTitleMismatch: boolean
+  noYearInPath: boolean
+  yearPathMismatch: boolean
+  notInSubfolder: boolean
+  sortKey: SortKey
+  sortDir: SortDir
+  filters: ActiveFilter[]
+} {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return {
+    multiOnly: false,
+    unmatchedOnly: false,
+    filenameMismatch: false,
+    originalTitleMismatch: false,
+    noYearInPath: false,
+    yearPathMismatch: false,
+    notInSubfolder: false,
+    sortKey: 'title',
+    sortDir: 'asc',
+    filters: [],
+  }
+}
+
 export function useMoviesFilter(sections: Section[], selectedTitle: string | null) {
-  const [multiOnly, setMultiOnly] = useState(false)
-  const [unmatchedOnly, setUnmatchedOnly] = useState(false)
-  const [filenameMismatch, setFilenameMismatch] = useState(false)
-  const [originalTitleMismatch, setOriginalTitleMismatch] = useState(false)
-  const [noYearInPath, setNoYearInPath] = useState(false)
-  const [yearPathMismatch, setYearPathMismatch] = useState(false)
-  const [notInSubfolder, setNotInSubfolder] = useState(false)
-  const [sortKey, setSortKey] = useState<SortKey>('title')
-  const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const [filters, setFilters] = useState<ActiveFilter[]>([])
-  const nextId = useRef(1)
+  const saved = useMemo(() => loadFiltersFromStorage(), [])
+  const [multiOnly, setMultiOnly] = useState(saved.multiOnly)
+  const [unmatchedOnly, setUnmatchedOnly] = useState(saved.unmatchedOnly)
+  const [filenameMismatch, setFilenameMismatch] = useState(saved.filenameMismatch)
+  const [originalTitleMismatch, setOriginalTitleMismatch] = useState(saved.originalTitleMismatch)
+  const [noYearInPath, setNoYearInPath] = useState(saved.noYearInPath)
+  const [yearPathMismatch, setYearPathMismatch] = useState(saved.yearPathMismatch)
+  const [notInSubfolder, setNotInSubfolder] = useState(saved.notInSubfolder)
+  const [sortKey, setSortKey] = useState<SortKey>(saved.sortKey)
+  const [sortDir, setSortDir] = useState<SortDir>(saved.sortDir)
+  const [filters, setFilters] = useState<ActiveFilter[]>(saved.filters)
+  const nextId = useRef(saved.filters.length > 0 ? Math.max(...saved.filters.map((f) => f.id)) + 1 : 1)
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, sortKey, sortDir, filters })
+      )
+    } catch {}
+  }, [multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, sortKey, sortDir, filters])
 
   const visibleMovies = useMemo(() => {
     let movies = selectedTitle === null
