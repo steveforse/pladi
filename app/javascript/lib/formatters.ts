@@ -48,6 +48,11 @@ export function formatChannels(ch: number | null): string {
   }
 }
 
+export function formatResolution(res: string | null): string {
+  if (res == null) return '—'
+  return res.toLowerCase() === 'sd' ? 'SD' : res
+}
+
 export function formatDuration(ms: number | null): string {
   if (ms == null) return '—'
   const totalMin = Math.round(ms / 60_000)

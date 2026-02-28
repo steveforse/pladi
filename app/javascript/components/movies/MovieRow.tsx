@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Movie, AllColumnId, ColumnId } from '@/lib/types'
-import { formatSize, formatBitrate, formatDate, formatISODate, formatFrameRate, formatChannels, formatDuration } from '@/lib/formatters'
+import { formatSize, formatBitrate, formatDate, formatISODate, formatFrameRate, formatChannels, formatDuration, formatResolution } from '@/lib/formatters'
 
 export function MovieRow({
   movie,
@@ -33,7 +33,7 @@ export function MovieRow({
           case 'file_path':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">{movie.file_path ?? <span className="italic">—</span>}</td>
           case 'container':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.container ?? '—'}</td>
           case 'video_codec':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.video_codec ?? '—'}</td>
-          case 'video_resolution': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.video_resolution ?? '—'}</td>
+          case 'video_resolution': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatResolution(movie.video_resolution)}</td>
           case 'width':            return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.width != null ? `${movie.width}px` : '—'}</td>
           case 'height':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.height != null ? `${movie.height}px` : '—'}</td>
           case 'aspect_ratio':     return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.aspect_ratio ?? '—'}</td>
