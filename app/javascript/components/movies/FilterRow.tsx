@@ -17,7 +17,10 @@ export function FilterRow({
 
   function handleFieldChange(newField: FilterFieldId) {
     const newDef = FILTER_FIELDS.find((f) => f.id === newField)!
-    const newOp = isNullOp ? filter.op : defaultOp(newDef.type)
+    let newOp: FilterOp
+    if (newDef.nullOnly) newOp = 'present'
+    else if (isNullOp) newOp = filter.op
+    else newOp = defaultOp(newDef.type)
     onChange({ ...filter, field: newField, op: newOp, value: '' })
   }
 
@@ -42,14 +45,13 @@ export function FilterRow({
         onChange={(e) => onChange({ ...filter, op: e.target.value as FilterOp, value: '' })}
         className="border rounded px-2 py-1 text-sm bg-background"
       >
-        {typeOps.map((o) => (
+        {!fieldDef.nullOnly && typeOps.map((o) => (
           <option key={o.id} value={o.id}>{o.label}</option>
         ))}
-        <optgroup label="—">
-          {NULL_OPS.map((o) => (
-            <option key={o.id} value={o.id}>{o.label}</option>
-          ))}
-        </optgroup>
+        {!fieldDef.nullOnly && <optgroup label="—" />}
+        {NULL_OPS.map((o) => (
+          <option key={o.id} value={o.id}>{o.label}</option>
+        ))}
       </select>
 
       {!isNullOp && (

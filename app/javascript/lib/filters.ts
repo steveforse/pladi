@@ -8,7 +8,7 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'year',           label: 'Year',           type: 'numeric' },
     { id: 'duration',       label: 'Duration',       type: 'numeric', unit: 'min' },
     { id: 'updated_at',     label: 'Last Updated',   type: 'date' },
-    { id: 'poster',         label: 'Poster',         type: 'string' },
+    { id: 'poster',         label: 'Poster',         type: 'string', nullOnly: true },
   ]},
   { label: 'Plex Metadata', fields: [
     { id: 'content_rating',  label: 'Rating',          type: 'string' },
@@ -76,11 +76,15 @@ export function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
 
   if (fieldDef.type === 'date') {
     if (!filter.value) return true
-    const filterDay = Math.floor(Date.parse(filter.value) / 86_400_000)
-    if (isNaN(filterDay)) return true
+    // Date input gives ISO "YYYY-MM-DD". Parse as local midnight so it matches
+    // the local date shown by formatDate (which uses toLocaleDateString).
+    const filterLocal = new Date(filter.value + 'T00:00:00')
+    if (isNaN(filterLocal.getTime())) return true
+    const filterDay = filterLocal.getFullYear() * 10000 + (filterLocal.getMonth() + 1) * 100 + filterLocal.getDate()
     const movieTs = raw as number | null
     if (movieTs == null) return false
-    const movieDay = Math.floor(movieTs / 86_400)
+    const movieLocal = new Date(movieTs * 1000)
+    const movieDay = movieLocal.getFullYear() * 10000 + (movieLocal.getMonth() + 1) * 100 + movieLocal.getDate()
     switch (filter.op as NumericOp) {
       case 'gt':  return movieDay >  filterDay
       case 'gte': return movieDay >= filterDay

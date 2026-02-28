@@ -64,6 +64,7 @@ export interface FilterFieldDef {
   label: string
   type: 'numeric' | 'string' | 'date'
   unit?: string
+  nullOnly?: boolean
 }
 
 export interface FilterGroup {
