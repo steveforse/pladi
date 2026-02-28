@@ -1,4 +1,5 @@
 import type { ActiveFilter, FilterFieldDef, FilterGroup, FilterOp, NumericOp, StringOp, Movie } from '@/lib/types'
+import { formatFrameRate } from '@/lib/formatters'
 
 export const FILTER_FIELD_GROUPS: FilterGroup[] = [
   { label: 'General', fields: [
@@ -23,12 +24,12 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'width',            label: 'Width',        type: 'numeric', unit: 'px' },
     { id: 'height',           label: 'Height',       type: 'numeric', unit: 'px' },
     { id: 'aspect_ratio',     label: 'Aspect Ratio', type: 'numeric' },
-    { id: 'frame_rate',       label: 'Frame Rate',   type: 'string' },
+    { id: 'frame_rate',       label: 'Frame Rate',   type: 'string', displayValue: formatFrameRate },
   ]},
   { label: 'Audio', fields: [
     { id: 'audio_codec',    label: 'Audio Codec', type: 'string' },
     { id: 'audio_channels', label: 'Channels',    type: 'numeric' },
-    { id: 'bitrate',        label: 'Bitrate',     type: 'numeric', unit: 'kbps' },
+    { id: 'bitrate',        label: 'Bitrate',     type: 'numeric', unit: 'Mbps' },
   ]},
   { label: 'File', fields: [
     { id: 'file_path',  label: 'File Path',  type: 'string' },
@@ -101,6 +102,8 @@ export function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
       movieNum = raw != null ? (raw as number) / 1_048_576 : null
     } else if (filter.field === 'duration') {
       movieNum = raw != null ? (raw as number) / 60_000 : null
+    } else if (filter.field === 'bitrate') {
+      movieNum = raw != null ? (raw as number) / 1_000 : null
     } else {
       movieNum = raw as number | null
     }
@@ -114,15 +117,18 @@ export function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
       case 'neq': return movieNum !== filterNum
     }
   } else {
-    const movieStr = ((raw as string | null) ?? '').toLowerCase()
+    const rawStr = ((raw as string | null) ?? '').toLowerCase()
+    const displayStr = fieldDef.displayValue ? fieldDef.displayValue(raw as string ?? '').toLowerCase() : rawStr
     const filterStr = filter.value.toLowerCase()
+    // For negative ops, exclude if either raw or display matches.
+    // For positive ops, include if either raw or display matches.
     switch (filter.op as StringOp) {
-      case 'includes': return movieStr.includes(filterStr)
-      case 'excludes': return !movieStr.includes(filterStr)
-      case 'eq':       return movieStr === filterStr
-      case 'neq':      return movieStr !== filterStr
-      case 'starts':   return movieStr.startsWith(filterStr)
-      case 'ends':     return movieStr.endsWith(filterStr)
+      case 'includes': return rawStr.includes(filterStr) || displayStr.includes(filterStr)
+      case 'excludes': return !rawStr.includes(filterStr) && !displayStr.includes(filterStr)
+      case 'eq':       return rawStr === filterStr || displayStr === filterStr
+      case 'neq':      return rawStr !== filterStr && displayStr !== filterStr
+      case 'starts':   return rawStr.startsWith(filterStr) || displayStr.startsWith(filterStr)
+      case 'ends':     return rawStr.endsWith(filterStr) || displayStr.endsWith(filterStr)
     }
   }
   return true

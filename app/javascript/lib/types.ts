@@ -65,6 +65,8 @@ export interface FilterFieldDef {
   type: 'numeric' | 'string' | 'date'
   unit?: string
   nullOnly?: boolean
+  /** For string fields where the displayed value differs from the raw value. */
+  displayValue?: (raw: string) => string
 }
 
 export interface FilterGroup {
