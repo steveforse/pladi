@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Movie, AllColumnId, ColumnId } from '@/lib/types'
-import { formatSize, formatBitrate, formatDate, formatFrameRate, formatChannels, formatDuration } from '@/lib/formatters'
+import { formatSize, formatBitrate, formatDate, formatISODate, formatFrameRate, formatChannels, formatDuration } from '@/lib/formatters'
 
 export function MovieRow({
   movie,
@@ -44,6 +44,18 @@ export function MovieRow({
           case 'size':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatSize(movie.size)}</td>
           case 'duration':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDuration(movie.duration)}</td>
           case 'updated_at':     return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(movie.updated_at)}</td>
+          case 'sort_title':           return <td key={id} className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.sort_title ?? '—'}</td>
+          case 'edition':              return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.edition ?? '—'}</td>
+          case 'originally_available': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatISODate(movie.originally_available)}</td>
+          case 'critic_rating':        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.critic_rating != null ? movie.critic_rating.toFixed(1) : '—'}</td>
+          case 'studio':               return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.studio ?? '—'}</td>
+          case 'tagline':              return <td key={id} className="px-4 py-2 text-muted-foreground text-xs max-w-xs" title={movie.tagline ?? undefined}>{movie.tagline ? movie.tagline.slice(0, 120) + (movie.tagline.length > 120 ? '…' : '') : '—'}</td>
+          case 'country':              return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.country || '—'}</td>
+          case 'writers':              return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.writers || '—'}</td>
+          case 'producers':            return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.producers || '—'}</td>
+          case 'collections':          return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.collections || '—'}</td>
+          case 'labels':               return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.labels || '—'}</td>
+          case 'background':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.art ? '✓' : '—'}</td>
           case 'poster':         return (
             <td key={id} className="px-2 py-1">
               {posterReady.has(movie.id) ? (

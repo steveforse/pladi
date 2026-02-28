@@ -14,6 +14,13 @@ export function formatDate(ts: number | null): string {
   return new Date(ts * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+export function formatISODate(iso: string | null): string {
+  if (iso == null) return '—'
+  const d = new Date(iso + 'T00:00:00')
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 export function formatFrameRate(fr: string | null): string {
   if (fr == null) return '—'
   switch (fr) {

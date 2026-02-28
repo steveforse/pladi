@@ -40,7 +40,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
 
   const {
     visibleCols, colOrder, dragOverCol,
-    handleColChange, handleColDragStart, handleColDragOver, handleColDrop, handleColDragEnd,
+    handleColChange, resetColumns, handleColDragStart, handleColDragOver, handleColDrop, handleColDragEnd,
   } = useColumnManager()
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(visibleMovies.length)
@@ -249,7 +249,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
             <Paginator
               page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
               onPage={setPage} onPageSize={handlePageSize}
-              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} />}
+              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} />}
             />
             <div className="rounded-md border overflow-auto">
               <table className="w-full text-sm">
@@ -284,7 +284,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
             <Paginator
               page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
               onPage={setPage} onPageSize={handlePageSize}
-              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} />}
+              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} />}
             />
           </div>
         )}

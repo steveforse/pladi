@@ -50,8 +50,14 @@ class PlexSection
       bitrate: media['bitrate'],
       size: part['size'],
       duration: media['duration'],
+      sort_title: item['titleSort'],
+      originally_available: item['originallyAvailableAt'],
+      critic_rating: item['rating'],
+      studio: item['studio'],
+      tagline: item['tagline'],
       updated_at: item['updatedAt'],
       thumb: item['thumb'],
+      art: item['art'],
       plex_url: plex_url
     }
   end

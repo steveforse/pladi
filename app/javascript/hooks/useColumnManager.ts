@@ -4,9 +4,9 @@ import { ALL_COLUMNS, DEFAULT_COL_ORDER } from '@/lib/columns'
 
 const STORAGE_KEY = 'pladi.columns'
 
-const DEFAULT_VISIBLE = new Set(
+export const DEFAULT_VISIBLE = new Set(
   ALL_COLUMNS.map((c) => c.id).filter(
-    (id) => !['original_title', 'width', 'height', 'aspect_ratio', 'frame_rate', 'updated_at', 'audience_rating', 'genres', 'directors', 'summary'].includes(id)
+    (id) => !['original_title', 'width', 'height', 'aspect_ratio', 'frame_rate', 'updated_at', 'audience_rating', 'genres', 'directors', 'summary', 'sort_title', 'edition', 'originally_available', 'critic_rating', 'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'background'].includes(id)
   )
 )
 
@@ -48,6 +48,11 @@ export function useColumnManager() {
 
   function col(id: ColumnId) { return visibleCols.has(id) }
 
+  function resetColumns() {
+    setVisibleCols(new Set(DEFAULT_VISIBLE))
+    setColOrder([...DEFAULT_COL_ORDER])
+  }
+
   function handleColDragStart(id: AllColumnId) {
     dragColRef.current = id
   }
@@ -79,7 +84,7 @@ export function useColumnManager() {
 
   return {
     visibleCols, colOrder, dragOverCol,
-    handleColChange, col,
+    handleColChange, col, resetColumns,
     handleColDragStart, handleColDragOver, handleColDrop, handleColDragEnd,
   }
 }

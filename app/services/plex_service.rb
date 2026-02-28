@@ -136,14 +136,22 @@ class PlexService
     {}
   end
 
+  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
   def parse_movie_detail(item)
     {
       summary: item['summary'],
       content_rating: item['contentRating'],
       audience_rating: item['audienceRating'],
+      edition: item['editionTitle'],
       genres: (item['Genre'] || []).pluck('tag').join(', '),
-      directors: (item['Director'] || []).pluck('tag').join(', ')
+      directors: (item['Director'] || []).pluck('tag').join(', '),
+      country: (item['Country'] || []).pluck('tag').join(', '),
+      writers: (item['Writer'] || []).pluck('tag').join(', '),
+      producers: (item['Producer'] || []).pluck('tag').join(', '),
+      collections: (item['Collection'] || []).pluck('tag').join(', '),
+      labels: (item['Label'] || []).pluck('tag').join(', ')
     }
   end
+  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
 end
 # rubocop:enable Metrics/ClassLength
