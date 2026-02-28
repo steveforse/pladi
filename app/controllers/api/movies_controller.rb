@@ -30,6 +30,13 @@ module Api
       head :ok
     end
 
+    def update
+      service.update_movie(params[:id], movie_params.to_h)
+      head :no_content
+    rescue StandardError => e
+      render json: { error: e.message }, status: :unprocessable_content
+    end
+
     def poster
       image = service.poster_for(params[:id])
       if image
@@ -40,6 +47,16 @@ module Api
     end
 
     private
+
+    def movie_params
+      params.expect(
+        movie: [:title, :original_title, :sort_title, :summary, :tagline,
+                :studio, :content_rating, :edition, :year, :originally_available,
+                :critic_rating, :audience_rating,
+                { genres: [], directors: [], writers: [], producers: [],
+                  collections: [], labels: [], country: [] }]
+      )
+    end
 
     def serialize_sections(sections)
       sections.map { |s| s.slice(:title, :movies) }

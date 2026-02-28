@@ -8,7 +8,7 @@ Rails.application.routes.draw do
 
   namespace :api do
     get :me, to: 'auth#me'
-    resources :movies, only: [:index] do
+    resources :movies, only: %i[index update] do
       collection do
         get :refresh
         get :enrich

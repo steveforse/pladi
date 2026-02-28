@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createConsumer } from '@rails/actioncable'
-import type { PlexServerInfo, Section } from '@/lib/types'
+import type { Movie, PlexServerInfo, Section } from '@/lib/types'
 
 type PosterMovie = { id: string; thumb: string }
 
@@ -124,6 +124,37 @@ export function useMoviesData() {
     loadMovies(server.id)
   }
 
+  async function updateMovie(movieId: string, patch: Partial<Movie>) {
+    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
+
+    // Convert tag fields from comma-separated strings to arrays for the API
+    const tagFields = ['genres', 'directors', 'writers', 'producers', 'collections', 'labels', 'country']
+    const apiPatch: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(patch)) {
+      if (tagFields.includes(key) && typeof val === 'string') {
+        apiPatch[key] = val ? val.split(', ').map((t) => t.trim()).filter(Boolean) : []
+      } else {
+        apiPatch[key] = val
+      }
+    }
+
+    const res = await fetch(`/api/movies/${movieId}?server_id=${selectedServerId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ movie: apiPatch }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error((data as { error?: string }).error ?? `Save failed (${res.status})`)
+    }
+    setSections((prev) =>
+      prev.map((section) => ({
+        ...section,
+        movies: section.movies.map((m) => (m.id === movieId ? { ...m, ...patch } : m)),
+      }))
+    )
+  }
+
   async function warmPosters(priorityIds: string[]) {
     if (!selectedServerId || uncachedPosterMovies.length === 0) return
     const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
@@ -152,5 +183,6 @@ export function useMoviesData() {
     handleServerAdded,
     setSelectedTitle,
     warmPosters,
+    updateMovie,
   }
 }

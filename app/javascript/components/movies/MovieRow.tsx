@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Movie, AllColumnId, ColumnId } from '@/lib/types'
 import { formatSize, formatBitrate, formatDate, formatISODate, formatFrameRate, formatChannels, formatDuration, formatResolution } from '@/lib/formatters'
+import { EditableCell } from './EditableCell'
 
 export function MovieRow({
   movie,
@@ -8,12 +9,14 @@ export function MovieRow({
   visibleCols,
   selectedServerId,
   posterReady,
+  onUpdate,
 }: {
   movie: Movie
   colOrder: AllColumnId[]
   visibleCols: Set<ColumnId>
   selectedServerId: number | null
   posterReady: Set<string>
+  onUpdate: (id: string, patch: Partial<Movie>) => Promise<void>
 }) {
   const col = (id: ColumnId) => visibleCols.has(id)
 
@@ -22,14 +25,84 @@ export function MovieRow({
       {colOrder.filter((id) => id === 'title' || col(id as ColumnId)).map((id) => {
         switch (id) {
           case 'id':             return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.plex_url ? <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{movie.id}</a> : movie.id}</td>
-          case 'title':          return <td key={id} className="px-4 py-2 font-medium whitespace-nowrap">{movie.title}</td>
-          case 'original_title': return <td key={id} className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</td>
-          case 'year':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</td>
-          case 'content_rating':  return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.content_rating ?? '—'}</td>
-          case 'audience_rating': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.audience_rating != null ? movie.audience_rating.toFixed(1) : '—'}</td>
-          case 'genres':          return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.genres || '—'}</td>
-          case 'directors':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.directors || '—'}</td>
-          case 'summary':         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs max-w-xs" title={movie.summary ?? undefined}>{movie.summary ? movie.summary.slice(0, 120) + (movie.summary.length > 120 ? '…' : '') : '—'}</td>
+          case 'title':          return (
+            <EditableCell key={id}
+              value={movie.title}
+              fieldType="text"
+              onSave={async (v) => onUpdate(movie.id, { title: v as string })}
+              renderView={() => <span className="font-medium whitespace-nowrap">{movie.title}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'original_title': return (
+            <EditableCell key={id}
+              value={movie.original_title}
+              fieldType="text"
+              onSave={async (v) => onUpdate(movie.id, { original_title: (v as string) || null })}
+              renderView={() => <span className="text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'year':           return (
+            <EditableCell key={id}
+              value={movie.year != null ? String(movie.year) : null}
+              fieldType="number"
+              onSave={async (v) => {
+                const year = (v as string) ? parseInt(v as string, 10) : null
+                onUpdate(movie.id, { year: Number.isFinite(year) ? year : null })
+              }}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'content_rating':  return (
+            <EditableCell key={id}
+              value={movie.content_rating}
+              fieldType="text"
+              onSave={async (v) => onUpdate(movie.id, { content_rating: (v as string) || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.content_rating ?? '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'audience_rating': return (
+            <EditableCell key={id}
+              value={movie.audience_rating != null ? String(movie.audience_rating) : null}
+              fieldType="number"
+              onSave={async (v) => {
+                const r = (v as string) ? parseFloat(v as string) : null
+                onUpdate(movie.id, { audience_rating: Number.isFinite(r) ? r : null })
+              }}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.audience_rating != null ? movie.audience_rating.toFixed(1) : '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'genres':          return (
+            <EditableCell key={id}
+              value={movie.genres ? movie.genres.split(', ').filter(Boolean) : []}
+              fieldType="tags"
+              onSave={async (v) => onUpdate(movie.id, { genres: (v as string[]).join(', ') || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.genres || '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'directors':       return (
+            <EditableCell key={id}
+              value={movie.directors ? movie.directors.split(', ').filter(Boolean) : []}
+              fieldType="tags"
+              onSave={async (v) => onUpdate(movie.id, { directors: (v as string[]).join(', ') || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.directors || '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'summary':         return (
+            <EditableCell key={id}
+              value={movie.summary}
+              fieldType="text"
+              onSave={async (v) => onUpdate(movie.id, { summary: (v as string) || null })}
+              renderView={() => <span className="text-muted-foreground text-xs" title={movie.summary ?? undefined}>{movie.summary ? movie.summary.slice(0, 120) + (movie.summary.length > 120 ? '…' : '') : '—'}</span>}
+              className="px-4 py-2 max-w-xs"
+            />
+          )
           case 'file_path':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">{movie.file_path ?? <span className="italic">—</span>}</td>
           case 'container':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.container ?? '—'}</td>
           case 'video_codec':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.video_codec ?? '—'}</td>
@@ -44,17 +117,108 @@ export function MovieRow({
           case 'size':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatSize(movie.size)}</td>
           case 'duration':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDuration(movie.duration)}</td>
           case 'updated_at':     return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(movie.updated_at)}</td>
-          case 'sort_title':           return <td key={id} className="px-4 py-2 text-muted-foreground whitespace-nowrap">{movie.sort_title ?? '—'}</td>
-          case 'edition':              return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.edition ?? '—'}</td>
-          case 'originally_available': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatISODate(movie.originally_available)}</td>
-          case 'critic_rating':        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.critic_rating != null ? movie.critic_rating.toFixed(1) : '—'}</td>
-          case 'studio':               return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.studio ?? '—'}</td>
-          case 'tagline':              return <td key={id} className="px-4 py-2 text-muted-foreground text-xs max-w-xs" title={movie.tagline ?? undefined}>{movie.tagline ? movie.tagline.slice(0, 120) + (movie.tagline.length > 120 ? '…' : '') : '—'}</td>
-          case 'country':              return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.country || '—'}</td>
-          case 'writers':              return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.writers || '—'}</td>
-          case 'producers':            return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.producers || '—'}</td>
-          case 'collections':          return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.collections || '—'}</td>
-          case 'labels':               return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.labels || '—'}</td>
+          case 'sort_title':           return (
+            <EditableCell key={id}
+              value={movie.sort_title}
+              fieldType="text"
+              onSave={async (v) => onUpdate(movie.id, { sort_title: (v as string) || null })}
+              renderView={() => <span className="text-muted-foreground whitespace-nowrap">{movie.sort_title ?? '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'edition':              return (
+            <EditableCell key={id}
+              value={movie.edition}
+              fieldType="text"
+              onSave={async (v) => onUpdate(movie.id, { edition: (v as string) || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.edition ?? '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'originally_available': return (
+            <EditableCell key={id}
+              value={movie.originally_available}
+              fieldType="date"
+              onSave={async (v) => onUpdate(movie.id, { originally_available: (v as string) || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{formatISODate(movie.originally_available)}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'critic_rating':        return (
+            <EditableCell key={id}
+              value={movie.critic_rating != null ? String(movie.critic_rating) : null}
+              fieldType="number"
+              onSave={async (v) => {
+                const r = (v as string) ? parseFloat(v as string) : null
+                onUpdate(movie.id, { critic_rating: Number.isFinite(r) ? r : null })
+              }}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.critic_rating != null ? movie.critic_rating.toFixed(1) : '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'studio':               return (
+            <EditableCell key={id}
+              value={movie.studio}
+              fieldType="text"
+              onSave={async (v) => onUpdate(movie.id, { studio: (v as string) || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.studio ?? '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'tagline':              return (
+            <EditableCell key={id}
+              value={movie.tagline}
+              fieldType="text"
+              onSave={async (v) => onUpdate(movie.id, { tagline: (v as string) || null })}
+              renderView={() => <span className="text-muted-foreground text-xs" title={movie.tagline ?? undefined}>{movie.tagline ? movie.tagline.slice(0, 120) + (movie.tagline.length > 120 ? '…' : '') : '—'}</span>}
+              className="px-4 py-2 max-w-xs"
+            />
+          )
+          case 'country':              return (
+            <EditableCell key={id}
+              value={movie.country ? movie.country.split(', ').filter(Boolean) : []}
+              fieldType="tags"
+              onSave={async (v) => onUpdate(movie.id, { country: (v as string[]).join(', ') || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.country || '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'writers':              return (
+            <EditableCell key={id}
+              value={movie.writers ? movie.writers.split(', ').filter(Boolean) : []}
+              fieldType="tags"
+              onSave={async (v) => onUpdate(movie.id, { writers: (v as string[]).join(', ') || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.writers || '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'producers':            return (
+            <EditableCell key={id}
+              value={movie.producers ? movie.producers.split(', ').filter(Boolean) : []}
+              fieldType="tags"
+              onSave={async (v) => onUpdate(movie.id, { producers: (v as string[]).join(', ') || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.producers || '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'collections':          return (
+            <EditableCell key={id}
+              value={movie.collections ? movie.collections.split(', ').filter(Boolean) : []}
+              fieldType="tags"
+              onSave={async (v) => onUpdate(movie.id, { collections: (v as string[]).join(', ') || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.collections || '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
+          case 'labels':               return (
+            <EditableCell key={id}
+              value={movie.labels ? movie.labels.split(', ').filter(Boolean) : []}
+              fieldType="tags"
+              onSave={async (v) => onUpdate(movie.id, { labels: (v as string[]).join(', ') || null })}
+              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.labels || '—'}</span>}
+              className="px-4 py-2"
+            />
+          )
           case 'background':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.art ? '✓' : '—'}</td>
           case 'poster':         return (
             <td key={id} className="px-2 py-1">

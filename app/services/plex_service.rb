@@ -5,6 +5,23 @@ class PlexService
   ENRICH_THREADS = ENV.fetch('PLEX_ENRICH_THREADS', '3').to_i
   CACHE_TTL = 30.days
 
+  SCALAR_FIELD_MAP = {
+    'title' => 'title', 'original_title' => 'originalTitle',
+    'sort_title' => 'titleSort', 'year' => 'year',
+    'edition' => 'editionTitle', 'summary' => 'summary',
+    'tagline' => 'tagline', 'studio' => 'studio',
+    'content_rating' => 'contentRating', 'critic_rating' => 'rating',
+    'audience_rating' => 'audienceRating',
+    'originally_available' => 'originallyAvailableAt'
+  }.freeze
+
+  TAG_FIELD_MAP = {
+    'genres' => 'Genre', 'directors' => 'Director',
+    'writers' => 'Writer', 'producers' => 'Producer',
+    'collections' => 'Collection', 'labels' => 'Label',
+    'country' => 'Country'
+  }.freeze
+
   def initialize(server)
     @server    = server
     @http      = PlexHttp.new(server.url, server.token)
@@ -66,15 +83,28 @@ class PlexService
     nil
   end
 
+  def update_movie(movie_id, fields)
+    @http.put("/library/metadata/#{movie_id}?#{build_update_query(fields)}")
+    bump_enrich_version
+  end
+
   private
 
   def cache_key(*parts)
     "plex/server/#{@server_id}/#{parts.join('/')}"
   end
 
+  def enrich_version
+    Rails.cache.read(cache_key('enrich_version')) || 0
+  end
+
+  def bump_enrich_version
+    Rails.cache.write(cache_key('enrich_version'), enrich_version + 1, expires_in: CACHE_TTL)
+  end
+
   def cached_movies_for(section_id, updated_at)
     Rails.cache.fetch(
-      cache_key('section', section_id, updated_at),
+      cache_key('section', section_id, updated_at, enrich_version),
       expires_in: CACHE_TTL
     ) do
       PlexSection.new(@server)
@@ -84,7 +114,7 @@ class PlexService
   end
 
   def enrich_section(section)
-    key = cache_key('section', section[:id], section[:updated_at], 'enriched')
+    key = cache_key('section', section[:id], section[:updated_at], 'enriched', enrich_version)
     Rails.cache.fetch(key, expires_in: CACHE_TTL) do
       movies  = section[:movies]
       details = fetch_details_concurrently(movies)
@@ -111,11 +141,31 @@ class PlexService
       movie = mutex.synchronize { queue.shift }
       break unless movie
 
-      key    = cache_key('movie', 'detail', movie[:id], movie[:updated_at])
+      key    = cache_key('movie', 'detail', movie[:id], movie[:updated_at], enrich_version)
       detail = Rails.cache.fetch(key, expires_in: CACHE_TTL) do
         fetch_movie_detail(movie[:id])
       end
       mutex.synchronize { result[movie[:id]] = detail }
+    end
+  end
+
+  def build_update_query(fields)
+    scalar_pairs = [%w[type 1]]
+    raw_tag_parts = []
+    fields.each { |key, value| collect_field_parts(key.to_s, value, scalar_pairs, raw_tag_parts) }
+    ([URI.encode_www_form(scalar_pairs)] + raw_tag_parts).join('&')
+  end
+
+  def collect_field_parts(key, value, scalar_pairs, raw_tag_parts)
+    if (plex_param = SCALAR_FIELD_MAP[key])
+      scalar_pairs << ["#{plex_param}.value", value.to_s]
+      scalar_pairs << ["#{plex_param}.locked", '1']
+    elsif (tag_name = TAG_FIELD_MAP[key])
+      put_name = tag_name.downcase
+      Array(value).each_with_index do |tag, i|
+        raw_tag_parts << "#{put_name}[#{i}].tag.tag=#{CGI.escape(tag.to_s)}"
+      end
+      raw_tag_parts << "#{put_name}.locked=1"
     end
   end
 

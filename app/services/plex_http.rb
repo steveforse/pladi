@@ -21,6 +21,15 @@ class PlexHttp
     raise 'Plex returned an unexpected response — check your server URL and token'
   end
 
+  def put(path)
+    uri     = URI("#{@base_url}#{path}")
+    request = Net::HTTP::Put.new(uri)
+    request['Accept']       = 'application/json'
+    request['X-Plex-Token'] = @token
+    response = http_start(uri) { |http| http.request(request) }
+    check_response!(response)
+  end
+
   def fetch_poster_bytes(thumb_path)
     uri     = URI("#{@base_url}#{thumb_path}")
     request = Net::HTTP::Get.new(uri)

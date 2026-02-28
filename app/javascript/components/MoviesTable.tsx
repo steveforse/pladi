@@ -21,7 +21,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   const {
     plexServers, selectedServerId, sections, selectedTitle,
     loading, refreshing, syncing, error, posterReady,
-    uncachedPosterMovies, warmPosters,
+    uncachedPosterMovies, warmPosters, updateMovie,
     handleServerChange, handleServerAdded, setSelectedTitle,
   } = useMoviesData()
 
@@ -276,6 +276,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
                       visibleCols={visibleCols}
                       selectedServerId={selectedServerId}
                       posterReady={posterReady}
+                      onUpdate={updateMovie}
                     />
                   ))}
                 </tbody>
