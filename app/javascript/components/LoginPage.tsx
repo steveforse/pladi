@@ -44,7 +44,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
         {/* Header */}
         <div className="flex items-center gap-4">
           <img src={pladiLogo} alt="Pladi logo" className="h-[72px] w-auto" />
-          <span className="text-4xl font-bold tracking-wide" style={{ color: '#E5A00D' }}>Pladi</span>
+          <span className="text-4xl font-bold tracking-wide" style={{ color: '#E5A00D' }}>PLADI</span>
         </div>
 
         {/* Form */}

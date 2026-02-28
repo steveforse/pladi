@@ -33,25 +33,29 @@ export function ColumnPicker({
         <span className="text-muted-foreground">▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 z-10 bg-card border rounded-md shadow-lg p-2 min-w-44">
-          {groups.map((group, i) => (
-            <div key={group.label}>
-              {i > 0 && <div className="my-1 border-t" />}
-              <div className="px-2 pt-1 pb-0.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {group.label}
+        <div className="absolute right-0 mt-1 z-10 bg-card border rounded-md shadow-lg p-2 w-96">
+          <div className="grid grid-cols-2 gap-x-2">
+            {groups.map((group, i) => (
+              <div key={group.label} className="col-span-2">
+                {i > 0 && <div className="my-1 border-t col-span-2" />}
+                <div className="px-2 pt-1 pb-0.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {group.label}
+                </div>
+                <div className="grid grid-cols-2 gap-x-2">
+                  {group.columns.map((col) => (
+                    <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={visible.has(col.id)}
+                        onChange={(e) => onChange(col.id, e.target.checked)}
+                      />
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
               </div>
-              {group.columns.map((col) => (
-                <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted/50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={visible.has(col.id)}
-                    onChange={(e) => onChange(col.id, e.target.checked)}
-                  />
-                  {col.label}
-                </label>
-              ))}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

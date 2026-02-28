@@ -82,7 +82,7 @@ export function WelcomeScreen({
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold">Welcome to Pladi</h2>
+            <h2 className="text-2xl font-bold">Welcome to PLADI</h2>
             <p className="text-muted-foreground text-sm">
               Connect your first Plex server to get started.
             </p>
