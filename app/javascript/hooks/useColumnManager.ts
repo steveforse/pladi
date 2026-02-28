@@ -15,9 +15,12 @@ function loadColumnsFromStorage(): { visibleCols: Set<ColumnId>; colOrder: AllCo
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
+      const storedOrder: AllColumnId[] = parsed.colOrder
+      // Append any columns added since this was saved (new columns not in stored order)
+      const merged = [...storedOrder, ...DEFAULT_COL_ORDER.filter((id) => !storedOrder.includes(id))]
       return {
         visibleCols: new Set<ColumnId>(parsed.visibleCols),
-        colOrder: parsed.colOrder,
+        colOrder: merged,
       }
     }
   } catch {}
