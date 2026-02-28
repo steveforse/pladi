@@ -26,7 +26,7 @@ class PlexSection
 
   def plex_url_for(movie_id)
     escaped = CGI.escape("/library/metadata/#{movie_id}")
-    "https://app.plex.tv/desktop/#!/server/#{@machine_id}/details?key=#{escaped}"
+    "https://app.plex.tv/desktop/#!/server/#{machine_id}/details?key=#{escaped}"
   end
 
   # 20-field Plex API mapping — length is inherent to the data structure.
