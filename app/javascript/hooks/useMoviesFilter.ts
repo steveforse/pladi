@@ -68,6 +68,17 @@ export function useMoviesFilter(sections: Section[], selectedTitle: string | nul
     setFilters((prev) => prev.filter((f) => f.id !== id))
   }
 
+  function clearAllFilters() {
+    setMultiOnly(false)
+    setUnmatchedOnly(false)
+    setFilenameMismatch(false)
+    setOriginalTitleMismatch(false)
+    setNoYearInPath(false)
+    setYearPathMismatch(false)
+    setNotInSubfolder(false)
+    setFilters([])
+  }
+
   return {
     multiOnly, setMultiOnly,
     unmatchedOnly, setUnmatchedOnly,
@@ -77,7 +88,7 @@ export function useMoviesFilter(sections: Section[], selectedTitle: string | nul
     yearPathMismatch, setYearPathMismatch,
     notInSubfolder, setNotInSubfolder,
     sortKey, sortDir, handleSort,
-    filters, addFilter, updateFilter, removeFilter,
+    filters, addFilter, updateFilter, removeFilter, clearAllFilters,
     visibleMovies,
   }
 }

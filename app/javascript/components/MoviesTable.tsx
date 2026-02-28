@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react'
-import { Loader2 } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 
 import { useMoviesData } from '@/hooks/useMoviesData'
@@ -34,7 +34,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
     yearPathMismatch, setYearPathMismatch,
     notInSubfolder, setNotInSubfolder,
     sortKey, sortDir, handleSort,
-    filters, addFilter, updateFilter, removeFilter,
+    filters, addFilter, updateFilter, removeFilter, clearAllFilters,
     visibleMovies,
   } = useMoviesFilter(sections, selectedTitle)
 
@@ -44,6 +44,11 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   } = useColumnManager()
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(visibleMovies.length)
+
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const activeFilterCount =
+    [multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder].filter(Boolean).length +
+    filters.length
 
   const pagedMovies = pageSize === 0 ? visibleMovies : visibleMovies.slice((page - 1) * pageSize, page * pageSize)
 
@@ -150,54 +155,97 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
         </div>
 
         {/* Filters */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-4 flex-wrap">
-            <h2 className="text-sm font-medium text-muted-foreground">Filters:</h2>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={multiOnly} onChange={(e) => setMultiOnly(e.target.checked)} />
-              Multiple files only
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={unmatchedOnly} onChange={(e) => setUnmatchedOnly(e.target.checked)} />
-              Title mismatches file path
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={filenameMismatch} onChange={(e) => setFilenameMismatch(e.target.checked)} />
-              Title mismatches filename
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={originalTitleMismatch} onChange={(e) => setOriginalTitleMismatch(e.target.checked)} />
-              Title mismatches Original Title
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={noYearInPath} onChange={(e) => setNoYearInPath(e.target.checked)} />
-              No year in file path
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={yearPathMismatch} onChange={(e) => setYearPathMismatch(e.target.checked)} />
-              File path year mismatches metadata
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={notInSubfolder} onChange={(e) => setNotInSubfolder(e.target.checked)} />
-              Not in movie subfolder
-            </label>
-          </div>
-          {filters.map((f) => (
-            <FilterRow
-              key={f.id}
-              filter={f}
-              onChange={(updated) => updateFilter(f.id, updated)}
-              onRemove={() => removeFilter(f.id)}
-            />
-          ))}
-          <div className="flex items-center gap-2">
-            <button onClick={addFilter} className="btn px-3 py-1.5 text-sm">
-              + Add Filter
-            </button>
-            <div className="ml-auto">
-              <ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} />
+        <div className="border rounded-md">
+          <button
+            onClick={() => setFiltersOpen((o) => !o)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {filtersOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full font-semibold" style={{ backgroundColor: '#E5A00D', color: '#161b1f' }}>
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {filtersOpen && (
+            <div className="px-3 pb-3 space-y-3 border-t pt-3">
+              {/* Quick filters */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</p>
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  {/* Title group */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Title</p>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={unmatchedOnly} onChange={(e) => setUnmatchedOnly(e.target.checked)} />
+                      Mismatches file path
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={filenameMismatch} onChange={(e) => setFilenameMismatch(e.target.checked)} />
+                      Mismatches filename
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={originalTitleMismatch} onChange={(e) => setOriginalTitleMismatch(e.target.checked)} />
+                      Mismatches Original Title
+                    </label>
+                  </div>
+                  {/* Year group */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Year</p>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={noYearInPath} onChange={(e) => setNoYearInPath(e.target.checked)} />
+                      Missing from file path
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={yearPathMismatch} onChange={(e) => setYearPathMismatch(e.target.checked)} />
+                      File path mismatches metadata
+                    </label>
+                  </div>
+                  {/* File group */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">File</p>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={multiOnly} onChange={(e) => setMultiOnly(e.target.checked)} />
+                      Multiple files only
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={notInSubfolder} onChange={(e) => setNotInSubfolder(e.target.checked)} />
+                      Not in movie subfolder
+                    </label>
+                  </div>
+                </div>
+              </div>
+              {/* Advanced filters */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Advanced filters</p>
+                {filters.map((f) => (
+                  <FilterRow
+                    key={f.id}
+                    filter={f}
+                    onChange={(updated) => updateFilter(f.id, updated)}
+                    onRemove={() => removeFilter(f.id)}
+                  />
+                ))}
+                <div className="flex items-center gap-2">
+                  <button onClick={addFilter} className="btn px-3 py-1.5 text-sm">
+                    + Add Filter
+                  </button>
+                  {activeFilterCount > 0 && (
+                    <button onClick={clearAllFilters} className="btn px-3 py-1.5 text-sm text-destructive">
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* Column picker (always visible) */}
+        <div className="flex justify-end">
+          <ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} />
         </div>
 
         {/* Table */}
