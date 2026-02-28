@@ -1,0 +1,21 @@
+[Unit]
+Description=Pladi - Plex Library Browser
+After=network.target
+
+[Service]
+Type=simple
+User=pladi
+Group=pladi
+WorkingDirectory=/opt/pladi
+EnvironmentFile=/opt/pladi/.env
+Environment=RAILS_ENV=production
+Environment=SOLID_QUEUE_IN_PUMA=true
+ExecStart=/opt/pladi/bin/thrust /opt/pladi/bin/rails server
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pladi
+
+[Install]
+WantedBy=multi-user.target
