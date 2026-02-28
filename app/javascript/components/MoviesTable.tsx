@@ -75,7 +75,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   if (error) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-4 px-4 py-2" style={{ backgroundColor: '#1e2730' }}>
+        <div className="flex items-center gap-4 px-8 py-2" style={{ backgroundColor: '#1e2730' }}>
           <div className="flex items-center gap-3">
             <img src={pladiLogo} alt="Pladi logo" className="h-10 w-auto" />
             <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
@@ -101,7 +101,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
   return (
     <div className="space-y-4">
       {/* Title bar */}
-      <div className="flex items-center gap-4 px-4 py-2" style={{ backgroundColor: '#1e2730' }}>
+      <div className="flex items-center gap-4 px-8 py-2" style={{ backgroundColor: '#1e2730' }}>
         <div className="flex items-center gap-3">
           <img src={pladiLogo} alt="Pladi logo" className="h-10 w-auto" />
           <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
