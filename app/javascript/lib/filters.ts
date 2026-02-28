@@ -45,12 +45,12 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
   { label: 'Audio', fields: [
     { id: 'audio_codec',    label: 'Audio Codec', type: 'string' },
     { id: 'audio_channels', label: 'Channels',    type: 'numeric' },
-    { id: 'bitrate',        label: 'Bitrate',     type: 'numeric', unit: 'Mbps' },
   ]},
   { label: 'File', fields: [
-    { id: 'file_path',  label: 'File Path',  type: 'string' },
-    { id: 'container',  label: 'Container',  type: 'string' },
-    { id: 'size',       label: 'Size',       type: 'numeric', unit: 'MB' },
+    { id: 'overall_bitrate',    label: 'Overall Bitrate', type: 'numeric', unit: 'Mbps' },
+    { id: 'file_path',  label: 'File Path',       type: 'string' },
+    { id: 'container',  label: 'Container',       type: 'string' },
+    { id: 'size',       label: 'Size',            type: 'numeric', unit: 'MB' },
   ]},
 ]
 
@@ -121,7 +121,7 @@ export function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
       movieNum = raw != null ? (raw as number) / 1_048_576 : null
     } else if (filter.field === 'duration') {
       movieNum = raw != null ? (raw as number) / 60_000 : null
-    } else if (filter.field === 'bitrate') {
+    } else if (filter.field === 'overall_bitrate') {
       movieNum = raw != null ? (raw as number) / 1_000 : null
     } else {
       movieNum = raw as number | null

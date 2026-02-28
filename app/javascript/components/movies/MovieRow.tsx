@@ -40,7 +40,7 @@ export function MovieRow({
           case 'frame_rate':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatFrameRate(movie.frame_rate)}</td>
           case 'audio_codec':      return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs uppercase whitespace-nowrap">{movie.audio_codec ?? '—'}</td>
           case 'audio_channels': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatChannels(movie.audio_channels)}</td>
-          case 'bitrate':        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatBitrate(movie.bitrate)}</td>
+          case 'overall_bitrate': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatBitrate(movie.overall_bitrate)}</td>
           case 'size':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatSize(movie.size)}</td>
           case 'duration':       return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDuration(movie.duration)}</td>
           case 'updated_at':     return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(movie.updated_at)}</td>

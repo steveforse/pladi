@@ -47,7 +47,7 @@ class PlexSection
       frame_rate: media['videoFrameRate'],
       audio_codec: media['audioCodec'],
       audio_channels: media['audioChannels'],
-      bitrate: media['bitrate'],
+      overall_bitrate: media['bitrate'],
       size: part['size'],
       duration: media['duration'],
       sort_title: item['titleSort'],

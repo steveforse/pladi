@@ -1,7 +1,7 @@
 import type { AllColumnId, ColumnDef, ColumnGroup } from '@/lib/types'
 
 export const DEFAULT_COL_ORDER: AllColumnId[] = [
-  'id', 'poster', 'title', 'sort_title', 'original_title', 'year', 'edition', 'originally_available', 'content_rating', 'critic_rating', 'audience_rating', 'genres', 'directors', 'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'summary', 'background', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'bitrate', 'size', 'duration', 'updated_at',
+  'id', 'poster', 'title', 'sort_title', 'original_title', 'year', 'edition', 'originally_available', 'content_rating', 'critic_rating', 'audience_rating', 'genres', 'directors', 'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'summary', 'background', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'overall_bitrate', 'size', 'duration', 'updated_at',
 ]
 
 export const COLUMN_GROUPS: ColumnGroup[] = [
@@ -46,10 +46,10 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
   ]},
   { label: 'Audio', columns: [
     { id: 'audio_codec', label: 'Audio Codec' },
-    { id: 'bitrate', label: 'Bitrate' },
     { id: 'audio_channels', label: 'Channels' },
   ]},
   { label: 'File', columns: [
+    { id: 'overall_bitrate', label: 'Overall Bitrate' },
     { id: 'container', label: 'Container' },
     { id: 'file_path', label: 'File Path' },
     { id: 'size', label: 'Size' },

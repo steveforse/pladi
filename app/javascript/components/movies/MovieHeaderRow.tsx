@@ -139,7 +139,7 @@ export function MovieHeaderRow({
           case 'frame_rate':       return <Th key={id} label="Frame Rate"    col="frame_rate"       colId={id} {...shared} />
           case 'audio_codec':      return <Th key={id} label="Audio Codec"   col="audio_codec"      colId={id} {...shared} />
           case 'audio_channels': return <Th key={id} label="Channels"     col="audio_channels" colId={id} {...shared} />
-          case 'bitrate':        return <Th key={id} label="Bitrate"      col="bitrate"        colId={id} {...shared} />
+          case 'overall_bitrate': return <Th key={id} label="Overall Bitrate" col="overall_bitrate" colId={id} {...shared} />
           case 'size':           return <Th key={id} label="Size"         col="size"           colId={id} {...shared} />
           case 'duration':       return <Th key={id} label="Duration"     col="duration"       colId={id} {...shared} />
           case 'updated_at':     return <Th key={id} label="Last Updated" col="updated_at"     colId={id} {...shared} />

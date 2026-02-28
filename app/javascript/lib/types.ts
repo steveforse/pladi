@@ -13,7 +13,7 @@ export interface Movie {
   frame_rate: string | null
   audio_codec: string | null
   audio_channels: number | null
-  bitrate: number | null
+  overall_bitrate: number | null
   size: number | null
   duration: number | null
   updated_at: number | null
@@ -49,10 +49,10 @@ export interface Section {
   movies: Movie[]
 }
 
-export type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels'>
+export type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels'>
 export type SortDir = 'asc' | 'desc'
 
-export type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background'
+export type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background'
 export type AllColumnId = 'title' | ColumnId
 
 export interface ColumnDef {
@@ -69,7 +69,7 @@ export type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
 export type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
 export type NullOp = 'present' | 'missing'
 export type FilterOp = NumericOp | StringOp | NullOp
-export type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background'
+export type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background'
 
 export interface FilterFieldDef {
   id: FilterFieldId
