@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import MoviesTable from '@/components/MoviesTable'
 import LoginPage from '@/components/LoginPage'
+import SetupPage from '@/components/SetupPage'
 import SettingsPage from '@/components/SettingsPage'
 import HistoryPage from '@/components/HistoryPage'
 
-type AuthState = 'loading' | 'authenticated' | 'unauthenticated'
+type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'setup'
 type Page = 'movies' | 'settings' | 'history'
 
 function LoadingScreen() {
@@ -33,9 +34,15 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/me').then((r) =>
-      setAuthState(r.ok ? 'authenticated' : 'unauthenticated')
-    )
+    fetch('/api/me').then(async (r) => {
+      if (r.ok) {
+        setAuthState('authenticated')
+      } else {
+        const setupRes = await fetch('/api/setup')
+        const setupData = await setupRes.json().catch(() => ({ needed: false }))
+        setAuthState((setupData as { needed: boolean }).needed ? 'setup' : 'unauthenticated')
+      }
+    })
   }, [])
 
   function navigateTo(newPage: Page) {
@@ -44,6 +51,9 @@ export default function App() {
   }
 
   if (authState === 'loading') return <LoadingScreen />
+  if (authState === 'setup')
+    return <SetupPage onComplete={() => setAuthState('authenticated')} />
+
   if (authState === 'unauthenticated')
     return <LoginPage onLogin={() => setAuthState('authenticated')} />
 

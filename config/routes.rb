@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   resource :session, only: %i[create destroy]
 
   namespace :api do
+    resource :setup, only: %i[show create], controller: 'setup'
     get :me, to: 'auth#me'
     resources :history, only: [:index]
     resources :movies, only: %i[index update] do
