@@ -45,6 +45,7 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
   { label: 'Audio', fields: [
     { id: 'audio_codec',    label: 'Audio Codec', type: 'string' },
     { id: 'audio_channels', label: 'Channels',    type: 'numeric' },
+    { id: 'subtitles',      label: 'Subtitles',   type: 'string' },
   ]},
   { label: 'File', fields: [
     { id: 'overall_bitrate',    label: 'Overall Bitrate', type: 'numeric', unit: 'Mbps' },

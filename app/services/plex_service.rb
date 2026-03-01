@@ -228,6 +228,9 @@ class PlexService
 
   # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
   def parse_movie_detail(item)
+    streams = (item['Media'] || []).flat_map { |m| (m['Part'] || []).flat_map { |p| p['Stream'] || [] } }
+    sub_streams = streams.select { |s| s['streamType'].to_s == '3' }
+    subtitles_str = sub_streams.map { |s| "#{s['displayTitle'] || s['language'] || s['languageTag']} (#{s['codec']&.upcase})" }.uniq.join(', ')
     {
       summary: item['summary'],
       content_rating: item['contentRating'],
@@ -239,7 +242,8 @@ class PlexService
       writers: (item['Writer'] || []).pluck('tag').join(', '),
       producers: (item['Producer'] || []).pluck('tag').join(', '),
       collections: (item['Collection'] || []).pluck('tag').join(', '),
-      labels: (item['Label'] || []).pluck('tag').join(', ')
+      labels: (item['Label'] || []).pluck('tag').join(', '),
+      subtitles: subtitles_str.presence
     }
   end
   # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
