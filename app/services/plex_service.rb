@@ -131,8 +131,11 @@ class PlexService
       section.merge(
         movies: movies.map do |m|
           detail = details[m[:id]] || {}
-          subtitles = detail[:subtitles_by_file]&.dig(m[:file_path])
-          m.merge(detail.except(:subtitles_by_file)).merge(subtitles: subtitles)
+          subtitles     = detail[:subtitles_by_file]&.dig(m[:file_path])
+          audio_tracks  = detail[:audio_by_file]&.dig(m[:file_path])
+          audio_language = detail[:audio_language_by_file]&.dig(m[:file_path])
+          m.merge(detail.except(:subtitles_by_file, :audio_by_file, :audio_language_by_file))
+           .merge(subtitles: subtitles, audio_tracks: audio_tracks, audio_language: audio_language)
         end
       )
     end
@@ -239,8 +242,31 @@ class PlexService
         acc[part['file']] = subtitle_str.presence
       end
     end
+    audio_language_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
+      (media['Part'] || []).each do |part|
+        selected = (part['Stream'] || []).find { |s| s['streamType'].to_s == '2' && s['selected'] }
+        acc[part['file']] = selected && (selected['language'] || selected['languageTag'])
+      end
+    end
+    audio_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
+      (media['Part'] || []).each do |part|
+        audio_streams = (part['Stream'] || []).select { |s| s['streamType'].to_s == '2' }
+        audio_str = audio_streams.map do |s|
+          lang    = s['language'] || s['languageTag']
+          details = [
+            s['codec']&.upcase,
+            (s['audioChannelLayout'] || (s['channels'] && "#{s['channels']}ch")),
+            (s['bitrate'] && "#{s['bitrate']} kbps")
+          ].compact.join(', ')
+          details.present? ? "#{lang} (#{details})" : lang
+        end.uniq.join(', ')
+        acc[part['file']] = audio_str.presence
+      end
+    end
     {
       subtitles_by_file: subtitles_by_file,
+      audio_by_file: audio_by_file,
+      audio_language_by_file: audio_language_by_file,
       summary: item['summary'],
       content_rating: item['contentRating'],
       audience_rating: item['audienceRating'],

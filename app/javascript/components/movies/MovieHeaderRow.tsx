@@ -138,7 +138,9 @@ export function MovieHeaderRow({
           case 'aspect_ratio':     return <Th key={id} label="Aspect Ratio"  col="aspect_ratio"     colId={id} {...shared} />
           case 'frame_rate':       return <Th key={id} label="Frame Rate"    col="frame_rate"       colId={id} {...shared} />
           case 'audio_codec':      return <Th key={id} label="Audio Codec"   col="audio_codec"      colId={id} {...shared} />
-          case 'audio_channels': return <Th key={id} label="Channels"     col="audio_channels" colId={id} {...shared} />
+          case 'audio_channels':  return <Th key={id} label="Audio Channels" col="audio_channels"  colId={id} {...shared} />
+          case 'audio_language':  return <Th key={id} label="Audio Language" col="audio_language"  colId={id} {...shared} />
+          case 'audio_tracks':    return <Th key={id} label="Audio Tracks"   col="audio_tracks"    colId={id} {...shared} />
           case 'subtitles':      return <Th key={id} label="Subtitles"    col="subtitles"      colId={id} {...shared} />
           case 'overall_bitrate': return <Th key={id} label="Overall Bitrate" col="overall_bitrate" colId={id} {...shared} />
           case 'size':           return <Th key={id} label="Size"         col="size"           colId={id} {...shared} />

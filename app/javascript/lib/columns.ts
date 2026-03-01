@@ -1,7 +1,14 @@
 import type { AllColumnId, ColumnDef, ColumnGroup } from '@/lib/types'
 
 export const DEFAULT_COL_ORDER: AllColumnId[] = [
-  'id', 'poster', 'title', 'sort_title', 'original_title', 'year', 'edition', 'originally_available', 'content_rating', 'critic_rating', 'audience_rating', 'genres', 'directors', 'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'summary', 'background', 'file_path', 'container', 'video_codec', 'video_resolution', 'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'subtitles', 'overall_bitrate', 'size', 'duration', 'updated_at',
+  'title', 'id',
+  'duration', 'edition', 'updated_at', 'originally_available', 'original_title', 'poster', 'sort_title', 'year',
+  'audience_rating', 'content_rating', 'critic_rating',
+  'directors', 'producers', 'writers',
+  'background', 'collections', 'country', 'genres', 'labels', 'studio', 'summary', 'tagline',
+  'aspect_ratio', 'frame_rate', 'height', 'video_resolution', 'video_codec', 'width',
+  'audio_channels', 'audio_codec', 'audio_language', 'audio_tracks', 'subtitles',
+  'container', 'file_path', 'overall_bitrate', 'size',
 ]
 
 export const COLUMN_GROUPS: ColumnGroup[] = [
@@ -45,14 +52,16 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
     { id: 'width', label: 'Width' },
   ]},
   { label: 'Audio', columns: [
+    { id: 'audio_channels', label: 'Audio Channels' },
     { id: 'audio_codec', label: 'Audio Codec' },
-    { id: 'audio_channels', label: 'Channels' },
+    { id: 'audio_language', label: 'Audio Language' },
+    { id: 'audio_tracks', label: 'Audio Tracks' },
     { id: 'subtitles', label: 'Subtitles' },
   ]},
   { label: 'File', columns: [
-    { id: 'overall_bitrate', label: 'Overall Bitrate' },
     { id: 'container', label: 'Container' },
     { id: 'file_path', label: 'File Path' },
+    { id: 'overall_bitrate', label: 'Overall Bitrate' },
     { id: 'size', label: 'Size' },
   ]},
 ]
