@@ -133,11 +133,13 @@ export function MovieHeaderRow({
           case 'container':      return <Th key={id} label="Container"      col="container"      colId={id} {...shared} />
           case 'video_codec':      return <Th key={id} label="Video Codec"   col="video_codec"      colId={id} {...shared} />
           case 'video_resolution': return <Th key={id} label="Resolution"    col="video_resolution" colId={id} {...shared} />
+          case 'video_bitrate':    return <Th key={id} label="Video Bitrate" col="video_bitrate"    colId={id} {...shared} />
           case 'width':            return <Th key={id} label="Width"         col="width"            colId={id} {...shared} />
           case 'height':           return <Th key={id} label="Height"        col="height"           colId={id} {...shared} />
           case 'aspect_ratio':     return <Th key={id} label="Aspect Ratio"  col="aspect_ratio"     colId={id} {...shared} />
           case 'frame_rate':       return <Th key={id} label="Frame Rate"    col="frame_rate"       colId={id} {...shared} />
           case 'audio_codec':      return <Th key={id} label="Audio Codec"   col="audio_codec"      colId={id} {...shared} />
+          case 'audio_bitrate':   return <Th key={id} label="Audio Bitrate"  col="audio_bitrate"   colId={id} {...shared} />
           case 'audio_channels':  return <Th key={id} label="Audio Channels" col="audio_channels"  colId={id} {...shared} />
           case 'audio_language':  return <Th key={id} label="Audio Language" col="audio_language"  colId={id} {...shared} />
           case 'audio_tracks':    return <Th key={id} label="Audio Tracks"   col="audio_tracks"    colId={id} {...shared} />

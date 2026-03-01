@@ -131,11 +131,14 @@ class PlexService
       section.merge(
         movies: movies.map do |m|
           detail = details[m[:id]] || {}
-          subtitles     = detail[:subtitles_by_file]&.dig(m[:file_path])
-          audio_tracks  = detail[:audio_by_file]&.dig(m[:file_path])
+          subtitles      = detail[:subtitles_by_file]&.dig(m[:file_path])
+          audio_tracks   = detail[:audio_by_file]&.dig(m[:file_path])
           audio_language = detail[:audio_language_by_file]&.dig(m[:file_path])
-          m.merge(detail.except(:subtitles_by_file, :audio_by_file, :audio_language_by_file))
-           .merge(subtitles: subtitles, audio_tracks: audio_tracks, audio_language: audio_language)
+          audio_bitrate  = detail[:audio_bitrate_by_file]&.dig(m[:file_path])
+          video_bitrate  = detail[:video_bitrate_by_file]&.dig(m[:file_path])
+          m.merge(detail.except(:subtitles_by_file, :audio_by_file, :audio_language_by_file, :audio_bitrate_by_file, :video_bitrate_by_file))
+           .merge(subtitles: subtitles, audio_tracks: audio_tracks, audio_language: audio_language,
+                  audio_bitrate: audio_bitrate, video_bitrate: video_bitrate)
         end
       )
     end
@@ -242,10 +245,22 @@ class PlexService
         acc[part['file']] = subtitle_str.presence
       end
     end
+    video_bitrate_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
+      (media['Part'] || []).each do |part|
+        video_stream = (part['Stream'] || []).find { |s| s['streamType'].to_s == '1' }
+        acc[part['file']] = video_stream&.dig('bitrate')
+      end
+    end
     audio_language_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
       (media['Part'] || []).each do |part|
         selected = (part['Stream'] || []).find { |s| s['streamType'].to_s == '2' && s['selected'] }
         acc[part['file']] = selected && (selected['language'] || selected['languageTag'])
+      end
+    end
+    audio_bitrate_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
+      (media['Part'] || []).each do |part|
+        selected = (part['Stream'] || []).find { |s| s['streamType'].to_s == '2' && s['selected'] }
+        acc[part['file']] = selected&.dig('bitrate')
       end
     end
     audio_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
@@ -267,6 +282,8 @@ class PlexService
       subtitles_by_file: subtitles_by_file,
       audio_by_file: audio_by_file,
       audio_language_by_file: audio_language_by_file,
+      audio_bitrate_by_file: audio_bitrate_by_file,
+      video_bitrate_by_file: video_bitrate_by_file,
       summary: item['summary'],
       content_rating: item['contentRating'],
       audience_rating: item['audienceRating'],
