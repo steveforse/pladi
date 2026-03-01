@@ -17,7 +17,7 @@ import { Paginator } from '@/components/movies/Paginator'
 import { MovieHeaderRow } from '@/components/movies/MovieHeaderRow'
 import { MovieRow } from '@/components/movies/MovieRow'
 
-export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => void; onSettings: () => void }) {
+export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLogout: () => void; onSettings: () => void; onHistory: () => void }) {
   const {
     plexServers, selectedServerId, sections, selectedTitle,
     loading, refreshing, syncing, error, posterReady,
@@ -81,7 +81,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
             <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
           </div>
           <div className="flex-1" />
-          <HamburgerMenu onLogout={onLogout} onSettings={onSettings} />
+          <HamburgerMenu onLogout={onLogout} onSettings={onSettings} onHistory={onHistory} />
         </div>
         <div className="px-8 py-4 space-y-3">
           <p className="text-destructive text-sm">Failed to load movies: {error}</p>
@@ -120,7 +120,7 @@ export default function MoviesTable({ onLogout, onSettings }: { onLogout: () => 
             Updating...
           </span>
         )}
-        <HamburgerMenu onLogout={onLogout} onSettings={onSettings} />
+        <HamburgerMenu onLogout={onLogout} onSettings={onSettings} onHistory={onHistory} />
       </div>
 
       <div className="px-8 space-y-4">

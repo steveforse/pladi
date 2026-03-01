@@ -8,6 +8,7 @@ Rails.application.routes.draw do
 
   namespace :api do
     get :me, to: 'auth#me'
+    resources :history, only: [:index]
     resources :movies, only: %i[index update] do
       collection do
         get :refresh

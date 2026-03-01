@@ -83,9 +83,19 @@ class PlexService
     nil
   end
 
+  def fetch_movie_snapshot(movie_id)
+    item = @http
+      .get("/library/metadata/#{movie_id}")
+      .dig('MediaContainer', 'Metadata', 0) || {}
+    extract_snapshot(item)
+  end
+
   def update_movie(movie_id, fields)
+    before = fetch_movie_snapshot(movie_id)
     @http.put("/library/metadata/#{movie_id}?#{build_update_query(fields)}")
     bump_enrich_version
+    after = fetch_movie_snapshot(movie_id)
+    { before: before, after: after, unverified_fields: verify_fields(fields, after) }
   end
 
   private
@@ -176,6 +186,36 @@ class PlexService
     directory = payload.dig('MediaContainer', 'Directory') || []
     directory.select { |d| d['type'] == 'movie' }
   end
+
+  def verify_fields(fields, snapshot)
+    fields.filter_map do |key, value|
+      field = key.to_s
+      if TAG_FIELD_MAP.key?(field)
+        field unless Array(value).map(&:to_s).sort == snapshot[field].sort
+      elsif SCALAR_FIELD_MAP.key?(field)
+        field unless value.to_s == snapshot[field].to_s
+      end
+    end
+  end
+
+  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+  def extract_snapshot(item)
+    snapshot = {
+      section_id: item['librarySectionID'].to_s,
+      section_title: item['librarySectionTitle'].to_s,
+      movie_title: item['title'].to_s
+    }
+    SCALAR_FIELD_MAP.each_key do |key|
+      plex_attr = SCALAR_FIELD_MAP[key]
+      snapshot[key] = item[plex_attr].to_s
+    end
+    TAG_FIELD_MAP.each_key do |key|
+      tag_name = TAG_FIELD_MAP[key]
+      snapshot[key] = (item[tag_name] || []).pluck('tag').sort
+    end
+    snapshot
+  end
+  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
   def fetch_movie_detail(movie_id)
     item = @http

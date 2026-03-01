@@ -10,7 +10,25 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_225008) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_01_090244) do
+  create_table "movie_audit_logs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "field_name", null: false
+    t.string "field_type", null: false
+    t.string "movie_id", null: false
+    t.string "movie_title", null: false
+    t.text "new_value"
+    t.text "old_value"
+    t.integer "plex_server_id", null: false
+    t.string "section_id", null: false
+    t.string "section_title", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["created_at"], name: "index_movie_audit_logs_on_created_at"
+    t.index ["movie_id", "field_name"], name: "index_movie_audit_logs_on_movie_id_and_field_name"
+    t.index ["user_id"], name: "index_movie_audit_logs_on_user_id"
+  end
+
   create_table "plex_servers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -38,6 +56,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_225008) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "movie_audit_logs", "plex_servers"
+  add_foreign_key "movie_audit_logs", "users"
   add_foreign_key "plex_servers", "users"
   add_foreign_key "sessions", "users"
 end

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrf'
 
-export function HamburgerMenu({ onLogout, onSettings }: { onLogout: () => void; onSettings: () => void }) {
+export function HamburgerMenu({ onLogout, onSettings, onHistory }: { onLogout: () => void; onSettings: () => void; onHistory: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -30,6 +30,12 @@ export function HamburgerMenu({ onLogout, onSettings }: { onLogout: () => void; 
             className="w-full text-left px-4 py-2 text-sm hover:bg-muted/50"
           >
             Settings
+          </button>
+          <button
+            onClick={() => { setOpen(false); onHistory() }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-muted/50"
+          >
+            History
           </button>
           <button
             onClick={async () => {

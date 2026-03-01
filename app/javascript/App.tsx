@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react'
 import MoviesTable from '@/components/MoviesTable'
 import LoginPage from '@/components/LoginPage'
 import SettingsPage from '@/components/SettingsPage'
+import HistoryPage from '@/components/HistoryPage'
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated'
-type Page = 'movies' | 'settings'
+type Page = 'movies' | 'settings' | 'history'
 
 function LoadingScreen() {
   return (
@@ -49,10 +50,14 @@ export default function App() {
   if (page === 'settings')
     return <SettingsPage onBack={() => window.history.back()} />
 
+  if (page === 'history')
+    return <HistoryPage onBack={() => window.history.back()} />
+
   return (
     <MoviesTable
       onLogout={() => setAuthState('unauthenticated')}
       onSettings={() => navigateTo('settings')}
+      onHistory={() => navigateTo('history')}
     />
   )
 }

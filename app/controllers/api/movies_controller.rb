@@ -30,12 +30,26 @@ module Api
       head :ok
     end
 
+    # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def update
-      service.update_movie(params[:id], movie_params.to_h)
+      result = service.update_movie(params[:id], movie_params.to_h)
+      if result[:unverified_fields].any?
+        render json: { error: 'Plex did not persist this update' }, status: :unprocessable_content
+        return
+      end
+      MovieAuditLog.record_changes(
+        user: Current.user,
+        plex_server: @server,
+        movie_id: params[:id],
+        fields: movie_params.to_h,
+        before: result[:before],
+        after: result[:after]
+      )
       head :no_content
     rescue StandardError => e
       render json: { error: e.message }, status: :unprocessable_content
     end
+    # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
     def poster
       image = service.poster_for(params[:id])
