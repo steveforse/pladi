@@ -129,7 +129,11 @@ class PlexService
       movies  = section[:movies]
       details = fetch_details_concurrently(movies)
       section.merge(
-        movies: movies.map { |m| m.merge(details[m[:id]] || {}) }
+        movies: movies.map do |m|
+          detail = details[m[:id]] || {}
+          subtitles = detail[:subtitles_by_file]&.dig(m[:file_path])
+          m.merge(detail.except(:subtitles_by_file)).merge(subtitles: subtitles)
+        end
       )
     end
   end
@@ -228,10 +232,15 @@ class PlexService
 
   # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
   def parse_movie_detail(item)
-    streams = (item['Media'] || []).flat_map { |m| (m['Part'] || []).flat_map { |p| p['Stream'] || [] } }
-    sub_streams = streams.select { |s| s['streamType'].to_s == '3' }
-    subtitles_str = sub_streams.map { |s| "#{s['displayTitle'] || s['language'] || s['languageTag']} (#{s['codec']&.upcase})" }.uniq.join(', ')
+    subtitles_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
+      (media['Part'] || []).each do |part|
+        sub_streams = (part['Stream'] || []).select { |s| s['streamType'].to_s == '3' }
+        subtitle_str = sub_streams.map { |s| "#{s['displayTitle'] || s['language'] || s['languageTag']} (#{s['codec']&.upcase})" }.uniq.join(', ')
+        acc[part['file']] = subtitle_str.presence
+      end
+    end
     {
+      subtitles_by_file: subtitles_by_file,
       summary: item['summary'],
       content_rating: item['contentRating'],
       audience_rating: item['audienceRating'],
@@ -242,8 +251,7 @@ class PlexService
       writers: (item['Writer'] || []).pluck('tag').join(', '),
       producers: (item['Producer'] || []).pluck('tag').join(', '),
       collections: (item['Collection'] || []).pluck('tag').join(', '),
-      labels: (item['Label'] || []).pluck('tag').join(', '),
-      subtitles: subtitles_str.presence
+      labels: (item['Label'] || []).pluck('tag').join(', ')
     }
   end
   # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
