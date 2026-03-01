@@ -1,14 +1,8 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import pladiLogo from '@/assets/pladi_logo.png'
-
-function getCsrfToken(): string {
-  return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
+import { getCsrfToken } from '@/lib/csrf'
+import { isValidEmail } from '@/lib/utils'
 
 export default function SetupPage({ onComplete }: { onComplete: () => void }) {
   const [emailAddress, setEmailAddress] = useState('')

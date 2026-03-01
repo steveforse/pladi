@@ -8,6 +8,7 @@ Rails.application.routes.draw do
 
   namespace :api do
     resource :setup, only: %i[show create], controller: 'setup'
+    resource :account, only: [:update], controller: 'account'
     get :me, to: 'auth#me'
     resources :history, only: [:index]
     resources :movies, only: %i[index update] do
