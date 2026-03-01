@@ -4,6 +4,11 @@ import type { Movie, PlexServerInfo, Section } from '@/lib/types'
 
 type PosterMovie = { id: string; thumb: string }
 
+const STORAGE_KEYS = {
+  serverId: 'pladi_selected_server_id',
+  library: 'pladi_selected_library',
+}
+
 export function useMoviesData() {
   const [plexServers, setPlexServers] = useState<PlexServerInfo[]>([])
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
@@ -45,7 +50,11 @@ export function useMoviesData() {
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       const data: Section[] = await res.json()
       setSections(data)
-      if (data.length > 0) setSelectedTitle(data[0].title)
+      if (data.length > 0) {
+        const savedLibrary = localStorage.getItem(STORAGE_KEYS.library)
+        const restored = savedLibrary && data.some((s) => s.title === savedLibrary) ? savedLibrary : data[0].title
+        setSelectedTitle(restored)
+      }
       setLoading(false)
 
       // Refresh section list from Plex
@@ -102,7 +111,8 @@ export function useMoviesData() {
           setLoading(false)
           return
         }
-        const firstId = servers[0].id
+        const savedId = Number(localStorage.getItem(STORAGE_KEYS.serverId))
+        const firstId = (savedId && servers.some((s) => s.id === savedId)) ? savedId : servers[0].id
         setSelectedServerId(firstId)
         await loadMovies(firstId)
       } catch (err: unknown) {
@@ -114,8 +124,14 @@ export function useMoviesData() {
   }, [])
 
   function handleServerChange(id: number) {
+    localStorage.setItem(STORAGE_KEYS.serverId, String(id))
     setSelectedServerId(id)
     loadMovies(id)
+  }
+
+  function handleLibraryChange(title: string | null) {
+    if (title !== null) localStorage.setItem(STORAGE_KEYS.library, title)
+    setSelectedTitle(title)
   }
 
   function handleServerAdded(server: PlexServerInfo) {
@@ -181,7 +197,7 @@ export function useMoviesData() {
     uncachedPosterMovies,
     handleServerChange,
     handleServerAdded,
-    setSelectedTitle,
+    setSelectedTitle: handleLibraryChange,
     warmPosters,
     updateMovie,
   }

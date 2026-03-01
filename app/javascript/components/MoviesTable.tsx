@@ -45,7 +45,7 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(visibleMovies.length)
 
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(() => localStorage.getItem('pladi_filters_open') === 'true')
   const activeFilterCount =
     [multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder].filter(Boolean).length +
     filters.length
@@ -157,7 +157,7 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
         {/* Filters */}
         <div className="border rounded-md">
           <button
-            onClick={() => setFiltersOpen((o) => !o)}
+            onClick={() => setFiltersOpen((o) => { const next = !o; localStorage.setItem('pladi_filters_open', String(next)); return next })}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             {filtersOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
