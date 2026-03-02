@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createConsumer } from '@rails/actioncable'
 import type { Movie, PlexServerInfo, Section } from '@/lib/types'
+import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCache, updateEnrichmentCacheMovie } from '@/lib/enrichmentCache'
 
 type PosterMovie = { id: string; thumb: string }
 
@@ -49,7 +50,7 @@ export function useMoviesData() {
       const res = await fetch(`/api/movies?server_id=${serverId}`)
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       const data: Section[] = await res.json()
-      setSections(data)
+      setSections(mergeEnrichmentCache(serverId, data))
       if (data.length > 0) {
         const savedLibrary = localStorage.getItem(STORAGE_KEYS.library)
         const restored = savedLibrary && data.some((s) => s.title === savedLibrary) ? savedLibrary : data[0].title
@@ -63,7 +64,7 @@ export function useMoviesData() {
         const refreshRes = await fetch(`/api/movies/refresh?server_id=${serverId}`)
         if (refreshRes.ok) {
           const fresh: Section[] = await refreshRes.json()
-          setSections(fresh)
+          setSections(mergeEnrichmentCache(serverId, fresh))
           setSelectedTitle((prev) =>
             prev === null || fresh.some((s) => s.title === prev)
               ? prev
@@ -80,7 +81,22 @@ export function useMoviesData() {
         const enrichRes = await fetch(`/api/movies/enrich?server_id=${serverId}`)
         if (enrichRes.ok) {
           const enrichData = await enrichRes.json()
-          setSections(enrichData.sections)
+          saveEnrichmentCache(serverId, enrichData.sections)
+          setSections((prev) => {
+            const prevById = new Map<string, Movie>()
+            for (const section of prev) {
+              for (const movie of section.movies) prevById.set(movie.id, movie)
+            }
+            return (enrichData.sections as Section[]).map((section) => ({
+              ...section,
+              movies: section.movies.map((movie: Movie) => {
+                const existing = prevById.get(movie.id)
+                if (!existing) return movie
+                const changed = ENRICHMENT_FIELDS.some((f) => movie[f] !== existing[f])
+                return changed ? movie : existing
+              }),
+            }))
+          })
           if (enrichData.cached_poster_ids?.length) {
             setPosterReady((prev) => {
               const next = new Set(prev)
@@ -169,6 +185,7 @@ export function useMoviesData() {
         movies: section.movies.map((m) => (m.id === movieId ? { ...m, ...patch } : m)),
       }))
     )
+    if (selectedServerId) updateEnrichmentCacheMovie(selectedServerId, movieId, patch)
   }
 
   async function warmPosters(priorityIds: string[]) {
