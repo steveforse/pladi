@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowLeft } from 'lucide-react'
+import PageHeader from '@/components/PageHeader'
 import { useHistory, AuditLog } from '@/hooks/useHistory'
 
 function formatValue(log: AuditLog, which: 'old' | 'new') {
@@ -36,12 +36,7 @@ export default function HistoryPage({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#161b1f' }}>
-      <header className="border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={onBack} className="btn px-2 py-1.5" aria-label="Back">
-          <ArrowLeft size={18} />
-        </button>
-        <h1 className="text-lg font-semibold text-foreground">Edit History</h1>
-      </header>
+      <PageHeader title="Change History" onBack={onBack} />
 
       <main className="p-4">
         {loading && (
