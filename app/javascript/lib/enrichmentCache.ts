@@ -62,6 +62,24 @@ export function mergeEnrichmentCache(serverId: number, sections: Section[]): Sec
   }
 }
 
+export function savePosterReadyCache(serverId: number, ids: string[]): void {
+  try {
+    localStorage.setItem(`pladi_poster_ready_v${VERSION}_${serverId}`, JSON.stringify(ids))
+  } catch {
+    // localStorage quota exceeded or unavailable; silently ignore
+  }
+}
+
+export function loadPosterReadyCache(serverId: number): Set<string> {
+  try {
+    const raw = localStorage.getItem(`pladi_poster_ready_v${VERSION}_${serverId}`)
+    if (!raw) return new Set()
+    return new Set(JSON.parse(raw) as string[])
+  } catch {
+    return new Set()
+  }
+}
+
 export function updateEnrichmentCacheMovie(serverId: number, movieId: string, patch: Partial<Movie>): void {
   try {
     const key = cacheKey(serverId)

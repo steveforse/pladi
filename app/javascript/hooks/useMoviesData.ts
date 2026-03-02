@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createConsumer } from '@rails/actioncable'
 import type { Movie, PlexServerInfo, Section } from '@/lib/types'
-import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCache, updateEnrichmentCacheMovie } from '@/lib/enrichmentCache'
+import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCache, updateEnrichmentCacheMovie, savePosterReadyCache, loadPosterReadyCache } from '@/lib/enrichmentCache'
 
 type PosterMovie = { id: string; thumb: string }
 
@@ -32,7 +32,7 @@ export function useMoviesData() {
   // Subscribe to PostersChannel whenever selectedServerId changes
   useEffect(() => {
     if (!selectedServerId || !consumerRef.current) return
-    setPosterReady(new Set())
+    setPosterReady(loadPosterReadyCache(selectedServerId))
     const sub = consumerRef.current.subscriptions.create(
       { channel: 'PostersChannel', server_id: selectedServerId },
       { received(data: { movie_id: string }) {
@@ -46,6 +46,7 @@ export function useMoviesData() {
     setLoading(true)
     setSections([])
     setSelectedTitle(null)
+    setPosterReady(loadPosterReadyCache(serverId))
     try {
       const res = await fetch(`/api/movies?server_id=${serverId}`)
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
@@ -98,6 +99,7 @@ export function useMoviesData() {
             }))
           })
           if (enrichData.cached_poster_ids?.length) {
+            savePosterReadyCache(serverId, enrichData.cached_poster_ids)
             setPosterReady((prev) => {
               const next = new Set(prev)
               for (const id of enrichData.cached_poster_ids) next.add(id)

@@ -8,7 +8,8 @@ class WarmPostersJob < ApplicationJob
     service = PlexService.new(server)
     movies.each do |movie|
       movie = movie.with_indifferent_access
-      service.warm_poster(movie[:id])
+      next unless service.warm_poster(movie[:id])
+
       ActionCable.server.broadcast("posters_#{server_id}", { movie_id: movie[:id] })
     end
   end

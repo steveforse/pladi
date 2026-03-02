@@ -58,7 +58,7 @@ class PlexService
   end
 
   def poster_for(movie_id)
-    Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) do
+    Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL, skip_nil: true) do
       plex_get_image("/library/metadata/#{movie_id}/thumb")
     end
   rescue StandardError
@@ -72,7 +72,7 @@ class PlexService
   end
 
   def warm_poster(movie_id)
-    Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) do
+    Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL, skip_nil: true) do
       plex_get_image("/library/metadata/#{movie_id}/thumb")
     end
   rescue StandardError
