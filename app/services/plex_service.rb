@@ -24,12 +24,15 @@ class PlexService
 
   def initialize(server)
     @server    = server
-    @http      = PlexHttp.new(server.url, server.token)
     @server_id = server.id
+    @sdk = ::PlexRubySDK::PlexAPI.new(
+      server_url: server.url,
+      security: ::PlexRubySDK::Shared::Security.new(access_token: server.token)
+    )
   end
 
   def friendly_name
-    @http.get('/').dig('MediaContainer', 'friendlyName')
+    plex_get('/').dig('MediaContainer', 'friendlyName')
   end
 
   def cached_sections
@@ -60,12 +63,12 @@ class PlexService
 
   def poster_for(movie_id)
     Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) do
-      thumb_path = @http
-        .get("/library/metadata/#{movie_id}")
-        .dig('MediaContainer', 'Metadata', 0, 'thumb')
-      next nil unless thumb_path
+      res = @sdk.media.get_thumb_image(
+        ::PlexRubySDK::Operations::GetThumbImageRequest.new(rating_key: movie_id.to_i)
+      )
+      next nil unless res.bytes
 
-      @http.fetch_poster_bytes(thumb_path)
+      { data: res.bytes.b, content_type: res.content_type || 'image/jpeg' }
     end
   rescue StandardError
     nil
@@ -77,26 +80,35 @@ class PlexService
     keys.filter_map { |key, id| id if hits.key?(key) }.to_set
   end
 
-  def warm_poster(movie_id, thumb_path)
-    Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) { @http.fetch_poster_bytes(thumb_path) }
+  def warm_poster(movie_id)
+    Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) do
+      res = @sdk.media.get_thumb_image(
+        ::PlexRubySDK::Operations::GetThumbImageRequest.new(rating_key: movie_id.to_i)
+      )
+      next nil unless res.bytes
+
+      { data: res.bytes.b, content_type: res.content_type || 'image/jpeg' }
+    end
   rescue StandardError
     nil
   end
 
   def fetch_movie_snapshot(movie_id)
-    item = @http
-      .get("/library/metadata/#{movie_id}")
+    item = plex_get("/library/metadata/#{movie_id}")
       .dig('MediaContainer', 'Metadata', 0) || {}
     extract_snapshot(item)
   end
 
   def update_movie(movie_id, fields)
     before = fetch_movie_snapshot(movie_id)
-    @http.put("/library/metadata/#{movie_id}?#{build_update_query(fields)}")
+    plex_put("/library/metadata/#{movie_id}?#{build_update_query(fields)}")
     bump_enrich_version
     after = fetch_movie_snapshot(movie_id)
     { before: before, after: after, unverified_fields: verify_fields(fields, after) }
   end
+
+  OPEN_TIMEOUT = 5
+  READ_TIMEOUT = 30
 
   private
 
@@ -112,17 +124,74 @@ class PlexService
     Rails.cache.write(cache_key('enrich_version'), enrich_version + 1, expires_in: CACHE_TTL)
   end
 
+  def fetch_movie_sections
+    payload = plex_get('/library/sections')
+    (payload.dig('MediaContainer', 'Directory') || []).select { |d| d['type'] == 'movie' }
+  end
+
   def cached_movies_for(section_id, updated_at)
     Rails.cache.fetch(
       cache_key('section', section_id, updated_at, enrich_version),
       expires_in: CACHE_TTL
     ) do
-      PlexSection.new(@server)
-        .movies_for(section_id)
-        .sort_by { |m| m[:title].downcase }
+      movies_for_section(section_id).sort_by { |m| m[:title].downcase }
     end
   end
 
+  def machine_id
+    @machine_id ||= plex_get('/identity').dig('MediaContainer', 'machineIdentifier')
+  end
+
+  def plex_url_for(movie_id)
+    escaped = CGI.escape("/library/metadata/#{movie_id}")
+    "https://app.plex.tv/desktop/#!/server/#{machine_id}/details?key=#{escaped}"
+  end
+
+  def movies_for_section(section_key)
+    data  = plex_get("/library/sections/#{section_key}/all")
+    items = data.dig('MediaContainer', 'Metadata') || []
+    items.flat_map do |item|
+      plex_url = plex_url_for(item['ratingKey'])
+      (item['Media'] || []).flat_map do |media|
+        (media['Part'] || []).map { |part| build_movie_hash(item, media, part, plex_url) }
+      end
+    end
+  end
+
+  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+  def build_movie_hash(item, media, part, plex_url)
+    {
+      id: item['ratingKey'],
+      title: item['title'],
+      original_title: item['originalTitle'],
+      year: item['year'],
+      file_path: part['file'],
+      container: media['container'],
+      video_codec: media['videoCodec'],
+      video_resolution: media['videoResolution'],
+      width: media['width'],
+      height: media['height'],
+      aspect_ratio: media['aspectRatio'],
+      frame_rate: media['videoFrameRate'],
+      audio_codec: media['audioCodec'],
+      audio_channels: media['audioChannels'],
+      overall_bitrate: media['bitrate'],
+      size: part['size'],
+      duration: media['duration'],
+      sort_title: item['titleSort'],
+      originally_available: item['originallyAvailableAt'],
+      critic_rating: item['rating'],
+      studio: item['studio'],
+      tagline: item['tagline'],
+      updated_at: item['updatedAt'],
+      thumb: item['thumb'],
+      art: item['art'],
+      plex_url: plex_url
+    }
+  end
+  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+
+  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def enrich_section(section)
     key = cache_key('section', section[:id], section[:updated_at], 'enriched', enrich_version)
     Rails.cache.fetch(key, expires_in: CACHE_TTL) do
@@ -136,13 +205,17 @@ class PlexService
           audio_language = detail[:audio_language_by_file]&.dig(m[:file_path])
           audio_bitrate  = detail[:audio_bitrate_by_file]&.dig(m[:file_path])
           video_bitrate  = detail[:video_bitrate_by_file]&.dig(m[:file_path])
-          m.merge(detail.except(:subtitles_by_file, :audio_by_file, :audio_language_by_file, :audio_bitrate_by_file, :video_bitrate_by_file))
-           .merge(subtitles: subtitles, audio_tracks: audio_tracks, audio_language: audio_language,
-                  audio_bitrate: audio_bitrate, video_bitrate: video_bitrate)
+          stream_keys = %i[subtitles_by_file audio_by_file
+                           audio_language_by_file audio_bitrate_by_file video_bitrate_by_file]
+          m.merge(detail.except(*stream_keys))
+            .merge(subtitles: subtitles, audio_tracks: audio_tracks, audio_language: audio_language,
+                   audio_bitrate: audio_bitrate, video_bitrate: video_bitrate)
         end
       )
     end
   end
+
+  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def fetch_details_concurrently(movies)
     queue  = movies.dup
@@ -169,79 +242,22 @@ class PlexService
     end
   end
 
-  def build_update_query(fields)
-    scalar_pairs = [%w[type 1]]
-    raw_tag_parts = []
-    fields.each { |key, value| collect_field_parts(key.to_s, value, scalar_pairs, raw_tag_parts) }
-    ([URI.encode_www_form(scalar_pairs)] + raw_tag_parts).join('&')
-  end
-
-  def collect_field_parts(key, value, scalar_pairs, raw_tag_parts)
-    if (plex_param = SCALAR_FIELD_MAP[key])
-      scalar_pairs << ["#{plex_param}.value", value.to_s]
-      scalar_pairs << ["#{plex_param}.locked", '1']
-    elsif (tag_name = TAG_FIELD_MAP[key])
-      put_name = tag_name.downcase
-      Array(value).each_with_index do |tag, i|
-        raw_tag_parts << "#{put_name}[#{i}].tag.tag=#{CGI.escape(tag.to_s)}"
-      end
-      raw_tag_parts << "#{put_name}.locked=1"
-    end
-  end
-
-  # An array of hashes representing the JSON payload for each movie section
-  # (but not the movies themselves, which are fetched separately per section).
-  def fetch_movie_sections
-    payload   = @http.get('/library/sections')
-    directory = payload.dig('MediaContainer', 'Directory') || []
-    directory.select { |d| d['type'] == 'movie' }
-  end
-
-  def verify_fields(fields, snapshot)
-    fields.filter_map do |key, value|
-      field = key.to_s
-      if TAG_FIELD_MAP.key?(field)
-        field unless Array(value).map(&:to_s).sort == snapshot[field].sort
-      elsif SCALAR_FIELD_MAP.key?(field)
-        field unless value.to_s == snapshot[field].to_s
-      end
-    end
-  end
-
-  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
-  def extract_snapshot(item)
-    snapshot = {
-      section_id: item['librarySectionID'].to_s,
-      section_title: item['librarySectionTitle'].to_s,
-      movie_title: item['title'].to_s
-    }
-    SCALAR_FIELD_MAP.each_key do |key|
-      plex_attr = SCALAR_FIELD_MAP[key]
-      snapshot[key] = item[plex_attr].to_s
-    end
-    TAG_FIELD_MAP.each_key do |key|
-      tag_name = TAG_FIELD_MAP[key]
-      snapshot[key] = (item[tag_name] || []).pluck('tag').sort
-    end
-    snapshot
-  end
-  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
-
   def fetch_movie_detail(movie_id)
-    item = @http
-      .get("/library/metadata/#{movie_id}")
+    item = plex_get("/library/metadata/#{movie_id}")
       .dig('MediaContainer', 'Metadata', 0) || {}
     parse_movie_detail(item)
   rescue StandardError
     {}
   end
 
-  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
+  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def parse_movie_detail(item)
     subtitles_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
       (media['Part'] || []).each do |part|
-        sub_streams = (part['Stream'] || []).select { |s| s['streamType'].to_s == '3' }
-        subtitle_str = sub_streams.map { |s| "#{s['displayTitle'] || s['language'] || s['languageTag']} (#{s['codec']&.upcase})" }.uniq.join(', ')
+        sub_streams  = (part['Stream'] || []).select { |s| s['streamType'].to_s == '3' }
+        subtitle_str = sub_streams.map do |s|
+          "#{s['displayTitle'] || s['language'] || s['languageTag']} (#{s['codec']&.upcase})"
+        end.uniq.join(', ')
         acc[part['file']] = subtitle_str.presence
       end
     end
@@ -270,8 +286,8 @@ class PlexService
           lang    = s['language'] || s['languageTag']
           details = [
             s['codec']&.upcase,
-            (s['audioChannelLayout'] || (s['channels'] && "#{s['channels']}ch")),
-            (s['bitrate'] && "#{s['bitrate']} kbps")
+            s['audioChannelLayout'] || (s['channels'] && "#{s['channels']}ch"),
+            s['bitrate'] && "#{s['bitrate']} kbps"
           ].compact.join(', ')
           details.present? ? "#{lang} (#{details})" : lang
         end.uniq.join(', ')
@@ -297,6 +313,88 @@ class PlexService
       labels: (item['Label'] || []).pluck('tag').join(', ')
     }
   end
-  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
+  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
+  def build_update_query(fields)
+    scalar_pairs  = [%w[type 1]]
+    raw_tag_parts = []
+    fields.each { |key, value| collect_field_parts(key.to_s, value, scalar_pairs, raw_tag_parts) }
+    ([URI.encode_www_form(scalar_pairs)] + raw_tag_parts).join('&')
+  end
+
+  def collect_field_parts(key, value, scalar_pairs, raw_tag_parts)
+    if (plex_param = SCALAR_FIELD_MAP[key])
+      scalar_pairs << ["#{plex_param}.value", value.to_s]
+      scalar_pairs << ["#{plex_param}.locked", '1']
+    elsif (tag_name = TAG_FIELD_MAP[key])
+      put_name = tag_name.downcase
+      Array(value).each_with_index do |tag, i|
+        raw_tag_parts << "#{put_name}[#{i}].tag.tag=#{CGI.escape(tag.to_s)}"
+      end
+      raw_tag_parts << "#{put_name}.locked=1"
+    end
+  end
+
+  def verify_fields(fields, snapshot)
+    fields.filter_map do |key, value|
+      field = key.to_s
+      if TAG_FIELD_MAP.key?(field)
+        field unless Array(value).map(&:to_s).sort == snapshot[field].sort
+      elsif SCALAR_FIELD_MAP.key?(field)
+        field unless value.to_s == snapshot[field].to_s
+      end
+    end
+  end
+
+  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+  def extract_snapshot(item)
+    snapshot = {
+      section_id: item['librarySectionID'].to_s,
+      section_title: item['librarySectionTitle'].to_s,
+      movie_title: item['title'].to_s
+    }
+    SCALAR_FIELD_MAP.each_key do |key|
+      plex_attr     = SCALAR_FIELD_MAP[key]
+      snapshot[key] = item[plex_attr].to_s
+    end
+    TAG_FIELD_MAP.each_key do |key|
+      tag_name      = TAG_FIELD_MAP[key]
+      snapshot[key] = (item[tag_name] || []).pluck('tag').sort
+    end
+    snapshot
+  end
+  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+
+  def plex_get(path)
+    uri     = URI("#{@server.url}#{path}")
+    request = Net::HTTP::Get.new(uri)
+    request['Accept']       = 'application/json'
+    request['X-Plex-Token'] = @server.token
+    response = http_start(uri) { |http| http.request(request) }
+    raise "Plex returned HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(response.body)
+  rescue JSON::ParserError
+    raise 'Plex returned an unexpected response — check your server URL and token'
+  end
+
+  def plex_put(path)
+    uri     = URI("#{@server.url}#{path}")
+    request = Net::HTTP::Put.new(uri)
+    request['Accept']       = 'application/json'
+    request['X-Plex-Token'] = @server.token
+    response = http_start(uri) { |http| http.request(request) }
+    raise "Plex returned HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+  end
+
+  def http_start(uri, &)
+    Net::HTTP.start(
+      uri.hostname, uri.port,
+      use_ssl: uri.scheme == 'https',
+      open_timeout: OPEN_TIMEOUT,
+      read_timeout: READ_TIMEOUT,
+      &
+    )
+  end
 end
 # rubocop:enable Metrics/ClassLength
