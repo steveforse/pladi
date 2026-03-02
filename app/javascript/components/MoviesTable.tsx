@@ -16,6 +16,7 @@ import { ColumnPicker } from '@/components/movies/ColumnPicker'
 import { Paginator } from '@/components/movies/Paginator'
 import { MovieHeaderRow } from '@/components/movies/MovieHeaderRow'
 import { MovieRow } from '@/components/movies/MovieRow'
+import { PosterModal } from '@/components/movies/PosterModal'
 
 export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLogout: () => void; onSettings: () => void; onHistory: () => void }) {
   const {
@@ -46,6 +47,11 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(visibleMovies.length)
 
   const [filtersOpen, setFiltersOpen] = useState(() => localStorage.getItem('pladi_filters_open') === 'true')
+  const [openPosterMovieId, setOpenPosterMovieId] = useState<string | null>(null)
+
+  const posterMovies = visibleMovies.filter((m) => posterReady.has(m.id))
+  const posterModalIdx = openPosterMovieId ? posterMovies.findIndex((m) => m.id === openPosterMovieId) : -1
+  const posterModalMovie = posterModalIdx >= 0 ? posterMovies[posterModalIdx] : null
   const activeFilterCount =
     [multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder].filter(Boolean).length +
     filters.length
@@ -277,6 +283,7 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
                       selectedServerId={selectedServerId}
                       posterReady={posterReady}
                       onUpdate={updateMovie}
+                      onOpenPoster={setOpenPosterMovieId}
                     />
                   ))}
                 </tbody>
@@ -290,6 +297,20 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
           </div>
         )}
       </div>
+
+      {posterModalMovie && (
+        <PosterModal
+          movie={posterModalMovie}
+          selectedServerId={selectedServerId}
+          hasPrev={posterModalIdx > 0}
+          hasNext={posterModalIdx < posterMovies.length - 1}
+          position={posterModalIdx + 1}
+          total={posterMovies.length}
+          onClose={() => setOpenPosterMovieId(null)}
+          onPrev={() => setOpenPosterMovieId(posterMovies[posterModalIdx - 1].id)}
+          onNext={() => setOpenPosterMovieId(posterMovies[posterModalIdx + 1].id)}
+        />
+      )}
     </div>
   )
 }

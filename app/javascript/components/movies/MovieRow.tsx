@@ -3,6 +3,29 @@ import type { Movie, AllColumnId, ColumnId } from '@/lib/types'
 import { formatSize, formatBitrate, formatDate, formatISODate, formatFrameRate, formatChannels, formatDuration, formatResolution } from '@/lib/formatters'
 import { EditableCell } from './EditableCell'
 
+function PosterCell({ movie, selectedServerId, posterReady, onOpenPoster }: {
+  movie: Movie
+  selectedServerId: number | null
+  posterReady: Set<string>
+  onOpenPoster: (movieId: string) => void
+}) {
+  if (!posterReady.has(movie.id)) {
+    return <td className="px-2 py-1"><div className="h-16 w-11 rounded bg-muted animate-pulse" /></td>
+  }
+
+  return (
+    <td className="px-2 py-1">
+      <button onClick={() => onOpenPoster(movie.id)} className="cursor-pointer focus:outline-none">
+        <img
+          src={`/api/movies/${movie.id}/poster?server_id=${selectedServerId}`}
+          alt=""
+          className="h-16 w-auto rounded hover:opacity-80 transition-opacity"
+        />
+      </button>
+    </td>
+  )
+}
+
 export function MovieRow({
   movie,
   colOrder,
@@ -10,6 +33,7 @@ export function MovieRow({
   selectedServerId,
   posterReady,
   onUpdate,
+  onOpenPoster,
 }: {
   movie: Movie
   colOrder: AllColumnId[]
@@ -17,6 +41,7 @@ export function MovieRow({
   selectedServerId: number | null
   posterReady: Set<string>
   onUpdate: (id: string, patch: Partial<Movie>) => Promise<void>
+  onOpenPoster: (movieId: string) => void
 }) {
   const col = (id: ColumnId) => visibleCols.has(id)
 
@@ -225,19 +250,7 @@ export function MovieRow({
             />
           )
           case 'background':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.art ? '✓' : '—'}</td>
-          case 'poster':         return (
-            <td key={id} className="px-2 py-1">
-              {posterReady.has(movie.id) ? (
-                <img
-                  src={`/api/movies/${movie.id}/poster?server_id=${selectedServerId}`}
-                  alt=""
-                  className="h-16 w-auto rounded"
-                />
-              ) : (
-                <div className="h-16 w-11 rounded bg-muted animate-pulse" />
-              )}
-            </td>
-          )
+          case 'poster':         return <PosterCell key={id} movie={movie} selectedServerId={selectedServerId} posterReady={posterReady} onOpenPoster={onOpenPoster} />
         }
       })}
     </tr>
