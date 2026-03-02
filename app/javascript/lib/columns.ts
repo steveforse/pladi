@@ -1,14 +1,14 @@
 import type { AllColumnId, ColumnDef, ColumnGroup } from '@/lib/types'
 
 export const DEFAULT_COL_ORDER: AllColumnId[] = [
-  'id', 'title',
-  'duration', 'edition', 'updated_at', 'originally_available', 'original_title', 'poster', 'sort_title', 'year',
+  'id', 'poster', 'title', 'original_title', 'sort_title',
+  'year', 'originally_available', 'updated_at', 'duration', 'edition',
   'audience_rating', 'content_rating', 'critic_rating',
   'directors', 'producers', 'writers',
   'background', 'collections', 'country', 'genres', 'labels', 'studio', 'summary', 'tagline',
-  'aspect_ratio', 'frame_rate', 'height', 'video_resolution', 'video_bitrate', 'video_codec', 'width',
-  'audio_bitrate', 'audio_channels', 'audio_codec', 'audio_language', 'audio_tracks', 'subtitles',
-  'container', 'file_path', 'overall_bitrate', 'size',
+  'video_codec', 'video_bitrate', 'frame_rate', 'width', 'height', 'aspect_ratio', 'video_resolution',
+  'audio_codec', 'audio_bitrate', 'audio_channels', 'audio_language', 'audio_tracks', 'subtitles',
+  'file_path', 'container', 'overall_bitrate', 'size',
 ]
 
 export const COLUMN_GROUPS: ColumnGroup[] = [
@@ -46,11 +46,11 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
   { label: 'Video', columns: [
     { id: 'aspect_ratio', label: 'Aspect Ratio' },
     { id: 'frame_rate', label: 'Frame Rate' },
+    { id: 'width', label: 'Width' },
     { id: 'height', label: 'Height' },
     { id: 'video_resolution', label: 'Resolution' },
     { id: 'video_bitrate', label: 'Video Bitrate' },
     { id: 'video_codec', label: 'Video Codec' },
-    { id: 'width', label: 'Width' },
   ]},
   { label: 'Audio', columns: [
     { id: 'audio_bitrate', label: 'Audio Bitrate' },
