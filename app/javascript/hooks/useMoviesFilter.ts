@@ -27,7 +27,7 @@ function loadFiltersFromStorage(): {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
-  } catch {}
+  } catch { /* storage unavailable; ignore */ }
   return {
     multiOnly: false,
     unmatchedOnly: false,
@@ -62,7 +62,7 @@ export function useMoviesFilter(sections: Section[], selectedTitle: string | nul
         STORAGE_KEY,
         JSON.stringify({ multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, sortKey, sortDir, filters })
       )
-    } catch {}
+    } catch { /* storage unavailable; ignore */ }
   }, [multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, sortKey, sortDir, filters])
 
   const visibleMovies = useMemo(() => {

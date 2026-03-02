@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { AllColumnId, ColumnId } from '@/lib/types'
-import { ALL_COLUMNS, DEFAULT_COL_ORDER } from '@/lib/columns'
+import { DEFAULT_COL_ORDER } from '@/lib/columns'
 
 const STORAGE_KEY = 'pladi.columns'
 
@@ -21,7 +21,7 @@ function loadColumnsFromStorage(): { visibleCols: Set<ColumnId>; colOrder: AllCo
         colOrder: merged,
       }
     }
-  } catch {}
+  } catch { /* storage unavailable; ignore */ }
   return { visibleCols: DEFAULT_VISIBLE, colOrder: DEFAULT_COL_ORDER }
 }
 
@@ -35,7 +35,7 @@ export function useColumnManager() {
   useEffect(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ visibleCols: [...visibleCols], colOrder }))
-    } catch {}
+    } catch { /* storage unavailable; ignore */ }
   }, [visibleCols, colOrder])
 
   function handleColChange(id: ColumnId, checked: boolean) {

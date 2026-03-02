@@ -1,15 +1,15 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 
 export function usePagination(totalCount: number) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
+  const [prevCount, setPrevCount] = useState(totalCount)
 
   const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(totalCount / pageSize))
 
   // Auto-reset to page 1 whenever total count changes
-  const prevCount = useRef(totalCount)
-  if (prevCount.current !== totalCount) {
-    prevCount.current = totalCount
+  if (prevCount !== totalCount) {
+    setPrevCount(totalCount)
     if (page !== 1) setPage(1)
   }
 

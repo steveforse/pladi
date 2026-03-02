@@ -69,6 +69,25 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+  lint_js:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Lint JavaScript/TypeScript
+        run: npm run lint
+
   test:
     runs-on: ubuntu-latest
 
