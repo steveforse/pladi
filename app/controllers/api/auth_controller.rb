@@ -7,7 +7,7 @@ module Api
     def me
       resume_session
       if Current.user
-        render json: { email_address: Current.user.email_address }
+        render json: { email_address: Current.user.email_address, download_images: Current.user.download_images }
       else
         render json: { error: 'Unauthenticated' }, status: :unauthorized
       end

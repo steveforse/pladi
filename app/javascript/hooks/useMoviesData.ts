@@ -11,7 +11,7 @@ const STORAGE_KEYS = {
   library: 'pladi_selected_library',
 }
 
-export function useMoviesData() {
+export function useMoviesData(downloadImages: boolean) {
   const [plexServers, setPlexServers] = useState<PlexServerInfo[]>([])
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
   const [sections, setSections] = useState<Section[]>([])
@@ -34,7 +34,7 @@ export function useMoviesData() {
 
   // Subscribe to PostersChannel whenever selectedServerId changes
   useEffect(() => {
-    if (!selectedServerId || !consumerRef.current) return
+    if (!downloadImages || !selectedServerId || !consumerRef.current) return
     setPosterReady(loadPosterReadyCache(selectedServerId))
     const sub = consumerRef.current.subscriptions.create(
       { channel: 'PostersChannel', server_id: selectedServerId },
@@ -47,7 +47,7 @@ export function useMoviesData() {
 
   // Subscribe to BackgroundsChannel whenever selectedServerId changes
   useEffect(() => {
-    if (!selectedServerId || !consumerRef.current) return
+    if (!downloadImages || !selectedServerId || !consumerRef.current) return
     setBackgroundReady(loadBackgroundReadyCache(selectedServerId))
     const sub = consumerRef.current.subscriptions.create(
       { channel: 'BackgroundsChannel', server_id: selectedServerId },
@@ -62,8 +62,10 @@ export function useMoviesData() {
     setLoading(true)
     setSections([])
     setSelectedTitle(null)
-    setPosterReady(loadPosterReadyCache(serverId))
-    setBackgroundReady(loadBackgroundReadyCache(serverId))
+    if (downloadImages) {
+      setPosterReady(loadPosterReadyCache(serverId))
+      setBackgroundReady(loadBackgroundReadyCache(serverId))
+    }
     try {
       const res = await fetch(`/api/movies?server_id=${serverId}`)
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
@@ -115,24 +117,26 @@ export function useMoviesData() {
               }),
             }))
           })
-          if (enrichData.cached_poster_ids?.length) {
-            savePosterReadyCache(serverId, enrichData.cached_poster_ids)
-            setPosterReady((prev) => {
-              const next = new Set(prev)
-              for (const id of enrichData.cached_poster_ids) next.add(id)
-              return next
-            })
+          if (downloadImages) {
+            if (enrichData.cached_poster_ids?.length) {
+              savePosterReadyCache(serverId, enrichData.cached_poster_ids)
+              setPosterReady((prev) => {
+                const next = new Set(prev)
+                for (const id of enrichData.cached_poster_ids) next.add(id)
+                return next
+              })
+            }
+            setUncachedPosterMovies(enrichData.uncached_poster_movies ?? [])
+            if (enrichData.cached_background_ids?.length) {
+              saveBackgroundReadyCache(serverId, enrichData.cached_background_ids)
+              setBackgroundReady((prev) => {
+                const next = new Set(prev)
+                for (const id of enrichData.cached_background_ids) next.add(id)
+                return next
+              })
+            }
+            setUncachedBackgroundMovies(enrichData.uncached_background_movies ?? [])
           }
-          setUncachedPosterMovies(enrichData.uncached_poster_movies ?? [])
-          if (enrichData.cached_background_ids?.length) {
-            saveBackgroundReadyCache(serverId, enrichData.cached_background_ids)
-            setBackgroundReady((prev) => {
-              const next = new Set(prev)
-              for (const id of enrichData.cached_background_ids) next.add(id)
-              return next
-            })
-          }
-          setUncachedBackgroundMovies(enrichData.uncached_background_movies ?? [])
         }
       } finally {
         setSyncing(false)
@@ -217,7 +221,7 @@ export function useMoviesData() {
   }
 
   async function warmPosters(priorityIds: string[]) {
-    if (!selectedServerId || uncachedPosterMovies.length === 0) return
+    if (!downloadImages || !selectedServerId || uncachedPosterMovies.length === 0) return
     const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
     await fetch(
       `/api/movies/warm_posters?server_id=${selectedServerId}`,
@@ -230,7 +234,7 @@ export function useMoviesData() {
   }
 
   async function warmBackgrounds(priorityIds: string[]) {
-    if (!selectedServerId || uncachedBackgroundMovies.length === 0) return
+    if (!downloadImages || !selectedServerId || uncachedBackgroundMovies.length === 0) return
     const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
     await fetch(
       `/api/movies/warm_backgrounds?server_id=${selectedServerId}`,

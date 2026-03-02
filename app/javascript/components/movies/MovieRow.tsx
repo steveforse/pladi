@@ -57,6 +57,7 @@ export function MovieRow({
   colOrder,
   visibleCols,
   selectedServerId,
+  downloadImages,
   posterReady,
   backgroundReady,
   onUpdate,
@@ -67,6 +68,7 @@ export function MovieRow({
   colOrder: AllColumnId[]
   visibleCols: Set<ColumnId>
   selectedServerId: number | null
+  downloadImages: boolean
   posterReady: Set<string>
   backgroundReady: Set<string>
   onUpdate: (id: string, patch: Partial<Movie>) => Promise<void>
@@ -279,8 +281,12 @@ export function MovieRow({
               className="px-4 py-2"
             />
           )
-          case 'background':     return <BackgroundCell key={id} movie={movie} selectedServerId={selectedServerId} backgroundReady={backgroundReady} onOpenBackground={onOpenBackground} />
-          case 'poster':         return <PosterCell key={id} movie={movie} selectedServerId={selectedServerId} posterReady={posterReady} onOpenPoster={onOpenPoster} />
+          case 'background':     return downloadImages
+            ? <BackgroundCell key={id} movie={movie} selectedServerId={selectedServerId} backgroundReady={backgroundReady} onOpenBackground={onOpenBackground} />
+            : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.art ? '✓' : '—'}</td>
+          case 'poster':         return downloadImages
+            ? <PosterCell key={id} movie={movie} selectedServerId={selectedServerId} posterReady={posterReady} onOpenPoster={onOpenPoster} />
+            : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.thumb ? '✓' : '—'}</td>
         }
       })}
     </tr>

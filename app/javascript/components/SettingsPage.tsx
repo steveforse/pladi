@@ -16,9 +16,13 @@ interface EditState {
   token: string
 }
 
-type Tab = 'account' | 'servers'
+type Tab = 'account' | 'preferences' | 'servers'
 
-export default function SettingsPage({ onBack }: { onBack: () => void }) {
+export default function SettingsPage({ onBack, downloadImages, onDownloadImagesChange }: {
+  onBack: () => void
+  downloadImages: boolean
+  onDownloadImagesChange: (value: boolean) => void
+}) {
   const [tab, setTab] = useState<Tab>('account')
   const [servers, setServers] = useState<PlexServer[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,6 +39,8 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
   const [emailSuccess, setEmailSuccess] = useState(false)
   const [emailSaving, setEmailSaving] = useState(false)
   const [emailServerError, setEmailServerError] = useState<string | null>(null)
+
+  const [downloadImagesSaving, setDownloadImagesSaving] = useState(false)
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -63,6 +69,20 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
     setEmail(trimmed)
     if (trimmed && !isValidEmail(trimmed)) setEmailError('Please enter a valid email address.')
     else setEmailError(null)
+  }
+
+  async function handleDownloadImagesChange(value: boolean) {
+    onDownloadImagesChange(value)
+    setDownloadImagesSaving(true)
+    try {
+      await fetch('/api/account', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+        body: JSON.stringify({ user: { download_images: value } }),
+      })
+    } finally {
+      setDownloadImagesSaving(false)
+    }
   }
 
   async function handleEmailSubmit(e: React.FormEvent) {
@@ -225,6 +245,7 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
       {/* Tab bar */}
       <div className="flex justify-center">
         <button className={tabClass('account')} onClick={() => setTab('account')}>Account</button>
+        <button className={tabClass('preferences')} onClick={() => setTab('preferences')}>Preferences</button>
         <button className={tabClass('servers')} onClick={() => setTab('servers')}>Servers</button>
       </div>
 
@@ -287,6 +308,26 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
               {passwordSaving ? 'Saving…' : 'Update password'}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Preferences tab */}
+      {tab === 'preferences' && (
+        <div className="px-8 py-6 space-y-6 max-w-2xl mx-auto">
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={downloadImages}
+                onChange={(e) => handleDownloadImagesChange(e.target.checked)}
+                disabled={downloadImagesSaving}
+              />
+              <span className="text-sm">Download images from Plex server</span>
+            </label>
+            <p className="text-xs text-muted-foreground">
+              When enabled, poster and background art are fetched and displayed in the table. Disabled by default to avoid unnecessary bandwidth usage.
+            </p>
+          </div>
         </div>
       )}
 

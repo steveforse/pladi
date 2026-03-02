@@ -19,13 +19,13 @@ import { MovieRow } from '@/components/movies/MovieRow'
 import { PosterModal } from '@/components/movies/PosterModal'
 import { ImageModal } from '@/components/movies/ImageModal'
 
-export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLogout: () => void; onSettings: () => void; onHistory: () => void }) {
+export default function MoviesTable({ onLogout, onSettings, onHistory, downloadImages }: { onLogout: () => void; onSettings: () => void; onHistory: () => void; downloadImages: boolean }) {
   const {
     plexServers, selectedServerId, sections, selectedTitle,
     loading, refreshing, syncing, error, posterReady, backgroundReady,
     uncachedPosterMovies, warmPosters, uncachedBackgroundMovies, warmBackgrounds, updateMovie,
     handleServerChange, handleServerAdded, setSelectedTitle,
-  } = useMoviesData()
+  } = useMoviesData(downloadImages)
 
   const {
     multiOnly, setMultiOnly,
@@ -296,6 +296,7 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
                       colOrder={colOrder}
                       visibleCols={visibleCols}
                       selectedServerId={selectedServerId}
+                      downloadImages={downloadImages}
                       posterReady={posterReady}
                       backgroundReady={backgroundReady}
                       onUpdate={updateMovie}

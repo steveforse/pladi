@@ -1,7 +1,7 @@
 import type { AllColumnId, ColumnDef, ColumnGroup } from '@/lib/types'
 
 export const DEFAULT_COL_ORDER: AllColumnId[] = [
-  'id', 'poster', 'title', 'original_title', 'sort_title',
+  'id', 'title', 'original_title', 'sort_title',
   'year', 'originally_available', 'updated_at', 'duration', 'edition',
   'audience_rating', 'content_rating', 'critic_rating',
   'directors', 'producers', 'writers',
@@ -9,7 +9,7 @@ export const DEFAULT_COL_ORDER: AllColumnId[] = [
   'video_codec', 'video_bitrate', 'frame_rate', 'width', 'height', 'aspect_ratio', 'video_resolution',
   'audio_codec', 'audio_bitrate', 'audio_channels', 'audio_language', 'audio_tracks', 'subtitles',
   'file_path', 'container', 'overall_bitrate', 'size',
-  'background',
+  'background', 'poster',
 ]
 
 export const COLUMN_GROUPS: ColumnGroup[] = [

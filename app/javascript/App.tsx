@@ -19,6 +19,7 @@ function LoadingScreen() {
 export default function App() {
   const [authState, setAuthState] = useState<AuthState>('loading')
   const [page, setPage] = useState<Page>(() => (window.history.state?.page as Page) ?? 'movies')
+  const [downloadImages, setDownloadImages] = useState(false)
 
   useEffect(() => {
     // Ensure the initial history entry has page state so popstate can restore it
@@ -37,6 +38,8 @@ export default function App() {
   useEffect(() => {
     fetch('/api/me').then(async (r) => {
       if (r.ok) {
+        const data = await r.json()
+        setDownloadImages((data as { download_images: boolean }).download_images ?? false)
         setAuthState('authenticated')
       } else {
         const setupRes = await fetch('/api/setup')
@@ -59,7 +62,7 @@ export default function App() {
     return <LoginPage onLogin={() => setAuthState('authenticated')} />
 
   if (page === 'settings')
-    return <SettingsPage onBack={() => window.history.back()} />
+    return <SettingsPage onBack={() => window.history.back()} downloadImages={downloadImages} onDownloadImagesChange={setDownloadImages} />
 
   if (page === 'history')
     return <HistoryPage onBack={() => window.history.back()} />
@@ -69,6 +72,7 @@ export default function App() {
       onLogout={() => setAuthState('unauthenticated')}
       onSettings={() => navigateTo('settings')}
       onHistory={() => navigateTo('history')}
+      downloadImages={downloadImages}
     />
   )
 }

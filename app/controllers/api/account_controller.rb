@@ -14,7 +14,7 @@ module Api
     private
 
     def account_params
-      permitted = params.expect(user: %i[email_address password password_confirmation])
+      permitted = params.expect(user: %i[email_address password password_confirmation download_images])
       permitted.delete(:password_confirmation) if permitted[:password].blank?
       permitted.delete(:password) if permitted[:password].blank?
       permitted
