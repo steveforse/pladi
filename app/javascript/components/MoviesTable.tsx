@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 
@@ -60,13 +60,19 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
 
   // Once syncing completes and we have uncached posters, warm them with current page first
   const wasSyncing = useRef(false)
+  const pagedMoviesRef = useRef(pagedMovies)
+  const warmPostersRef = useRef(warmPosters)
+  useLayoutEffect(() => {
+    pagedMoviesRef.current = pagedMovies
+    warmPostersRef.current = warmPosters
+  })
   useEffect(() => {
     if (wasSyncing.current && !syncing && uncachedPosterMovies.length > 0) {
-      const priorityIds = pagedMovies.map((m) => String(m.id))
-      warmPosters(priorityIds)
+      const priorityIds = pagedMoviesRef.current.map((m) => String(m.id))
+      warmPostersRef.current(priorityIds)
     }
     wasSyncing.current = syncing
-  }, [syncing])
+  }, [syncing, uncachedPosterMovies.length])
 
   if (loading) {
     return (

@@ -22,7 +22,8 @@ export default function App() {
 
   useEffect(() => {
     // Ensure the initial history entry has page state so popstate can restore it
-    window.history.replaceState({ page }, '')
+    const initialPage = (window.history.state?.page as Page) ?? 'movies'
+    window.history.replaceState({ page: initialPage }, '')
   }, [])
 
   useEffect(() => {
