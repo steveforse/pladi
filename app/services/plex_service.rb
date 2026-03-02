@@ -357,6 +357,14 @@ class PlexService
     request['Accept']       = 'image/jpeg, image/png, image/*'
     request['X-Plex-Token'] = @server.token
     response = http_start(uri) { |http| http.request(request) }
+
+    if response.is_a?(Net::HTTPRedirection) && response['Location']
+      redirect_uri = URI(response['Location'])
+      redirect_req = Net::HTTP::Get.new(redirect_uri)
+      redirect_req['Accept'] = 'image/jpeg, image/png, image/*'
+      response = http_start(redirect_uri) { |http| http.request(redirect_req) }
+    end
+
     return nil unless response.is_a?(Net::HTTPSuccess)
 
     content_type = response['Content-Type'] || 'image/jpeg'
