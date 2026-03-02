@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { createConsumer } from '@rails/actioncable'
 import type { Movie, PlexServerInfo, Section } from '@/lib/types'
-import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCache, updateEnrichmentCacheMovie, savePosterReadyCache, loadPosterReadyCache } from '@/lib/enrichmentCache'
+import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCache, updateEnrichmentCacheMovie, savePosterReadyCache, loadPosterReadyCache, saveBackgroundReadyCache, loadBackgroundReadyCache } from '@/lib/enrichmentCache'
 
 type PosterMovie = { id: string; thumb: string }
+type BackgroundMovie = { id: string; art: string }
 
 const STORAGE_KEYS = {
   serverId: 'pladi_selected_server_id',
@@ -21,6 +22,8 @@ export function useMoviesData() {
   const [error, setError] = useState<string | null>(null)
   const [posterReady, setPosterReady] = useState<Set<string>>(new Set())
   const [uncachedPosterMovies, setUncachedPosterMovies] = useState<PosterMovie[]>([])
+  const [backgroundReady, setBackgroundReady] = useState<Set<string>>(new Set())
+  const [uncachedBackgroundMovies, setUncachedBackgroundMovies] = useState<BackgroundMovie[]>([])
   const consumerRef = useRef<ReturnType<typeof createConsumer> | null>(null)
 
   // Create Action Cable consumer once on mount, disconnect on unmount
@@ -42,11 +45,25 @@ export function useMoviesData() {
     return () => sub.unsubscribe()
   }, [selectedServerId])
 
+  // Subscribe to BackgroundsChannel whenever selectedServerId changes
+  useEffect(() => {
+    if (!selectedServerId || !consumerRef.current) return
+    setBackgroundReady(loadBackgroundReadyCache(selectedServerId))
+    const sub = consumerRef.current.subscriptions.create(
+      { channel: 'BackgroundsChannel', server_id: selectedServerId },
+      { received(data: { movie_id: string }) {
+          setBackgroundReady((prev) => new Set([...prev, data.movie_id]))
+      }}
+    )
+    return () => sub.unsubscribe()
+  }, [selectedServerId])
+
   async function loadMovies(serverId: number) {
     setLoading(true)
     setSections([])
     setSelectedTitle(null)
     setPosterReady(loadPosterReadyCache(serverId))
+    setBackgroundReady(loadBackgroundReadyCache(serverId))
     try {
       const res = await fetch(`/api/movies?server_id=${serverId}`)
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
@@ -107,6 +124,15 @@ export function useMoviesData() {
             })
           }
           setUncachedPosterMovies(enrichData.uncached_poster_movies ?? [])
+          if (enrichData.cached_background_ids?.length) {
+            saveBackgroundReadyCache(serverId, enrichData.cached_background_ids)
+            setBackgroundReady((prev) => {
+              const next = new Set(prev)
+              for (const id of enrichData.cached_background_ids) next.add(id)
+              return next
+            })
+          }
+          setUncachedBackgroundMovies(enrichData.uncached_background_movies ?? [])
         }
       } finally {
         setSyncing(false)
@@ -203,6 +229,19 @@ export function useMoviesData() {
     )
   }
 
+  async function warmBackgrounds(priorityIds: string[]) {
+    if (!selectedServerId || uncachedBackgroundMovies.length === 0) return
+    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
+    await fetch(
+      `/api/movies/warm_backgrounds?server_id=${selectedServerId}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ priority_ids: priorityIds, movies: uncachedBackgroundMovies }),
+      }
+    )
+  }
+
   return {
     plexServers,
     selectedServerId,
@@ -214,10 +253,13 @@ export function useMoviesData() {
     error,
     posterReady,
     uncachedPosterMovies,
+    backgroundReady,
+    uncachedBackgroundMovies,
     handleServerChange,
     handleServerAdded,
     setSelectedTitle: handleLibraryChange,
     warmPosters,
+    warmBackgrounds,
     updateMovie,
   }
 }

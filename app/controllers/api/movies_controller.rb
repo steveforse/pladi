@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength
 module Api
   class MoviesController < ApplicationController
     before_action :require_authentication
@@ -15,18 +16,27 @@ module Api
 
     def enrich
       enriched = service.enrich_sections(service.cached_sections)
-      cached, uncached = collect_poster_movies(enriched)
+      cached_posters, uncached_posters = collect_poster_movies(enriched)
+      cached_backgrounds, uncached_backgrounds = collect_background_movies(enriched)
 
       render json: {
         sections: serialize_sections(enriched),
-        cached_poster_ids: cached.pluck(:id),
-        uncached_poster_movies: uncached
+        cached_poster_ids: cached_posters.pluck(:id),
+        uncached_poster_movies: uncached_posters,
+        cached_background_ids: cached_backgrounds.pluck(:id),
+        uncached_background_movies: uncached_backgrounds
       }
     end
 
     def warm_posters
       prioritized = prioritized_movies
       WarmPostersJob.perform_later(@server.id, prioritized) if prioritized.any?
+      head :ok
+    end
+
+    def warm_backgrounds
+      prioritized = prioritized_movies
+      WarmBackgroundsJob.perform_later(@server.id, prioritized) if prioritized.any?
       head :ok
     end
 
@@ -60,6 +70,15 @@ module Api
       end
     end
 
+    def background
+      image = service.background_for(params[:id])
+      if image
+        send_data image[:data], type: image[:content_type], disposition: 'inline'
+      else
+        head :not_found
+      end
+    end
+
     private
 
     def movie_params
@@ -78,7 +97,7 @@ module Api
 
     def prioritized_movies
       priority_ids = Array(params[:priority_ids]).map(&:to_s)
-      movies = Array(params[:movies]).map { |m| m.permit(:id, :thumb).to_h }
+      movies = Array(params[:movies]).map { |m| m.permit(:id, :thumb, :art).to_h }
       movies.sort_by { |m| priority_ids.include?(m[:id].to_s) ? 0 : 1 }
     end
 
@@ -87,6 +106,13 @@ module Api
       poster_movies = all_movies.filter_map { |m| { id: m[:id], thumb: m[:thumb] } if m[:thumb] }
       cached_ids    = service.posters_cached(poster_movies.pluck(:id))
       poster_movies.partition { |m| cached_ids.include?(m[:id]) }
+    end
+
+    def collect_background_movies(enriched)
+      all_movies         = enriched.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
+      background_movies  = all_movies.filter_map { |m| { id: m[:id], art: m[:art] } if m[:art] }
+      cached_ids         = service.backgrounds_cached(background_movies.pluck(:id))
+      background_movies.partition { |m| cached_ids.include?(m[:id]) }
     end
 
     def service
@@ -100,3 +126,4 @@ module Api
     end
   end
 end
+# rubocop:enable Metrics/ClassLength

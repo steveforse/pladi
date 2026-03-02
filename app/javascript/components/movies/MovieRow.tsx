@@ -26,22 +26,52 @@ function PosterCell({ movie, selectedServerId, posterReady, onOpenPoster }: {
   )
 }
 
+function BackgroundCell({ movie, selectedServerId, backgroundReady, onOpenBackground }: {
+  movie: Movie
+  selectedServerId: number | null
+  backgroundReady: Set<string>
+  onOpenBackground: (movieId: string) => void
+}) {
+  if (!movie.art) {
+    return <td className="px-4 py-2 text-muted-foreground text-xs">—</td>
+  }
+  if (!backgroundReady.has(movie.id)) {
+    return <td className="px-2 py-1"><div className="h-10 w-[71px] rounded bg-muted animate-pulse" /></td>
+  }
+
+  return (
+    <td className="px-2 py-1">
+      <button onClick={() => onOpenBackground(movie.id)} className="cursor-pointer focus:outline-none">
+        <img
+          src={`/api/movies/${movie.id}/background?server_id=${selectedServerId}`}
+          alt=""
+          className="h-10 w-auto rounded hover:opacity-80 transition-opacity"
+        />
+      </button>
+    </td>
+  )
+}
+
 export function MovieRow({
   movie,
   colOrder,
   visibleCols,
   selectedServerId,
   posterReady,
+  backgroundReady,
   onUpdate,
   onOpenPoster,
+  onOpenBackground,
 }: {
   movie: Movie
   colOrder: AllColumnId[]
   visibleCols: Set<ColumnId>
   selectedServerId: number | null
   posterReady: Set<string>
+  backgroundReady: Set<string>
   onUpdate: (id: string, patch: Partial<Movie>) => Promise<void>
   onOpenPoster: (movieId: string) => void
+  onOpenBackground: (movieId: string) => void
 }) {
   const col = (id: ColumnId) => visibleCols.has(id)
 
@@ -249,7 +279,7 @@ export function MovieRow({
               className="px-4 py-2"
             />
           )
-          case 'background':           return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.art ? '✓' : '—'}</td>
+          case 'background':     return <BackgroundCell key={id} movie={movie} selectedServerId={selectedServerId} backgroundReady={backgroundReady} onOpenBackground={onOpenBackground} />
           case 'poster':         return <PosterCell key={id} movie={movie} selectedServerId={selectedServerId} posterReady={posterReady} onOpenPoster={onOpenPoster} />
         }
       })}

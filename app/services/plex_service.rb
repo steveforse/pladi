@@ -79,6 +79,28 @@ class PlexService
     nil
   end
 
+  def background_for(movie_id)
+    Rails.cache.fetch(cache_key('background', movie_id), expires_in: CACHE_TTL, skip_nil: true) do
+      plex_get_image("/library/metadata/#{movie_id}/art")
+    end
+  rescue StandardError
+    nil
+  end
+
+  def backgrounds_cached(movie_ids)
+    keys = movie_ids.index_by { |id| cache_key('background', id) }
+    hits = Rails.cache.read_multi(*keys.keys)
+    keys.filter_map { |key, id| id if hits.key?(key) }.to_set
+  end
+
+  def warm_background(movie_id)
+    Rails.cache.fetch(cache_key('background', movie_id), expires_in: CACHE_TTL, skip_nil: true) do
+      plex_get_image("/library/metadata/#{movie_id}/art")
+    end
+  rescue StandardError
+    nil
+  end
+
   def fetch_movie_snapshot(movie_id)
     item = plex_get("/library/metadata/#{movie_id}")
       .dig('MediaContainer', 'Metadata', 0) || {}

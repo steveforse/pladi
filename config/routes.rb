@@ -16,9 +16,11 @@ Rails.application.routes.draw do
         get :refresh
         get :enrich
         post :warm_posters
+        post :warm_backgrounds
       end
       member do
         get :poster
+        get :background
       end
     end
     resources :plex_servers, only: %i[index create update destroy] do

@@ -17,12 +17,13 @@ import { Paginator } from '@/components/movies/Paginator'
 import { MovieHeaderRow } from '@/components/movies/MovieHeaderRow'
 import { MovieRow } from '@/components/movies/MovieRow'
 import { PosterModal } from '@/components/movies/PosterModal'
+import { ImageModal } from '@/components/movies/ImageModal'
 
 export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLogout: () => void; onSettings: () => void; onHistory: () => void }) {
   const {
     plexServers, selectedServerId, sections, selectedTitle,
-    loading, refreshing, syncing, error, posterReady,
-    uncachedPosterMovies, warmPosters, updateMovie,
+    loading, refreshing, syncing, error, posterReady, backgroundReady,
+    uncachedPosterMovies, warmPosters, uncachedBackgroundMovies, warmBackgrounds, updateMovie,
     handleServerChange, handleServerAdded, setSelectedTitle,
   } = useMoviesData()
 
@@ -48,31 +49,39 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
 
   const [filtersOpen, setFiltersOpen] = useState(() => localStorage.getItem('pladi_filters_open') === 'true')
   const [openPosterMovieId, setOpenPosterMovieId] = useState<string | null>(null)
+  const [openBackgroundMovieId, setOpenBackgroundMovieId] = useState<string | null>(null)
 
   const posterMovies = visibleMovies.filter((m) => posterReady.has(m.id))
   const posterModalIdx = openPosterMovieId ? posterMovies.findIndex((m) => m.id === openPosterMovieId) : -1
   const posterModalMovie = posterModalIdx >= 0 ? posterMovies[posterModalIdx] : null
+
+  const backgroundMovies = visibleMovies.filter((m) => backgroundReady.has(m.id))
+  const backgroundModalIdx = openBackgroundMovieId ? backgroundMovies.findIndex((m) => m.id === openBackgroundMovieId) : -1
+  const backgroundModalMovie = backgroundModalIdx >= 0 ? backgroundMovies[backgroundModalIdx] : null
   const activeFilterCount =
     [multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder].filter(Boolean).length +
     filters.length
 
   const pagedMovies = pageSize === 0 ? visibleMovies : visibleMovies.slice((page - 1) * pageSize, page * pageSize)
 
-  // Once syncing completes and we have uncached posters, warm them with current page first
+  // Once syncing completes and we have uncached posters/backgrounds, warm them with current page first
   const wasSyncing = useRef(false)
   const pagedMoviesRef = useRef(pagedMovies)
   const warmPostersRef = useRef(warmPosters)
+  const warmBackgroundsRef = useRef(warmBackgrounds)
   useLayoutEffect(() => {
     pagedMoviesRef.current = pagedMovies
     warmPostersRef.current = warmPosters
+    warmBackgroundsRef.current = warmBackgrounds
   })
   useEffect(() => {
-    if (wasSyncing.current && !syncing && uncachedPosterMovies.length > 0) {
+    if (wasSyncing.current && !syncing) {
       const priorityIds = pagedMoviesRef.current.map((m) => String(m.id))
-      warmPostersRef.current(priorityIds)
+      if (uncachedPosterMovies.length > 0) warmPostersRef.current(priorityIds)
+      if (uncachedBackgroundMovies.length > 0) warmBackgroundsRef.current(priorityIds)
     }
     wasSyncing.current = syncing
-  }, [syncing, uncachedPosterMovies.length])
+  }, [syncing, uncachedPosterMovies.length, uncachedBackgroundMovies.length])
 
   if (loading) {
     return (
@@ -288,8 +297,10 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
                       visibleCols={visibleCols}
                       selectedServerId={selectedServerId}
                       posterReady={posterReady}
+                      backgroundReady={backgroundReady}
                       onUpdate={updateMovie}
                       onOpenPoster={setOpenPosterMovieId}
+                      onOpenBackground={setOpenBackgroundMovieId}
                     />
                   ))}
                 </tbody>
@@ -315,6 +326,20 @@ export default function MoviesTable({ onLogout, onSettings, onHistory }: { onLog
           onClose={() => setOpenPosterMovieId(null)}
           onPrev={() => setOpenPosterMovieId(posterMovies[posterModalIdx - 1].id)}
           onNext={() => setOpenPosterMovieId(posterMovies[posterModalIdx + 1].id)}
+        />
+      )}
+
+      {backgroundModalMovie && (
+        <ImageModal
+          movie={backgroundModalMovie}
+          imageUrl={`/api/movies/${backgroundModalMovie.id}/background?server_id=${selectedServerId}`}
+          hasPrev={backgroundModalIdx > 0}
+          hasNext={backgroundModalIdx < backgroundMovies.length - 1}
+          position={backgroundModalIdx + 1}
+          total={backgroundMovies.length}
+          onClose={() => setOpenBackgroundMovieId(null)}
+          onPrev={() => setOpenBackgroundMovieId(backgroundMovies[backgroundModalIdx - 1].id)}
+          onNext={() => setOpenBackgroundMovieId(backgroundMovies[backgroundModalIdx + 1].id)}
         />
       )}
     </div>
