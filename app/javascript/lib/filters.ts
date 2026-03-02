@@ -9,7 +9,6 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'updated_at',           label: 'Last Updated',         type: 'date' },
     { id: 'originally_available', label: 'Originally Available', type: 'date' },
     { id: 'original_title',       label: 'Original Title',       type: 'string' },
-    { id: 'poster',               label: 'Poster',               type: 'string', nullOnly: true },
     { id: 'sort_title',           label: 'Sort Title',           type: 'string' },
     { id: 'title',                label: 'Title',                type: 'string' },
     { id: 'year',                 label: 'Year',                 type: 'numeric' },
@@ -25,7 +24,6 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'writers',    label: 'Writers',    type: 'string' },
   ]},
   { label: 'Details', fields: [
-    { id: 'background',   label: 'Background',   type: 'string', nullOnly: true },
     { id: 'collections',  label: 'Collections',  type: 'string' },
     { id: 'country',      label: 'Country',      type: 'string' },
     { id: 'genres',       label: 'Genres',       type: 'string' },
@@ -56,6 +54,10 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'file_path',       label: 'File Path',      type: 'string' },
     { id: 'overall_bitrate', label: 'Overall Bitrate', type: 'numeric', unit: 'Mbps' },
     { id: 'size',            label: 'Size',           type: 'numeric', unit: 'MB' },
+  ]},
+  { label: 'Images', fields: [
+    { id: 'background', label: 'Background', type: 'string', nullOnly: true },
+    { id: 'poster',     label: 'Poster',     type: 'string', nullOnly: true },
   ]},
 ]
 

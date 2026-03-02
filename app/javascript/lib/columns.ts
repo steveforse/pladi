@@ -5,10 +5,11 @@ export const DEFAULT_COL_ORDER: AllColumnId[] = [
   'year', 'originally_available', 'updated_at', 'duration', 'edition',
   'audience_rating', 'content_rating', 'critic_rating',
   'directors', 'producers', 'writers',
-  'background', 'collections', 'country', 'genres', 'labels', 'studio', 'summary', 'tagline',
+  'collections', 'country', 'genres', 'labels', 'studio', 'summary', 'tagline',
   'video_codec', 'video_bitrate', 'frame_rate', 'width', 'height', 'aspect_ratio', 'video_resolution',
   'audio_codec', 'audio_bitrate', 'audio_channels', 'audio_language', 'audio_tracks', 'subtitles',
   'file_path', 'container', 'overall_bitrate', 'size',
+  'background',
 ]
 
 export const COLUMN_GROUPS: ColumnGroup[] = [
@@ -19,7 +20,6 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
     { id: 'updated_at', label: 'Last Updated' },
     { id: 'originally_available', label: 'Originally Available' },
     { id: 'original_title', label: 'Original Title' },
-    { id: 'poster', label: 'Poster' },
     { id: 'sort_title', label: 'Sort Title' },
     { id: 'year', label: 'Year' },
   ]},
@@ -34,7 +34,6 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
     { id: 'writers', label: 'Writers' },
   ]},
   { label: 'Details', columns: [
-    { id: 'background', label: 'Background' },
     { id: 'collections', label: 'Collections' },
     { id: 'country', label: 'Country' },
     { id: 'genres', label: 'Genres' },
@@ -65,6 +64,10 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
     { id: 'file_path', label: 'File Path' },
     { id: 'overall_bitrate', label: 'Overall Bitrate' },
     { id: 'size', label: 'Size' },
+  ]},
+  { label: 'Images', columns: [
+    { id: 'background', label: 'Background' },
+    { id: 'poster', label: 'Poster' },
   ]},
 ]
 
