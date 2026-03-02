@@ -25,10 +25,6 @@ class PlexService
   def initialize(server)
     @server    = server
     @server_id = server.id
-    @sdk = ::PlexRubySDK::PlexAPI.new(
-      server_url: server.url,
-      security: ::PlexRubySDK::Shared::Security.new(access_token: server.token)
-    )
   end
 
   def friendly_name
@@ -63,12 +59,7 @@ class PlexService
 
   def poster_for(movie_id)
     Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) do
-      res = @sdk.media.get_thumb_image(
-        ::PlexRubySDK::Operations::GetThumbImageRequest.new(rating_key: movie_id.to_i)
-      )
-      next nil unless res.bytes
-
-      { data: res.bytes.b, content_type: res.content_type || 'image/jpeg' }
+      plex_get_image("/library/metadata/#{movie_id}/thumb")
     end
   rescue StandardError
     nil
@@ -82,12 +73,7 @@ class PlexService
 
   def warm_poster(movie_id)
     Rails.cache.fetch(cache_key('poster', movie_id), expires_in: CACHE_TTL) do
-      res = @sdk.media.get_thumb_image(
-        ::PlexRubySDK::Operations::GetThumbImageRequest.new(rating_key: movie_id.to_i)
-      )
-      next nil unless res.bytes
-
-      { data: res.bytes.b, content_type: res.content_type || 'image/jpeg' }
+      plex_get_image("/library/metadata/#{movie_id}/thumb")
     end
   rescue StandardError
     nil
@@ -364,6 +350,18 @@ class PlexService
     snapshot
   end
   # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+
+  def plex_get_image(path)
+    uri     = URI("#{@server.url}#{path}")
+    request = Net::HTTP::Get.new(uri)
+    request['Accept']       = 'image/jpeg, image/png, image/*'
+    request['X-Plex-Token'] = @server.token
+    response = http_start(uri) { |http| http.request(request) }
+    return nil unless response.is_a?(Net::HTTPSuccess)
+
+    content_type = response['Content-Type'] || 'image/jpeg'
+    { data: response.body.b, content_type: content_type }
+  end
 
   def plex_get(path)
     uri     = URI("#{@server.url}#{path}")
