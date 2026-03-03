@@ -221,7 +221,7 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, downloadI
         </div>
 
         {/* Filters */}
-        <div className="border rounded-md">
+        <div className="border rounded-md w-fit">
           <button
             onClick={() => setFiltersOpen((o) => { const next = !o; localStorage.setItem('pladi_filters_open', String(next)); return next })}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"

@@ -38,7 +38,7 @@ export default function HistoryPage({ onBack }: { onBack: () => void }) {
     <div className="min-h-screen" style={{ backgroundColor: '#161b1f' }}>
       <PageHeader title="Change History" onBack={onBack} />
 
-      <main className="p-4">
+      <main className="px-8 py-4">
         {loading && (
           <div className="text-muted-foreground text-center py-16 animate-pulse">Loading…</div>
         )}

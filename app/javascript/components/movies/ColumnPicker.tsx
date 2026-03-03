@@ -35,7 +35,7 @@ export function ColumnPicker({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="btn px-3 py-1.5 text-sm gap-1.5"
+        className="border rounded px-3 py-1.5 text-sm gap-1.5 inline-flex items-center bg-background cursor-pointer"
       >
         Toggle Columns
         <span className="text-muted-foreground text-xs">({visible.size}/{totalCols})</span>

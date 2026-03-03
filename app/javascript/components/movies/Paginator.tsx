@@ -31,18 +31,18 @@ export function Paginator({
       <div className="flex items-center gap-1 ml-auto">
         {leftSlot && <div className="mr-3">{leftSlot}</div>}
         <button onClick={() => onPage(1)} disabled={page === 1}
-          className="btn px-2 py-1 text-xs">«</button>
+          className="btn px-3 py-1.5 text-sm">«</button>
         <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}
-          className="btn px-2 py-1 text-xs">‹</button>
+          className="btn px-3 py-1.5 text-sm">‹</button>
         <button onClick={() => onPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}
-          className="btn px-2 py-1 text-xs">›</button>
+          className="btn px-3 py-1.5 text-sm">›</button>
         <button onClick={() => onPage(totalPages)} disabled={page === totalPages}
-          className="btn px-2 py-1 text-xs">»</button>
+          className="btn px-3 py-1.5 text-sm">»</button>
       </div>
       <select
         value={pageSize}
         onChange={(e) => onPageSize(Number(e.target.value))}
-        className="border rounded px-2 py-1 text-xs bg-background"
+        className="border rounded px-3 py-1.5 text-sm bg-background"
       >
         {[25, 50, 100, 250].map((n) => (
           <option key={n} value={n}>{n} per page</option>
