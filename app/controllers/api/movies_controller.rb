@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ClassLength
 module Api
   class MoviesController < ApplicationController
     before_action :require_authentication
     before_action :load_server
 
     def index
-      render json: serialize_sections(service.cached_sections)
+      render json: SectionSerializer.serialize(service.cached_sections)
     end
 
     def show
@@ -18,16 +17,16 @@ module Api
     end
 
     def refresh
-      render json: serialize_sections(service.refresh_sections)
+      render json: SectionSerializer.serialize(service.refresh_sections)
     end
 
     def enrich
       enriched = service.enrich_sections(service.cached_sections)
-      cached_posters, uncached_posters = collect_poster_movies(enriched)
-      cached_backgrounds, uncached_backgrounds = collect_background_movies(enriched)
+      cached_posters, uncached_posters = service.poster_cache_partition(enriched)
+      cached_backgrounds, uncached_backgrounds = service.background_cache_partition(enriched)
 
       render json: {
-        sections: serialize_sections(enriched),
+        sections: SectionSerializer.serialize(enriched),
         cached_poster_ids: cached_posters.pluck(:id),
         uncached_poster_movies: uncached_posters,
         cached_background_ids: cached_backgrounds.pluck(:id),
@@ -47,43 +46,25 @@ module Api
       head :ok
     end
 
-    # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def update
-      result = service.update_movie(params[:id], movie_params.to_h)
+      fields = movie_params.to_h
+      result = service.update_movie(params[:id], fields)
       if result[:unverified_fields].any?
         render json: { error: 'Plex did not persist this update' }, status: :unprocessable_content
         return
       end
-      MovieAuditLog.record_changes(
-        user: Current.user,
-        plex_server: @server,
-        movie_id: params[:id],
-        fields: movie_params.to_h,
-        before: result[:before],
-        after: result[:after]
-      )
+      log_update(result, fields)
       head :no_content
     rescue StandardError => e
       render json: { error: e.message }, status: :unprocessable_content
     end
-    # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
     def poster
-      image = service.poster_for(params[:id])
-      if image
-        send_data image[:data], type: image[:content_type], disposition: 'inline'
-      else
-        head :not_found
-      end
+      send_image service.poster_for(params[:id])
     end
 
     def background
-      image = service.background_for(params[:id])
-      if image
-        send_data image[:data], type: image[:content_type], disposition: 'inline'
-      else
-        head :not_found
-      end
+      send_image service.background_for(params[:id])
     end
 
     private
@@ -98,28 +79,29 @@ module Api
       )
     end
 
-    def serialize_sections(sections)
-      sections.map { |s| s.slice(:title, :movies) }
-    end
-
     def prioritized_movies
       priority_ids = Array(params[:priority_ids]).map(&:to_s)
       movies = Array(params[:movies]).map { |m| m.permit(:id, :thumb, :art).to_h }
-      movies.sort_by { |m| priority_ids.include?(m[:id].to_s) ? 0 : 1 }
+      movies.sort_by { |m| priority_ids.exclude?(m[:id].to_s) }
     end
 
-    def collect_poster_movies(enriched)
-      all_movies    = enriched.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
-      poster_movies = all_movies.filter_map { |m| { id: m[:id], thumb: m[:thumb] } if m[:thumb] }
-      cached_ids    = service.posters_cached(poster_movies.pluck(:id))
-      poster_movies.partition { |m| cached_ids.include?(m[:id]) }
+    def log_update(result, fields)
+      MovieAuditLog.record_changes(
+        user: Current.user,
+        plex_server: @server,
+        movie_id: params[:id],
+        fields: fields,
+        before: result[:before],
+        after: result[:after]
+      )
     end
 
-    def collect_background_movies(enriched)
-      all_movies         = enriched.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
-      background_movies  = all_movies.filter_map { |m| { id: m[:id], art: m[:art] } if m[:art] }
-      cached_ids         = service.backgrounds_cached(background_movies.pluck(:id))
-      background_movies.partition { |m| cached_ids.include?(m[:id]) }
+    def send_image(image)
+      if image
+        send_data image[:data], type: image[:content_type], disposition: 'inline'
+      else
+        head :not_found
+      end
     end
 
     def service
@@ -133,4 +115,3 @@ module Api
     end
   end
 end
-# rubocop:enable Metrics/ClassLength
