@@ -17,6 +17,14 @@ Pladi connects to your Plex server and gives you a detailed, sortable view of yo
 - **Unnecessary copies** — spot redundant encodes by comparing resolution, codec, and bitrate side-by-side
 - **Quality overview** — audit your library's codecs, resolutions, and audio across all sections at a glance
 - **Enriched metadata** — genres, ratings, directors, and content ratings pulled directly from Plex
+- **Edit metadata** — fix titles, years, and tags directly from the browser; bulk-edit fields across multiple movies at once
+- **Change history** — every edit is logged so you can see exactly what changed
+
+## Requirements
+
+- A running [Plex Media Server](https://www.plex.tv/media-server-downloads/) reachable from the host
+- Your **Plex auth token** — find it by signing in to Plex Web, opening any media item, clicking ··· → Get Info → View XML, and copying the `X-Plex-Token` value from the URL ([full instructions](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/))
+- Ruby 4.0.1, Node 22, and SQLite3 installed on the host
 
 ## Getting Started
 
@@ -30,8 +38,13 @@ Pladi is a standard Rails 8 app. The easiest path is Docker:
 
 ```bash
 docker build -t pladi .
-docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name pladi pladi
+docker run -d -p 80:80 \
+  -e RAILS_MASTER_KEY=<value from config/master.key> \
+  -v pladi_storage:/rails/storage \
+  --name pladi pladi
 ```
+
+Set `PLEX_ENRICH_THREADS` to control how many threads are used during metadata enrichment (default: 3). Lower this on resource-constrained hosts.
 
 For production deployments, [Kamal](https://kamal-deploy.org/) is preconfigured in `config/deploy.yml`.
 
