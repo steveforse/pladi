@@ -30,7 +30,6 @@ Pladi connects to your Plex server and gives you a detailed, sortable view of yo
 
 1. **Sign up** at the login page and add your Plex server URL and auth token in Settings.
 2. Your library loads automatically. Use **Refresh** to pull the latest data from Plex.
-3. Use **Enrich** to load full metadata (ratings, genres, directors) — this runs in the background and is cached.
 
 ## Self-Hosting
 
@@ -62,7 +61,7 @@ bundle exec vite dev       # Frontend HMR on port 3036
 
 Run tests: `bundle exec rspec`
 
-Run linters: `bin/rubocop` and `bin/brakeman`
+Run static analyzers: `bin/rubocop` and `bin/brakeman`
 
 ## Stack
 
