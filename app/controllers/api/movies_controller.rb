@@ -6,7 +6,7 @@ module Api
     before_action :load_server
 
     def index
-      render json: SectionSerializer.serialize(service.cached_sections)
+      render json: ::SectionSerializer.serialize(service.cached_sections)
     end
 
     def show
@@ -17,7 +17,7 @@ module Api
     end
 
     def refresh
-      render json: SectionSerializer.serialize(service.refresh_sections)
+      render json: ::SectionSerializer.serialize(service.refresh_sections)
     end
 
     def enrich
@@ -26,7 +26,7 @@ module Api
       cached_backgrounds, uncached_backgrounds = service.background_cache_partition(enriched)
 
       render json: {
-        sections: SectionSerializer.serialize(enriched),
+        sections: ::SectionSerializer.serialize(enriched),
         cached_poster_ids: cached_posters.pluck(:id),
         uncached_poster_movies: uncached_posters,
         cached_background_ids: cached_backgrounds.pluck(:id),
