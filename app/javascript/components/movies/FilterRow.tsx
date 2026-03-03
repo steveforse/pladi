@@ -1,6 +1,7 @@
 import React from 'react'
 import type { ActiveFilter, FilterFieldId, FilterOp } from '@/lib/types'
-import { FILTER_FIELD_GROUPS, FILTER_FIELDS, STRING_OPS, NUMERIC_OPS, NULL_OPS, defaultOp } from '@/lib/filters'
+import { FILTER_FIELDS, STRING_OPS, NUMERIC_OPS, NULL_OPS, defaultOp } from '@/lib/filters'
+import { FieldPicker } from './FieldPicker'
 
 export function FilterRow({
   filter,
@@ -26,19 +27,7 @@ export function FilterRow({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <select
-        value={filter.field}
-        onChange={(e) => handleFieldChange(e.target.value as FilterFieldId)}
-        className="border rounded px-2 py-1 text-sm bg-background"
-      >
-        {FILTER_FIELD_GROUPS.map((group) => (
-          <optgroup key={group.label} label={group.label}>
-            {group.fields.map((f) => (
-              <option key={f.id} value={f.id}>{f.label}</option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+      <FieldPicker value={filter.field} onChange={handleFieldChange} />
 
       <select
         value={filter.op}
