@@ -121,18 +121,10 @@ export function MovieRow({
               className="px-4 py-2"
             />
           )
-          case 'audience_rating': return (
-            <EditableCell key={id}
-              value={movie.audience_rating != null ? String(movie.audience_rating) : null}
-              fieldType="number"
-              onSave={async (v) => {
-                const r = (v as string) ? parseFloat(v as string) : null
-                onUpdate(movie.id, { audience_rating: Number.isFinite(r) ? r : null })
-              }}
-              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.audience_rating != null ? movie.audience_rating.toFixed(1) : '—'}</span>}
-              className="px-4 py-2"
-            />
-          )
+          case 'imdb_rating':        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.imdb_rating != null ? movie.imdb_rating.toFixed(1) : '—'}</td>
+          case 'rt_audience_rating': return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.rt_audience_rating != null ? movie.rt_audience_rating.toFixed(1) : '—'}</td>
+          case 'rt_critics_rating':  return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.rt_critics_rating != null ? movie.rt_critics_rating.toFixed(1) : '—'}</td>
+          case 'tmdb_rating':        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.tmdb_rating != null ? movie.tmdb_rating.toFixed(1) : '—'}</td>
           case 'genres':          return (
             <EditableCell key={id}
               value={movie.genres ? movie.genres.split(', ').filter(Boolean) : []}
@@ -203,18 +195,6 @@ export function MovieRow({
               fieldType="date"
               onSave={async (v) => onUpdate(movie.id, { originally_available: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{formatISODate(movie.originally_available)}</span>}
-              className="px-4 py-2"
-            />
-          )
-          case 'critic_rating':        return (
-            <EditableCell key={id}
-              value={movie.critic_rating != null ? String(movie.critic_rating) : null}
-              fieldType="number"
-              onSave={async (v) => {
-                const r = (v as string) ? parseFloat(v as string) : null
-                onUpdate(movie.id, { critic_rating: Number.isFinite(r) ? r : null })
-              }}
-              renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.critic_rating != null ? movie.critic_rating.toFixed(1) : '—'}</span>}
               className="px-4 py-2"
             />
           )

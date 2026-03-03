@@ -43,7 +43,7 @@ export function useMoviesData(downloadImages: boolean) {
       }}
     )
     return () => sub.unsubscribe()
-  }, [selectedServerId])
+  }, [selectedServerId, downloadImages])
 
   // Subscribe to BackgroundsChannel whenever selectedServerId changes
   useEffect(() => {
@@ -56,7 +56,7 @@ export function useMoviesData(downloadImages: boolean) {
       }}
     )
     return () => sub.unsubscribe()
-  }, [selectedServerId])
+  }, [selectedServerId, downloadImages])
 
   async function loadMovies(serverId: number) {
     setLoading(true)
@@ -169,6 +169,7 @@ export function useMoviesData(downloadImages: boolean) {
       }
     }
     init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function handleServerChange(id: number) {

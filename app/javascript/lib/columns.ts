@@ -3,7 +3,7 @@ import type { AllColumnId, ColumnDef, ColumnGroup } from '@/lib/types'
 export const DEFAULT_COL_ORDER: AllColumnId[] = [
   'id', 'title', 'original_title', 'sort_title',
   'year', 'originally_available', 'updated_at', 'duration', 'edition',
-  'audience_rating', 'content_rating', 'critic_rating',
+  'content_rating', 'imdb_rating', 'rt_audience_rating', 'rt_critics_rating', 'tmdb_rating',
   'directors', 'producers', 'writers',
   'collections', 'country', 'genres', 'labels', 'studio', 'summary', 'tagline',
   'video_codec', 'video_bitrate', 'frame_rate', 'width', 'height', 'aspect_ratio', 'video_resolution',
@@ -24,9 +24,11 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
     { id: 'year', label: 'Year' },
   ]},
   { label: 'Ratings', columns: [
-    { id: 'audience_rating', label: 'Audience Rating' },
-    { id: 'content_rating', label: 'Content Rating' },
-    { id: 'critic_rating', label: 'Critic Rating' },
+    { id: 'content_rating',     label: 'Content Rating' },
+    { id: 'imdb_rating',        label: 'IMDb Rating' },
+    { id: 'rt_audience_rating', label: 'RT Audience Rating' },
+    { id: 'rt_critics_rating',  label: 'RT Critics Rating' },
+    { id: 'tmdb_rating',        label: 'TMDb Rating' },
   ]},
   { label: 'Credits', columns: [
     { id: 'directors', label: 'Directors' },

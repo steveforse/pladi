@@ -124,8 +124,10 @@ export function MovieHeaderRow({
           case 'title':          return <Th key={id} label="Title"          col="title"          colId={id} className="w-56" {...shared} />
           case 'original_title': return <Th key={id} label="Original Title" col="original_title" colId={id} {...shared} />
           case 'year':           return <Th key={id} label="Year"           col="year"           colId={id} {...shared} />
-          case 'content_rating':  return <Th key={id} label="Content Rating"   col="content_rating"  colId={id} {...shared} />
-          case 'audience_rating': return <Th key={id} label="Audience Rating" col="audience_rating" colId={id} {...shared} />
+          case 'content_rating':     return <Th key={id} label="Content Rating"     col="content_rating"     colId={id} {...shared} />
+          case 'imdb_rating':        return <Th key={id} label="IMDb Rating"        col="imdb_rating"        colId={id} {...shared} />
+          case 'rt_audience_rating': return <Th key={id} label="RT Audience Rating" col="rt_audience_rating" colId={id} {...shared} />
+          case 'rt_critics_rating':  return <Th key={id} label="RT Critics Rating"  col="rt_critics_rating"  colId={id} {...shared} />
           case 'genres':          return <Th key={id} label="Genres"          col="genres"          colId={id} {...shared} />
           case 'directors':       return <Th key={id} label="Directors"       col="directors"       colId={id} {...shared} />
           case 'summary':         return <ThPlain key={id} label="Summary"    colId={id} {...shared} />
@@ -151,7 +153,7 @@ export function MovieHeaderRow({
           case 'sort_title':           return <Th key={id} label="Sort Title"           col="sort_title"           colId={id} {...shared} />
           case 'edition':              return <Th key={id} label="Edition"              col="edition"              colId={id} {...shared} />
           case 'originally_available': return <Th key={id} label="Originally Available" col="originally_available" colId={id} {...shared} />
-          case 'critic_rating':        return <Th key={id} label="Critic Rating"        col="critic_rating"        colId={id} {...shared} />
+          case 'tmdb_rating':          return <Th key={id} label="TMDb Rating"          col="tmdb_rating"          colId={id} {...shared} />
           case 'studio':               return <Th key={id} label="Studio"               col="studio"               colId={id} {...shared} />
           case 'tagline':              return <Th key={id} label="Tagline"              col="tagline"              colId={id} {...shared} />
           case 'country':              return <Th key={id} label="Country"              col="country"              colId={id} {...shared} />

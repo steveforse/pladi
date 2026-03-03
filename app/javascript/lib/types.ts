@@ -21,13 +21,15 @@ export interface Movie {
   plex_url: string | null
   summary: string | null
   content_rating: string | null
-  audience_rating: number | null
+  imdb_rating: number | null
+  rt_critics_rating: number | null
+  rt_audience_rating: number | null
+  tmdb_rating: number | null
   genres: string | null
   directors: string | null
   sort_title: string | null
   edition: string | null
   originally_available: string | null
-  critic_rating: number | null
   studio: string | null
   tagline: string | null
   country: string | null
@@ -54,10 +56,10 @@ export interface Section {
   movies: Movie[]
 }
 
-export type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'>
+export type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'>
 export type SortDir = 'asc' | 'desc'
 
-export type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'
+export type ColumnId = 'id' | 'original_title' | 'year' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'
 export type AllColumnId = 'title' | ColumnId
 
 export interface ColumnDef {
@@ -74,7 +76,7 @@ export type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
 export type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
 export type NullOp = 'present' | 'missing'
 export type FilterOp = NumericOp | StringOp | NullOp
-export type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'content_rating' | 'audience_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'critic_rating' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'
+export type FilterFieldId = 'id' | 'title' | 'original_title' | 'year' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'
 
 export interface FilterFieldDef {
   id: FilterFieldId

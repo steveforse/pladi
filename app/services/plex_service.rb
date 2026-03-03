@@ -10,8 +10,7 @@ class PlexService
     'sort_title' => 'titleSort', 'year' => 'year',
     'edition' => 'editionTitle', 'summary' => 'summary',
     'tagline' => 'tagline', 'studio' => 'studio',
-    'content_rating' => 'contentRating', 'critic_rating' => 'rating',
-    'audience_rating' => 'audienceRating',
+    'content_rating' => 'contentRating',
     'originally_available' => 'originallyAvailableAt'
   }.freeze
 
@@ -188,7 +187,6 @@ class PlexService
       duration: media['duration'],
       sort_title: item['titleSort'],
       originally_available: item['originallyAvailableAt'],
-      critic_rating: item['rating'],
       studio: item['studio'],
       tagline: item['tagline'],
       updated_at: item['updatedAt'],
@@ -302,6 +300,15 @@ class PlexService
         acc[part['file']] = audio_str.presence
       end
     end
+    ratings = item['Rating'] || []
+    imdb_rating = ratings.find { |r| r['image'].to_s.start_with?('imdb://') }&.dig('value')
+    rt_critics_rating = ratings.find do |r|
+      r['image'].to_s.start_with?('rottentomatoes://') && r['type'] == 'critic'
+    end&.dig('value')
+    rt_audience_rating = ratings.find do |r|
+      r['image'].to_s.start_with?('rottentomatoes://') && r['type'] == 'audience'
+    end&.dig('value')
+    tmdb_rating = ratings.find { |r| r['image'].to_s.start_with?('themoviedb://') }&.dig('value')
     {
       subtitles_by_file: subtitles_by_file,
       audio_by_file: audio_by_file,
@@ -310,7 +317,10 @@ class PlexService
       video_bitrate_by_file: video_bitrate_by_file,
       summary: item['summary'],
       content_rating: item['contentRating'],
-      audience_rating: item['audienceRating'],
+      imdb_rating: imdb_rating,
+      rt_critics_rating: rt_critics_rating,
+      rt_audience_rating: rt_audience_rating,
+      tmdb_rating: tmdb_rating,
       edition: item['editionTitle'],
       genres: (item['Genre'] || []).pluck('tag').join(', '),
       directors: (item['Director'] || []).pluck('tag').join(', '),
@@ -374,23 +384,27 @@ class PlexService
   # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
   def plex_get_image(path)
-    uri     = URI("#{@server.url}#{path}")
-    request = Net::HTTP::Get.new(uri)
-    request['Accept']       = 'image/jpeg, image/png, image/*'
-    request['X-Plex-Token'] = @server.token
-    response = http_start(uri) { |http| http.request(request) }
-
-    if response.is_a?(Net::HTTPRedirection) && response['Location']
-      redirect_uri = URI(response['Location'])
-      redirect_req = Net::HTTP::Get.new(redirect_uri)
-      redirect_req['Accept'] = 'image/jpeg, image/png, image/*'
-      response = http_start(redirect_uri) { |http| http.request(redirect_req) }
-    end
-
+    uri      = URI("#{@server.url}#{path}")
+    response = image_get(uri, token: @server.token)
+    response = follow_image_redirect(response) if response.is_a?(Net::HTTPRedirection)
     return nil unless response.is_a?(Net::HTTPSuccess)
 
     content_type = response['Content-Type'] || 'image/jpeg'
     { data: response.body.b, content_type: content_type }
+  end
+
+  def image_get(uri, token: nil)
+    request = Net::HTTP::Get.new(uri)
+    request['Accept'] = 'image/jpeg, image/png, image/*'
+    request['X-Plex-Token'] = token if token
+    http_start(uri) { |http| http.request(request) }
+  end
+
+  def follow_image_redirect(response)
+    return response unless response['Location']
+
+    redirect_uri = URI(response['Location'])
+    image_get(redirect_uri)
   end
 
   def plex_get(path)

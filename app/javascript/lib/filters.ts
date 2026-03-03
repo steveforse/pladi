@@ -14,9 +14,11 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'year',                 label: 'Year',                 type: 'numeric' },
   ]},
   { label: 'Ratings', fields: [
-    { id: 'audience_rating', label: 'Audience Rating', type: 'numeric' },
-    { id: 'content_rating',  label: 'Content Rating',  type: 'string' },
-    { id: 'critic_rating',   label: 'Critic Rating',   type: 'numeric' },
+    { id: 'content_rating',     label: 'Content Rating',     type: 'string' },
+    { id: 'imdb_rating',        label: 'IMDb Rating',        type: 'numeric' },
+    { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
+    { id: 'rt_critics_rating',  label: 'RT Critics Rating',  type: 'numeric' },
+    { id: 'tmdb_rating',        label: 'TMDb Rating',        type: 'numeric' },
   ]},
   { label: 'Credits', fields: [
     { id: 'directors',  label: 'Directors',  type: 'string' },
