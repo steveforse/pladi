@@ -8,7 +8,10 @@ export function sortMovies(movies: Movie[], key: SortKey, dir: SortDir): Movie[]
     if (av == null && bv == null) cmp = 0
     else if (av == null) cmp = 1
     else if (bv == null) cmp = -1
-    else if (typeof av === 'string' && typeof bv === 'string') cmp = av.localeCompare(bv)
+    else if (typeof av === 'string' && typeof bv === 'string') {
+      if (key === 'id') cmp = Number(av) - Number(bv)
+      else cmp = av.localeCompare(bv)
+    }
     else cmp = (av as number) - (bv as number)
     return dir === 'asc' ? cmp : -cmp
   })
