@@ -196,8 +196,10 @@ export function useMoviesData(downloadImages: boolean) {
     const tagFields = ['genres', 'directors', 'writers', 'producers', 'collections', 'labels', 'country']
     const apiPatch: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(patch)) {
-      if (tagFields.includes(key) && typeof val === 'string') {
-        apiPatch[key] = val ? val.split(', ').map((t) => t.trim()).filter(Boolean) : []
+      if (tagFields.includes(key)) {
+        apiPatch[key] = typeof val === 'string' && val
+          ? val.split(', ').map((t) => t.trim()).filter(Boolean)
+          : []
       } else {
         apiPatch[key] = val
       }
@@ -219,6 +221,22 @@ export function useMoviesData(downloadImages: boolean) {
       }))
     )
     if (selectedServerId) updateEnrichmentCacheMovie(selectedServerId, movieId, patch)
+  }
+
+  async function refreshMovies(movieIds: string[]) {
+    if (!selectedServerId) return
+    await Promise.all(movieIds.map(async (movieId) => {
+      const res = await fetch(`/api/movies/${movieId}?server_id=${selectedServerId}`)
+      if (!res.ok) return
+      const detail: Partial<Movie> = await res.json()
+      setSections((prev) =>
+        prev.map((section) => ({
+          ...section,
+          movies: section.movies.map((m) => (m.id === movieId ? { ...m, ...detail } : m)),
+        }))
+      )
+      updateEnrichmentCacheMovie(selectedServerId, movieId, detail)
+    }))
   }
 
   async function warmPosters(priorityIds: string[]) {
@@ -266,5 +284,6 @@ export function useMoviesData(downloadImages: boolean) {
     warmPosters,
     warmBackgrounds,
     updateMovie,
+    refreshMovies,
   }
 }

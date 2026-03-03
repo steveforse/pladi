@@ -18,12 +18,13 @@ import { MovieHeaderRow } from '@/components/movies/MovieHeaderRow'
 import { MovieRow } from '@/components/movies/MovieRow'
 import { PosterModal } from '@/components/movies/PosterModal'
 import { ImageModal } from '@/components/movies/ImageModal'
+import { BulkEditModal } from '@/components/movies/BulkEditModal'
 
 export default function MoviesTable({ onLogout, onSettings, onHistory, downloadImages }: { onLogout: () => void; onSettings: () => void; onHistory: () => void; downloadImages: boolean }) {
   const {
     plexServers, selectedServerId, sections, selectedTitle,
     loading, refreshing, syncing, error, posterReady, backgroundReady,
-    uncachedPosterMovies, warmPosters, uncachedBackgroundMovies, warmBackgrounds, updateMovie,
+    uncachedPosterMovies, warmPosters, uncachedBackgroundMovies, warmBackgrounds, updateMovie, refreshMovies,
     handleServerChange, handleServerAdded, setSelectedTitle,
   } = useMoviesData(downloadImages)
 
@@ -50,6 +51,8 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, downloadI
   const [filtersOpen, setFiltersOpen] = useState(() => localStorage.getItem('pladi_filters_open') === 'true')
   const [openPosterMovieId, setOpenPosterMovieId] = useState<string | null>(null)
   const [openBackgroundMovieId, setOpenBackgroundMovieId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkEditOpen, setBulkEditOpen] = useState(false)
 
   const posterMovies = visibleMovies.filter((m) => posterReady.has(m.id))
   const posterModalIdx = openPosterMovieId ? posterMovies.findIndex((m) => m.id === openPosterMovieId) : -1
@@ -63,6 +66,48 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, downloadI
     filters.length
 
   const pagedMovies = pageSize === 0 ? visibleMovies : visibleMovies.slice((page - 1) * pageSize, page * pageSize)
+
+  const allSelected = pagedMovies.length > 0 && pagedMovies.every((m) => selectedIds.has(m.id))
+  const someSelected = selectedIds.size > 0 && !allSelected
+
+  function handleToggleAll() {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(pagedMovies.map((m) => m.id)))
+    }
+  }
+
+  function handleToggleRow(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleBulkSave(tagValues: Partial<Record<'genres' | 'directors' | 'writers' | 'producers' | 'collections' | 'labels' | 'country', string[]>>, mode: 'append' | 'replace') {
+    const movieMap = new Map(visibleMovies.map((m) => [m.id, m]))
+    for (const id of selectedIds) {
+      const movie = movieMap.get(id)
+      if (!movie) continue
+      const patch: Record<string, string | null> = {}
+      for (const [field, newTags] of Object.entries(tagValues)) {
+        if (mode === 'append') {
+          const existing = (movie[field as keyof typeof movie] as string | null)?.split(', ').filter(Boolean) ?? []
+          const merged = [...new Set([...existing, ...newTags])]
+          patch[field] = merged.join(', ') || null
+        } else {
+          patch[field] = newTags.join(', ') || null
+        }
+      }
+      await updateMovie(id, patch)
+    }
+    await refreshMovies(Array.from(selectedIds))
+    setSelectedIds(new Set())
+    setBulkEditOpen(false)
+  }
 
   // Once syncing completes and we have uncached posters/backgrounds, warm them with current page first
   const wasSyncing = useRef(false)
@@ -271,6 +316,20 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, downloadI
               page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
               onPage={setPage} onPageSize={handlePageSize}
               leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} />}
+              centerSlot={selectedIds.size > 0 ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setBulkEditOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border font-medium"
+                    style={{ backgroundColor: '#E5A00D15', borderColor: '#E5A00D50', color: '#E5A00D' }}
+                  >
+                    Bulk Edit ({selectedIds.size})
+                  </button>
+                  <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:text-foreground">
+                    Clear selection
+                  </button>
+                </div>
+              ) : undefined}
             />
             <div className="rounded-md border overflow-auto">
               <table className="w-full text-sm">
@@ -281,6 +340,9 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, downloadI
                     sortKey={sortKey}
                     sortDir={sortDir}
                     dragOverCol={dragOverCol}
+                    allSelected={allSelected}
+                    someSelected={someSelected}
+                    onToggleAll={handleToggleAll}
                     onSort={handleSort}
                     onDragStart={handleColDragStart}
                     onDragOver={handleColDragOver}
@@ -299,6 +361,8 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, downloadI
                       downloadImages={downloadImages}
                       posterReady={posterReady}
                       backgroundReady={backgroundReady}
+                      selected={selectedIds.has(movie.id)}
+                      onToggle={handleToggleRow}
                       onUpdate={updateMovie}
                       onOpenPoster={setOpenPosterMovieId}
                       onOpenBackground={setOpenBackgroundMovieId}
@@ -341,6 +405,14 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, downloadI
           onClose={() => setOpenBackgroundMovieId(null)}
           onPrev={() => setOpenBackgroundMovieId(backgroundMovies[backgroundModalIdx - 1].id)}
           onNext={() => setOpenBackgroundMovieId(backgroundMovies[backgroundModalIdx + 1].id)}
+        />
+      )}
+
+      {bulkEditOpen && selectedIds.size > 0 && (
+        <BulkEditModal
+          selectedMovies={visibleMovies.filter((m) => selectedIds.has(m.id))}
+          onSave={handleBulkSave}
+          onClose={() => setBulkEditOpen(false)}
         />
       )}
     </div>

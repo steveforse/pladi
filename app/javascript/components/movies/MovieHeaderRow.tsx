@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { GripVertical } from 'lucide-react'
 import type { AllColumnId, ColumnId, SortKey, SortDir } from '@/lib/types'
 
@@ -96,6 +96,9 @@ export function MovieHeaderRow({
   sortKey,
   sortDir,
   dragOverCol,
+  allSelected,
+  someSelected,
+  onToggleAll,
   onSort,
   onDragStart,
   onDragOver,
@@ -107,6 +110,9 @@ export function MovieHeaderRow({
   sortKey: SortKey
   sortDir: SortDir
   dragOverCol: AllColumnId | null
+  allSelected: boolean
+  someSelected: boolean
+  onToggleAll: () => void
   onSort: (key: SortKey) => void
   onDragStart: (id: AllColumnId) => void
   onDragOver: (e: React.DragEvent, id: AllColumnId) => void
@@ -115,9 +121,19 @@ export function MovieHeaderRow({
 }) {
   const shared = { sortKey, sortDir, dragOverCol, onSort, onDragStart, onDragOver, onDrop, onDragEnd }
   const col = (id: ColumnId) => visibleCols.has(id)
+  const checkRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (checkRef.current) {
+      checkRef.current.indeterminate = someSelected
+    }
+  }, [someSelected])
 
   return (
     <tr className="border-b bg-muted/50">
+      <th className="px-2 py-3 w-8">
+        <input type="checkbox" ref={checkRef} checked={allSelected} onChange={onToggleAll} />
+      </th>
       {colOrder.filter((id) => id === 'title' || col(id as ColumnId)).map((id) => {
         switch (id) {
           case 'id':             return <Th key={id} label="ID"             col="id"             colId={id} {...shared} />

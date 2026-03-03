@@ -106,6 +106,13 @@ class PlexService
     extract_snapshot(item)
   end
 
+  def detail_for(movie_id)
+    movie = cached_sections.flat_map { |s| s[:movies] }.find { |m| m[:id].to_s == movie_id.to_s }
+    return nil unless movie
+
+    enrich_movie(movie_id, movie[:file_path])
+  end
+
   def update_movie(movie_id, fields)
     before = fetch_movie_snapshot(movie_id)
     plex_put("/library/metadata/#{movie_id}?#{build_update_query(fields)}")
@@ -256,6 +263,19 @@ class PlexService
     {}
   end
 
+  def enrich_movie(movie_id, file_path)
+    raw = fetch_movie_detail(movie_id)
+    stream_keys = %i[subtitles_by_file audio_by_file audio_language_by_file
+                     audio_bitrate_by_file video_bitrate_by_file]
+    raw.except(*stream_keys).merge(
+      subtitles: raw[:subtitles_by_file]&.dig(file_path),
+      audio_tracks: raw[:audio_by_file]&.dig(file_path),
+      audio_language: raw[:audio_language_by_file]&.dig(file_path),
+      audio_bitrate: raw[:audio_bitrate_by_file]&.dig(file_path),
+      video_bitrate: raw[:video_bitrate_by_file]&.dig(file_path)
+    )
+  end
+
   # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def parse_movie_detail(item)
     subtitles_by_file = (item['Media'] || []).each_with_object({}) do |media, acc|
@@ -322,13 +342,13 @@ class PlexService
       rt_audience_rating: rt_audience_rating,
       tmdb_rating: tmdb_rating,
       edition: item['editionTitle'],
-      genres: (item['Genre'] || []).pluck('tag').join(', '),
-      directors: (item['Director'] || []).pluck('tag').join(', '),
-      country: (item['Country'] || []).pluck('tag').join(', '),
-      writers: (item['Writer'] || []).pluck('tag').join(', '),
-      producers: (item['Producer'] || []).pluck('tag').join(', '),
-      collections: (item['Collection'] || []).pluck('tag').join(', '),
-      labels: (item['Label'] || []).pluck('tag').join(', ')
+      genres: (item['Genre'] || []).pluck('tag').compact_blank.join(', '),
+      directors: (item['Director'] || []).pluck('tag').compact_blank.join(', '),
+      country: (item['Country'] || []).pluck('tag').compact_blank.join(', '),
+      writers: (item['Writer'] || []).pluck('tag').compact_blank.join(', '),
+      producers: (item['Producer'] || []).pluck('tag').compact_blank.join(', '),
+      collections: (item['Collection'] || []).pluck('tag').compact_blank.join(', '),
+      labels: (item['Label'] || []).pluck('tag').compact_blank.join(', ')
     }
   end
   # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -346,8 +366,15 @@ class PlexService
       scalar_pairs << ["#{plex_param}.locked", '1']
     elsif (tag_name = TAG_FIELD_MAP[key])
       put_name = tag_name.downcase
-      Array(value).each_with_index do |tag, i|
-        raw_tag_parts << "#{put_name}[#{i}].tag.tag=#{CGI.escape(tag.to_s)}"
+      tags = Array(value)
+      if tags.empty?
+        # Send one empty entry to trigger Plex's replacement mode; without any
+        # entries Plex only locks the field in place rather than clearing it.
+        raw_tag_parts << "#{put_name}[0].tag.tag="
+      else
+        tags.each_with_index do |tag, i|
+          raw_tag_parts << "#{put_name}[#{i}].tag.tag=#{CGI.escape(tag.to_s)}"
+        end
       end
       raw_tag_parts << "#{put_name}.locked=1"
     end
@@ -357,7 +384,8 @@ class PlexService
     fields.filter_map do |key, value|
       field = key.to_s
       if TAG_FIELD_MAP.key?(field)
-        field unless Array(value).map(&:to_s).sort == snapshot[field].sort
+        expected = Array(value).map(&:to_s).compact_blank.sort
+        field unless expected == snapshot[field]
       elsif SCALAR_FIELD_MAP.key?(field)
         field unless value.to_s == snapshot[field].to_s
       end
@@ -377,7 +405,7 @@ class PlexService
     end
     TAG_FIELD_MAP.each_key do |key|
       tag_name      = TAG_FIELD_MAP[key]
-      snapshot[key] = (item[tag_name] || []).pluck('tag').sort
+      snapshot[key] = (item[tag_name] || []).pluck('tag').compact_blank.sort
     end
     snapshot
   end

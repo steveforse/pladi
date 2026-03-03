@@ -60,6 +60,8 @@ export function MovieRow({
   downloadImages,
   posterReady,
   backgroundReady,
+  selected,
+  onToggle,
   onUpdate,
   onOpenPoster,
   onOpenBackground,
@@ -71,6 +73,8 @@ export function MovieRow({
   downloadImages: boolean
   posterReady: Set<string>
   backgroundReady: Set<string>
+  selected: boolean
+  onToggle: (id: string) => void
   onUpdate: (id: string, patch: Partial<Movie>) => Promise<void>
   onOpenPoster: (movieId: string) => void
   onOpenBackground: (movieId: string) => void
@@ -79,6 +83,9 @@ export function MovieRow({
 
   return (
     <tr key={`${movie.id}|${movie.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
+      <td className="px-2 py-1 w-8">
+        <input type="checkbox" checked={selected} onChange={() => onToggle(movie.id)} />
+      </td>
       {colOrder.filter((id) => id === 'title' || col(id as ColumnId)).map((id) => {
         switch (id) {
           case 'id':             return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{movie.plex_url ? <a href={movie.plex_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{movie.id}</a> : movie.id}</td>

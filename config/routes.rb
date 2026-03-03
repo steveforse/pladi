@@ -11,7 +11,7 @@ Rails.application.routes.draw do
     resource :account, only: [:update], controller: 'account'
     get :me, to: 'auth#me'
     resources :history, only: [:index]
-    resources :movies, only: %i[index update] do
+    resources :movies, only: %i[index show update] do
       collection do
         get :refresh
         get :enrich

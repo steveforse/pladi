@@ -10,6 +10,13 @@ module Api
       render json: serialize_sections(service.cached_sections)
     end
 
+    def show
+      movie = service.detail_for(params[:id])
+      return render json: { error: 'Movie not found' }, status: :not_found if movie.nil?
+
+      render json: movie
+    end
+
     def refresh
       render json: serialize_sections(service.refresh_sections)
     end
