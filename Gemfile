@@ -72,6 +72,8 @@ group :development, :test do
   # Factories and fake data for tests
   gem 'factory_bot_rails'
   gem 'faker'
+  gem 'simplecov', require: false
+  gem 'simplecov-cobertura', require: false
 
   # Debugging
   gem 'awesome_print'
