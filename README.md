@@ -2,6 +2,10 @@
   <img width="160" alt="Pladi logo" src="https://github.com/user-attachments/assets/5790d3ac-d0ee-4eb0-803f-2c0ad0787c66" />
 
   <h1>Pladi</h1>
+  <p>
+    <a href="https://github.com/steveforse/pladi/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/steveforse/pladi/actions/workflows/ci.yml/badge.svg" /></a>
+    <a href="https://codecov.io/gh/steveforse/pladi"><img alt="Coverage" src="https://codecov.io/gh/steveforse/pladi/branch/main/graph/badge.svg" /></a>
+  </p>
   <p><strong>Plex Library API Data Inspector</strong></p>
   <p>Find problems in your Plex movie library — bad matches, duplicates, unnecessary files, and more.</p>
 </div>
