@@ -23,6 +23,8 @@ Rails.application.configure do
   # Show full error reports.
   config.consider_all_requests_local = true
   config.cache_store = :null_store
+  config.active_record.strict_loading_by_default = ENV['STRICT_LOADING'] == 'true'
+  config.active_record.strict_loading_mode = :n_plus_one_only if config.active_record.strict_loading_by_default
 
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable

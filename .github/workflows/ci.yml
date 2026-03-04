@@ -101,4 +101,11 @@ jobs:
           bundler-cache: true
 
       - name: Run tests
-        run: bundle exec rspec
+        run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec/rspec.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rspec-results
+          path: tmp/rspec/rspec.xml

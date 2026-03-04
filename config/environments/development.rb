@@ -53,6 +53,8 @@ Rails.application.configure do
 
   # Append comments with runtime information tags to SQL queries in logs.
   config.active_record.query_log_tags_enabled = true
+  config.active_record.strict_loading_by_default = true
+  config.active_record.strict_loading_mode = :n_plus_one_only
 
   # Use SolidQueue for background jobs.
   config.active_job.queue_adapter = :solid_queue

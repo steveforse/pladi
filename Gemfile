@@ -12,8 +12,6 @@ gem 'sqlite3', '>= 2.1'
 gem 'puma', '>= 5.0'
 # Vite integration for Rails [https://vite-ruby.netlify.app/]
 gem 'vite_rails'
-# Build JSON APIs with ease [https://github.com/rails/jbuilder]
-gem 'jbuilder'
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem 'bcrypt', '~> 3.1.7'
@@ -63,6 +61,8 @@ group :development, :test do
   # RSpec rubocop rules for Rails
   gem 'rubocop-rspec_rails', require: false
 
+  gem 'rubocop-rake', require: false
+
   # RSpec rubocop rules [https://github.com/rubocop/rubocop-rspec]
   gem 'rubocop-rspec', require: false
 
@@ -73,6 +73,7 @@ group :development, :test do
   # Factories and fake data for tests
   gem 'factory_bot_rails'
   gem 'faker'
+  gem 'prosopite'
   gem 'simplecov', require: false
   gem 'simplecov-cobertura', require: false
 
@@ -91,4 +92,9 @@ group :development do
   # Better error pages in development [https://github.com/BetterErrors/better_errors]
   gem 'better_errors'
   gem 'binding_of_caller'
+end
+
+group :test do
+  gem 'rspec_junit_formatter'
+  gem 'test-prof'
 end
