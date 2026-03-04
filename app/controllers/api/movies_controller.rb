@@ -70,7 +70,7 @@ module Api
     def prioritized_movies
       priority_ids = Array(params[:priority_ids]).map(&:to_s)
       movies = Array(params[:movies]).map { |m| m.permit(:id, :thumb, :art).to_h }
-      movies.sort_by { |m| priority_ids.exclude?(m[:id].to_s) }
+      movies.sort_by { |m| priority_ids.include?(m[:id].to_s) ? 0 : 1 }
     end
 
     def log_update(result, fields)
