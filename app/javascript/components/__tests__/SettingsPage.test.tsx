@@ -1,7 +1,7 @@
 import React from 'react'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsPage from '@/components/SettingsPage'
 import { ApiError, api } from '@/lib/apiClient'
 
@@ -36,10 +36,6 @@ describe('SettingsPage', () => {
     vi.clearAllMocks()
   })
 
-  afterEach(() => {
-    cleanup()
-  })
-
   it('loads account + servers data and renders servers tab', async () => {
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/me') {
@@ -55,7 +51,7 @@ describe('SettingsPage', () => {
       return { ok: false, status: 404, data: null }
     })
 
-    render(
+    const view = render(
       <SettingsPage
         onBack={() => {}}
         downloadImages={false}
@@ -67,6 +63,7 @@ describe('SettingsPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Servers' }))
     expect(await screen.findByText('Home')).toBeInTheDocument()
+    view.unmount()
   })
 
   it('shows server error when email update fails', async () => {
@@ -81,7 +78,7 @@ describe('SettingsPage', () => {
     })
     mockedApi.patch.mockRejectedValueOnce(new ApiError('Failed to update email.'))
 
-    render(
+    const view = render(
       <SettingsPage
         onBack={() => {}}
         downloadImages={false}
@@ -95,6 +92,7 @@ describe('SettingsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Update email' }))
 
     expect(await screen.findByText('Failed to update email.')).toBeInTheDocument()
+    view.unmount()
   })
 
   it('updates preference toggle and calls callback', async () => {
@@ -106,7 +104,7 @@ describe('SettingsPage', () => {
     })
     mockedApi.patch.mockResolvedValue({ ok: true, status: 200, data: null })
 
-    render(
+    const view = render(
       <SettingsPage
         onBack={() => {}}
         downloadImages={false}
@@ -121,5 +119,6 @@ describe('SettingsPage', () => {
       expect(onDownloadImagesChange).toHaveBeenCalledWith(true)
       expect(mockedApi.patch).toHaveBeenCalled()
     })
+    view.unmount()
   })
 })
