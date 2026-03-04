@@ -183,4 +183,55 @@ describe('MovieRow', () => {
     expect(onOpenBackground).toHaveBeenCalledWith('m1')
     view.unmount()
   })
+
+  it('renders a broad column set for metadata and media details', () => {
+    const rowMovie = movie({
+      content_rating: 'PG-13',
+      imdb_rating: 7.1,
+      rt_audience_rating: 85.4,
+      rt_critics_rating: 82.2,
+      tmdb_rating: 7.6,
+      summary: 'A long summary',
+      video_bitrate: 1800,
+      audio_bitrate: 256,
+      audio_language: 'English',
+      audio_tracks: 'English (AAC)',
+      subtitles: 'English',
+      edition: 'Director Cut',
+      originally_available: '2020-02-02',
+      studio: 'StudioX',
+      tagline: 'Tagline here',
+      country: 'US',
+      writers: 'Writer One',
+      producers: 'Producer One',
+      collections: 'Collection A',
+      labels: 'Favorite',
+      directors: 'Director One',
+    })
+    const { view } = renderRow({
+      rowMovie,
+      colOrder: [
+        'title', 'id', 'content_rating', 'imdb_rating', 'rt_audience_rating', 'rt_critics_rating', 'tmdb_rating',
+        'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'video_bitrate', 'width', 'height',
+        'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'audio_bitrate', 'audio_language', 'audio_tracks',
+        'subtitles', 'overall_bitrate', 'size', 'duration', 'updated_at', 'sort_title', 'edition', 'originally_available',
+        'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'directors', 'poster', 'background',
+      ],
+      visibleCols: new Set<ColumnId>([
+        'id', 'content_rating', 'imdb_rating', 'rt_audience_rating', 'rt_critics_rating', 'tmdb_rating',
+        'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'video_bitrate', 'width', 'height',
+        'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'audio_bitrate', 'audio_language', 'audio_tracks',
+        'subtitles', 'overall_bitrate', 'size', 'duration', 'updated_at', 'sort_title', 'edition', 'originally_available',
+        'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'directors', 'poster', 'background',
+      ]),
+      downloadImages: false,
+    })
+
+    expect(screen.getByText('PG-13')).toBeInTheDocument()
+    expect(screen.getByText('/movies/Alpha.mkv')).toBeInTheDocument()
+    expect(screen.getByText('StudioX')).toBeInTheDocument()
+    expect(screen.getByText('Favorite')).toBeInTheDocument()
+    expect(screen.getAllByText('✓')).toHaveLength(2)
+    view.unmount()
+  })
 })

@@ -2,6 +2,11 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMoviesData } from '@/hooks/useMoviesData'
 import { api } from '@/lib/apiClient'
+import {
+  loadBackgroundReadyCache,
+  loadPosterReadyCache,
+  updateEnrichmentCacheMovie,
+} from '@/lib/enrichmentCache'
 
 vi.mock('@/lib/apiClient', () => ({
   ApiError: class extends Error {},
@@ -13,16 +18,34 @@ vi.mock('@/lib/apiClient', () => ({
   },
 }))
 
+vi.mock('@/lib/enrichmentCache', () => ({
+  ENRICHMENT_FIELDS: ['summary', 'genres'],
+  mergeEnrichmentCache: vi.fn((_serverId: number, sections: unknown) => sections),
+  saveEnrichmentCache: vi.fn(),
+  updateEnrichmentCacheMovie: vi.fn(),
+  savePosterReadyCache: vi.fn(),
+  loadPosterReadyCache: vi.fn(() => new Set<string>()),
+  saveBackgroundReadyCache: vi.fn(),
+  loadBackgroundReadyCache: vi.fn(() => new Set<string>()),
+}))
+
+const cableSubscriptionsCreate = vi.fn()
+const cableDisconnect = vi.fn()
+const cableReceivedHandlers: Record<string, (data: { movie_id: string }) => void> = {}
+
 vi.mock('@rails/actioncable', () => ({
   createConsumer: () => ({
-    disconnect: vi.fn(),
+    disconnect: cableDisconnect,
     subscriptions: {
-      create: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      create: cableSubscriptionsCreate,
     },
   }),
 }))
 
 const mockedApi = vi.mocked(api)
+const mockedLoadPosterReadyCache = vi.mocked(loadPosterReadyCache)
+const mockedLoadBackgroundReadyCache = vi.mocked(loadBackgroundReadyCache)
+const mockedUpdateEnrichmentCacheMovie = vi.mocked(updateEnrichmentCacheMovie)
 
 function createStorageMock() {
   const store = new Map<string, string>()
@@ -87,6 +110,10 @@ describe('useMoviesData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('localStorage', createStorageMock())
+    cableSubscriptionsCreate.mockImplementation((identifier: { channel: string }, callbacks: { received: (data: { movie_id: string }) => void }) => {
+      cableReceivedHandlers[identifier.channel] = callbacks.received
+      return { unsubscribe: vi.fn() }
+    })
   })
 
   it('loads initial server and sections on mount', async () => {
@@ -123,6 +150,41 @@ describe('useMoviesData', () => {
       expect(result.current.sections).toHaveLength(1)
       expect(result.current.sections[0].movies[0].summary).toBe('enriched')
     })
+  })
+
+  it('restores saved server + library and handles non-ok refresh/enrich gracefully', async () => {
+    localStorage.setItem('pladi_selected_server_id', '2')
+    localStorage.setItem('pladi_selected_library', 'TV')
+
+    const tvSections = [{ title: 'TV', movies: [movie('m2', 'Beta')] }, { title: 'Movies', movies: [movie('m3', 'Gamma')] }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return {
+          ok: true,
+          status: 200,
+          data: [
+            { id: 1, name: 'A', url: 'http://a.local' },
+            { id: 2, name: 'B', url: 'http://b.local' },
+          ],
+        }
+      }
+      if (path === '/api/movies') return { ok: true, status: 200, data: tvSections }
+      if (path === '/api/movies/refresh') return { ok: false, status: 500, data: null }
+      if (path === '/api/movies/enrich') return { ok: false, status: 500, data: null }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useMoviesData(false))
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.selectedServerId).toBe(2)
+    expect(result.current.selectedTitle).toBe('TV')
+    expect(result.current.refreshing).toBe(false)
+    expect(result.current.syncing).toBe(false)
+    expect(result.current.error).toBeNull()
+    expect(result.current.sections[0].title).toBe('TV')
   })
 
   it('converts tag string patches to arrays when updating movie', async () => {
@@ -164,5 +226,113 @@ describe('useMoviesData', () => {
       { movie: expect.objectContaining({ genres: ['Action', 'Drama'] }) },
       expect.objectContaining({ query: { server_id: 1 } })
     )
+    expect(mockedUpdateEnrichmentCacheMovie).toHaveBeenCalledWith(1, 'm1', { genres: 'Action, Drama' })
+  })
+
+  it('hydrates image readiness from cache, subscribes to cable channels, and warms uncached media', async () => {
+    const baseSections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+
+    mockedLoadPosterReadyCache.mockReturnValue(new Set(['seed-poster']))
+    mockedLoadBackgroundReadyCache.mockReturnValue(new Set(['seed-bg']))
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/movies') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/movies/refresh') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/movies/enrich') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            sections: baseSections,
+            cached_poster_ids: ['cached-p'],
+            uncached_poster_movies: [{ id: 'm1', thumb: '/thumb.jpg' }],
+            cached_background_ids: ['cached-b'],
+            uncached_background_movies: [{ id: 'm1', art: '/art.jpg' }],
+          },
+        }
+      }
+      return { ok: false, status: 404, data: null }
+    })
+    mockedApi.post.mockResolvedValue({ ok: true, status: 200, data: null })
+
+    const { result } = renderHook(() => useMoviesData(true))
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(cableSubscriptionsCreate).toHaveBeenCalledWith(
+      { channel: 'PostersChannel', server_id: 1 },
+      expect.objectContaining({ received: expect.any(Function) })
+    )
+    expect(cableSubscriptionsCreate).toHaveBeenCalledWith(
+      { channel: 'BackgroundsChannel', server_id: 1 },
+      expect.objectContaining({ received: expect.any(Function) })
+    )
+
+    act(() => {
+      cableReceivedHandlers.PostersChannel?.({ movie_id: 'ws-poster' })
+      cableReceivedHandlers.BackgroundsChannel?.({ movie_id: 'ws-bg' })
+    })
+
+    expect(result.current.posterReady.has('ws-poster')).toBe(true)
+    expect(result.current.backgroundReady.has('ws-bg')).toBe(true)
+
+    await act(async () => {
+      await result.current.warmPosters(['m1'])
+      await result.current.warmBackgrounds(['m1'])
+    })
+
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      '/api/movies/warm_posters',
+      { priority_ids: ['m1'], movies: [{ id: 'm1', thumb: '/thumb.jpg' }] },
+      expect.objectContaining({ query: { server_id: 1 } })
+    )
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      '/api/movies/warm_backgrounds',
+      { priority_ids: ['m1'], movies: [{ id: 'm1', art: '/art.jpg' }] },
+      expect.objectContaining({ query: { server_id: 1 } })
+    )
+  })
+
+  it('refreshes movie details and updates cache for successful detail fetches', async () => {
+    const baseSections = [{ title: 'Movies', movies: [movie('m1', 'Alpha'), movie('m2', 'Beta')] }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/movies') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/movies/refresh') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/movies/enrich') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            sections: baseSections,
+            cached_poster_ids: [],
+            uncached_poster_movies: [],
+            cached_background_ids: [],
+            uncached_background_movies: [],
+          },
+        }
+      }
+      if (path === '/api/movies/m1') return { ok: true, status: 200, data: { summary: 'Updated summary' } }
+      if (path === '/api/movies/m2') return { ok: false, status: 404, data: null }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useMoviesData(false))
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      await result.current.refreshMovies(['m1', 'm2'])
+    })
+
+    expect(result.current.sections[0].movies.find((m) => m.id === 'm1')?.summary).toBe('Updated summary')
+    expect(mockedUpdateEnrichmentCacheMovie).toHaveBeenCalledWith(1, 'm1', { summary: 'Updated summary' })
+    expect(mockedUpdateEnrichmentCacheMovie).not.toHaveBeenCalledWith(1, 'm2', expect.anything())
   })
 })
