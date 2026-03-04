@@ -15,4 +15,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './app/javascript'),
     },
   },
+  test: {
+    include: ['**/*.test.ts', '**/*.test.tsx'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['**/*.ts', '**/*.tsx'],
+      exclude: ['**/*.test.ts', '**/*.test.tsx', 'entrypoints/**'],
+    },
+  },
 })

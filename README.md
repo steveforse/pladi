@@ -59,7 +59,11 @@ bundle exec rails server   # API on port 3000
 bundle exec vite dev       # Frontend HMR on port 3036
 ```
 
-Run tests: `bundle exec rspec`
+Run backend tests: `bundle exec rspec`
+
+Run frontend tests: `npm test`
+
+Run frontend tests with coverage: `npm run test:coverage`
 
 Run static analyzers: `bin/rubocop` and `bin/brakeman`
 

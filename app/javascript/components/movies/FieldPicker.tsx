@@ -18,7 +18,6 @@ export function FieldPicker({
 
   useEffect(() => {
     if (open) {
-      setQuery('')
       setTimeout(() => inputRef.current?.focus(), 0)
     }
   }, [open])
@@ -44,11 +43,19 @@ export function FieldPicker({
     setOpen(false)
   }
 
+  function toggleOpen() {
+    setOpen((prevOpen) => {
+      const nextOpen = !prevOpen
+      if (!prevOpen) setQuery('')
+      return nextOpen
+    })
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleOpen}
         className="border rounded px-2 py-1 text-sm bg-background flex items-center gap-1 min-w-[8rem] justify-between"
       >
         <span>{selectedLabel}</span>
