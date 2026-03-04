@@ -1,10 +1,7 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import pladiLogo from '@/assets/pladi_logo.png'
-
-function getCsrfToken(): string {
-  return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
-}
+import { ApiError, api } from '@/lib/apiClient'
 
 export default function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [emailAddress, setEmailAddress] = useState('')
@@ -17,22 +14,15 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
     setError(null)
     setLoading(true)
     try {
-      const res = await fetch('/session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': getCsrfToken(),
-        },
-        body: JSON.stringify({ email_address: emailAddress, password }),
-      })
-      if (res.ok) {
-        onLogin()
-      } else {
-        const data = await res.json().catch(() => ({}))
-        setError(data.error ?? 'Invalid credentials')
-      }
-    } catch {
-      setError('Network error')
+      await api.post<unknown, { email_address: string; password: string }>(
+        '/session',
+        { email_address: emailAddress, password },
+        { csrf: true }
+      )
+      onLogin()
+    } catch (err: unknown) {
+      if (err instanceof ApiError) setError(err.message || 'Invalid credentials')
+      else setError('Network error')
     } finally {
       setLoading(false)
     }

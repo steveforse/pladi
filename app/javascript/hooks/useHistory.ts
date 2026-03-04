@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ApiError, api } from '@/lib/apiClient'
+import { AuditLogListSchema } from '@/lib/apiSchemas'
 
 export interface AuditLog {
   id: number
@@ -19,13 +21,12 @@ export function useHistory() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/history')
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
+    api.get<AuditLog[]>('/api/history', { responseSchema: AuditLogListSchema })
+      .then((res) => setLogs(res.data ?? []))
+      .catch((e: unknown) => {
+        if (e instanceof ApiError) setError(e.message)
+        else setError(e instanceof Error ? e.message : 'Unknown error')
       })
-      .then((data) => setLogs(data))
-      .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 

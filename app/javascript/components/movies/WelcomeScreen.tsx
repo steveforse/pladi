@@ -1,8 +1,12 @@
 import React, { useState } from 'react'
 import pladiLogo from '@/assets/pladi_logo.png'
-import { getCsrfToken } from '@/lib/csrf'
 import { TokenInput } from '@/components/ui/TokenInput'
 import type { PlexServerInfo } from '@/lib/types'
+import { ApiError, api } from '@/lib/apiClient'
+import { LookupNameResponseSchema, PlexServerInfoSchema } from '@/lib/apiSchemas'
+import type { z } from 'zod'
+
+type LookupNameResponse = z.infer<typeof LookupNameResponseSchema>
 
 export function WelcomeScreen({
   onLogout,
@@ -24,13 +28,12 @@ export function WelcomeScreen({
     if (!trimmedUrl || !trimmedToken) return
     setFetchingName(true)
     try {
-      const res = await fetch(
-        `/api/plex_servers/lookup_name?url=${encodeURIComponent(trimmedUrl)}&token=${encodeURIComponent(trimmedToken)}`
-      )
-      if (res.ok) {
-        const data = await res.json()
-        if (data.name) setName(data.name)
-      }
+      const res = await api.get<LookupNameResponse>('/api/plex_servers/lookup_name', {
+        query: { url: trimmedUrl, token: trimmedToken },
+        throwOnError: false,
+        responseSchema: LookupNameResponseSchema,
+      })
+      if (res.ok && res.data?.name) setName(res.data.name)
     } finally {
       setFetchingName(false)
     }
@@ -41,18 +44,15 @@ export function WelcomeScreen({
     setError(null)
     setSubmitting(true)
     try {
-      const res = await fetch('/api/plex_servers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-        body: JSON.stringify({ plex_server: { name, url, token: token.trim() } }),
-      })
-      if (res.ok) {
-        const server: PlexServerInfo = await res.json()
-        onServerAdded(server)
-      } else {
-        const data = await res.json()
-        setError(data.errors?.join(', ') ?? 'Something went wrong.')
-      }
+      const res = await api.post<PlexServerInfo, { plex_server: { name: string; url: string; token: string } }>(
+        '/api/plex_servers',
+        { plex_server: { name, url, token: token.trim() } },
+        { csrf: true, responseSchema: PlexServerInfoSchema }
+      )
+      if (res.data) onServerAdded(res.data)
+    } catch (err: unknown) {
+      if (err instanceof ApiError) setError(err.message || 'Something went wrong.')
+      else setError('Something went wrong.')
     } finally {
       setSubmitting(false)
     }
@@ -69,7 +69,7 @@ export function WelcomeScreen({
         <div className="flex-1" />
         <button
           onClick={async () => {
-            await fetch('/session', { method: 'DELETE', headers: { 'X-CSRF-Token': getCsrfToken() } })
+            await api.del('/session', { csrf: true, throwOnError: false })
             onLogout()
           }}
           className="btn px-3 py-1.5 text-sm text-muted-foreground"

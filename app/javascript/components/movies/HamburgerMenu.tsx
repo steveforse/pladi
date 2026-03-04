@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Menu } from 'lucide-react'
-import { getCsrfToken } from '@/lib/csrf'
+import { api } from '@/lib/apiClient'
 
 export function HamburgerMenu({ onLogout, onSettings, onHistory }: { onLogout: () => void; onSettings: () => void; onHistory: () => void }) {
   const [open, setOpen] = useState(false)
@@ -40,10 +40,7 @@ export function HamburgerMenu({ onLogout, onSettings, onHistory }: { onLogout: (
           <button
             onClick={async () => {
               setOpen(false)
-              await fetch('/session', {
-                method: 'DELETE',
-                headers: { 'X-CSRF-Token': getCsrfToken() },
-              })
+              await api.del('/session', { csrf: true, throwOnError: false })
               onLogout()
             }}
             className="w-full text-left px-4 py-2 text-sm hover:bg-muted/50"

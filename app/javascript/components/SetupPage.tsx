@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import pladiLogo from '@/assets/pladi_logo.png'
-import { getCsrfToken } from '@/lib/csrf'
 import { isValidEmail } from '@/lib/utils'
+import { ApiError, api } from '@/lib/apiClient'
 
 export default function SetupPage({ onComplete }: { onComplete: () => void }) {
   const [emailAddress, setEmailAddress] = useState('')
@@ -47,24 +47,18 @@ export default function SetupPage({ onComplete }: { onComplete: () => void }) {
     setErrors([])
     setLoading(true)
     try {
-      const res = await fetch('/api/setup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': getCsrfToken(),
-        },
-        body: JSON.stringify({ user: { email_address: trimmedEmail, password, password_confirmation: passwordConfirmation } }),
-      })
-      if (res.ok) {
-        onComplete()
-      } else {
-        const data = await res.json().catch(() => ({}))
-        const msgs: string[] = (data as { errors?: string[]; error?: string }).errors
-          ?? [(data as { error?: string }).error ?? 'Something went wrong.']
+      await api.post('/api/setup', {
+        user: { email_address: trimmedEmail, password, password_confirmation: passwordConfirmation },
+      }, { csrf: true })
+      onComplete()
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        const data = err.data as { errors?: string[]; error?: string } | null
+        const msgs: string[] = data?.errors ?? [data?.error ?? err.message ?? 'Something went wrong.']
         setErrors(msgs)
+      } else {
+        setErrors(['Network error. Please try again.'])
       }
-    } catch {
-      setErrors(['Network error. Please try again.'])
     } finally {
       setLoading(false)
     }

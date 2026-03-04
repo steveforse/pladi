@@ -1,20 +1,24 @@
 import React, { useEffect, useState } from 'react'
 import PageHeader from '@/components/PageHeader'
-import { getCsrfToken } from '@/lib/csrf'
 import { isValidEmail } from '@/lib/utils'
 import { TokenInput } from '@/components/ui/TokenInput'
+import { ApiError, api } from '@/lib/apiClient'
+import { LookupNameResponseSchema, MeResponseSchema, PlexServerInfoListSchema } from '@/lib/apiSchemas'
+import type { z } from 'zod'
 
-interface PlexServer {
-  id: number
-  name: string
-  url: string
-}
+type PlexServer = z.infer<typeof PlexServerInfoListSchema>[number]
 
 interface EditState {
   name: string
   url: string
   token: string
 }
+
+interface ErrorResponse {
+  errors?: string[]
+}
+type MeResponse = z.infer<typeof MeResponseSchema>
+type LookupNameResponse = z.infer<typeof LookupNameResponseSchema>
 
 type Tab = 'account' | 'preferences' | 'servers'
 
@@ -49,12 +53,9 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
   const [passwordSaving, setPasswordSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/me').then(async (r) => {
-      if (r.ok) {
-        const data = await r.json()
-        setEmail(data.email_address ?? '')
-      }
-    })
+    api.get<MeResponse>('/api/me', { throwOnError: false, responseSchema: MeResponseSchema }).then((res) => {
+      if (res.ok && res.data) setEmail(res.data.email_address ?? '')
+    }).catch(() => {})
   }, [])
 
   function handleEmailChange(value: string) {
@@ -75,11 +76,7 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
     onDownloadImagesChange(value)
     setDownloadImagesSaving(true)
     try {
-      await fetch('/api/account', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-        body: JSON.stringify({ user: { download_images: value } }),
-      })
+      await api.patch('/api/account', { user: { download_images: value } }, { csrf: true, throwOnError: false })
     } finally {
       setDownloadImagesSaving(false)
     }
@@ -97,19 +94,11 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
     setEmailServerError(null)
     setEmailSaving(true)
     try {
-      const res = await fetch('/api/account', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-        body: JSON.stringify({ user: { email_address: trimmed } }),
-      })
-      if (res.ok) {
-        setEmailSuccess(true)
-      } else {
-        const data = await res.json().catch(() => ({}))
-        setEmailServerError((data as { errors?: string[] }).errors?.join(', ') ?? 'Failed to update email.')
-      }
-    } catch {
-      setEmailServerError('Network error. Please try again.')
+      await api.patch('/api/account', { user: { email_address: trimmed } }, { csrf: true })
+      setEmailSuccess(true)
+    } catch (err: unknown) {
+      if (err instanceof ApiError) setEmailServerError(err.message || 'Failed to update email.')
+      else setEmailServerError('Network error. Please try again.')
     } finally {
       setEmailSaving(false)
     }
@@ -125,21 +114,15 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
     setPasswordSuccess(false)
     setPasswordSaving(true)
     try {
-      const res = await fetch('/api/account', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-        body: JSON.stringify({ user: { password: newPassword, password_confirmation: confirmPassword } }),
-      })
-      if (res.ok) {
-        setNewPassword('')
-        setConfirmPassword('')
-        setPasswordSuccess(true)
-      } else {
-        const data = await res.json().catch(() => ({}))
-        setPasswordError((data as { errors?: string[] }).errors?.join(', ') ?? 'Failed to update password.')
-      }
-    } catch {
-      setPasswordError('Network error. Please try again.')
+      await api.patch('/api/account', {
+        user: { password: newPassword, password_confirmation: confirmPassword },
+      }, { csrf: true })
+      setNewPassword('')
+      setConfirmPassword('')
+      setPasswordSuccess(true)
+    } catch (err: unknown) {
+      if (err instanceof ApiError) setPasswordError(err.message || 'Failed to update password.')
+      else setPasswordError('Network error. Please try again.')
     } finally {
       setPasswordSaving(false)
     }
@@ -151,23 +134,23 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
     if (!trimmedUrl || !trimmedToken) return
     setFetchingName(true)
     try {
-      const res = await fetch(
-        `/api/plex_servers/lookup_name?url=${encodeURIComponent(trimmedUrl)}&token=${encodeURIComponent(trimmedToken)}`
-      )
-      if (res.ok) {
-        const data = await res.json()
-        if (data.name) setNewServer((s) => ({ ...s, name: data.name }))
-      }
+      const res = await api.get<LookupNameResponse>('/api/plex_servers/lookup_name', {
+        query: { url: trimmedUrl, token: trimmedToken },
+        throwOnError: false,
+        responseSchema: LookupNameResponseSchema,
+      })
+      if (res.ok && res.data?.name) setNewServer((s) => ({ ...s, name: res.data?.name ?? s.name }))
     } finally {
       setFetchingName(false)
     }
   }
 
   async function fetchServers() {
-    const res = await fetch('/api/plex_servers')
-    if (res.ok) {
-      setServers(await res.json())
-    }
+    const res = await api.get<PlexServer[]>('/api/plex_servers', {
+      throwOnError: false,
+      responseSchema: PlexServerInfoListSchema,
+    })
+    if (res.ok && res.data) setServers(res.data)
     setLoading(false)
   }
 
@@ -178,18 +161,19 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    const res = await fetch('/api/plex_servers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-      body: JSON.stringify({ plex_server: { ...newServer, token: newServer.token.trim() } }),
-    })
-    if (res.ok) {
+    try {
+      await api.post('/api/plex_servers', {
+        plex_server: { ...newServer, token: newServer.token.trim() },
+      }, { csrf: true })
       setNewServer({ name: '', url: '', token: '' })
       setAddingNew(false)
-      fetchServers()
-    } else {
-      const data = await res.json()
-      setError(data.errors?.join(', ') ?? 'Failed to create server')
+      await fetchServers()
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setError(err.message || 'Failed to create server')
+      } else {
+        setError('Failed to create server')
+      }
     }
   }
 
@@ -201,29 +185,28 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
   async function handleUpdate(e: React.FormEvent, id: number) {
     e.preventDefault()
     setError(null)
-    const res = await fetch(`/api/plex_servers/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-      body: JSON.stringify({ plex_server: { ...editState, token: editState.token.trim() } }),
-    })
-    if (res.ok) {
+    try {
+      await api.patch(`/api/plex_servers/${id}`, {
+        plex_server: { ...editState, token: editState.token.trim() },
+      }, { csrf: true })
       setEditingId(null)
-      fetchServers()
-    } else {
-      const data = await res.json()
-      setError(data.errors?.join(', ') ?? 'Failed to update server')
+      await fetchServers()
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        const apiData = err.data as ErrorResponse | null
+        setError(apiData?.errors?.join(', ') ?? err.message ?? 'Failed to update server')
+      } else {
+        setError('Failed to update server')
+      }
     }
   }
 
   async function handleDelete(id: number) {
     setError(null)
-    const res = await fetch(`/api/plex_servers/${id}`, {
-      method: 'DELETE',
-      headers: { 'X-CSRF-Token': getCsrfToken() },
-    })
-    if (res.ok) {
-      fetchServers()
-    } else {
+    try {
+      await api.del(`/api/plex_servers/${id}`, { csrf: true })
+      await fetchServers()
+    } catch {
       setError('Failed to delete server')
     }
   }

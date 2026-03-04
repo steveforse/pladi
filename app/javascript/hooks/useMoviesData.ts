@@ -2,9 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { createConsumer } from '@rails/actioncable'
 import type { Movie, PlexServerInfo, Section } from '@/lib/types'
 import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCache, updateEnrichmentCacheMovie, savePosterReadyCache, loadPosterReadyCache, saveBackgroundReadyCache, loadBackgroundReadyCache } from '@/lib/enrichmentCache'
+import { ApiError, api } from '@/lib/apiClient'
+import { EnrichResponseSchema, PlexServerInfoListSchema, SectionListSchema, MovieDetailSchema } from '@/lib/apiSchemas'
+import type { z } from 'zod'
 
 type PosterMovie = { id: string; thumb: string }
 type BackgroundMovie = { id: string; art: string }
+type EnrichResponse = z.infer<typeof EnrichResponseSchema>
 
 const STORAGE_KEYS = {
   serverId: 'pladi_selected_server_id',
@@ -25,11 +29,16 @@ export function useMoviesData(downloadImages: boolean) {
   const [backgroundReady, setBackgroundReady] = useState<Set<string>>(new Set())
   const [uncachedBackgroundMovies, setUncachedBackgroundMovies] = useState<BackgroundMovie[]>([])
   const consumerRef = useRef<ReturnType<typeof createConsumer> | null>(null)
+  const loadRequestIdRef = useRef(0)
+  const activeLoadAbortRef = useRef<AbortController | null>(null)
 
   // Create Action Cable consumer once on mount, disconnect on unmount
   useEffect(() => {
     consumerRef.current = createConsumer()
-    return () => { consumerRef.current?.disconnect() }
+    return () => {
+      activeLoadAbortRef.current?.abort()
+      consumerRef.current?.disconnect()
+    }
   }, [])
 
   // Subscribe to PostersChannel whenever selectedServerId changes
@@ -59,7 +68,16 @@ export function useMoviesData(downloadImages: boolean) {
   }, [selectedServerId, downloadImages])
 
   async function loadMovies(serverId: number) {
+    const requestId = loadRequestIdRef.current + 1
+    loadRequestIdRef.current = requestId
+    activeLoadAbortRef.current?.abort()
+    const controller = new AbortController()
+    activeLoadAbortRef.current = controller
+    const { signal } = controller
+    const isStale = () => loadRequestIdRef.current !== requestId
+
     setLoading(true)
+    setError(null)
     setSections([])
     setSelectedTitle(null)
     if (downloadImages) {
@@ -67,9 +85,13 @@ export function useMoviesData(downloadImages: boolean) {
       setBackgroundReady(loadBackgroundReadyCache(serverId))
     }
     try {
-      const res = await fetch(`/api/movies?server_id=${serverId}`)
-      if (!res.ok) throw new Error(`Server error: ${res.status}`)
-      const data: Section[] = await res.json()
+      const listRes = await api.get<Section[]>('/api/movies', {
+        signal,
+        query: { server_id: serverId },
+        responseSchema: SectionListSchema,
+      })
+      const data = listRes.data ?? []
+      if (isStale()) return
       setSections(mergeEnrichmentCache(serverId, data))
       if (data.length > 0) {
         const savedLibrary = localStorage.getItem(STORAGE_KEYS.library)
@@ -81,9 +103,15 @@ export function useMoviesData(downloadImages: boolean) {
       // Refresh section list from Plex
       setRefreshing(true)
       try {
-        const refreshRes = await fetch(`/api/movies/refresh?server_id=${serverId}`)
-        if (refreshRes.ok) {
-          const fresh: Section[] = await refreshRes.json()
+        const refreshRes = await api.get<Section[]>('/api/movies/refresh', {
+          signal,
+          query: { server_id: serverId },
+          throwOnError: false,
+          responseSchema: SectionListSchema,
+        })
+        if (isStale()) return
+        if (refreshRes.ok && refreshRes.data) {
+          const fresh = refreshRes.data
           setSections(mergeEnrichmentCache(serverId, fresh))
           setSelectedTitle((prev) =>
             prev === null || fresh.some((s) => s.title === prev)
@@ -92,15 +120,22 @@ export function useMoviesData(downloadImages: boolean) {
           )
         }
       } finally {
-        setRefreshing(false)
+        if (!isStale()) setRefreshing(false)
       }
 
       // Enrich with per-movie metadata
       setSyncing(true)
       try {
-        const enrichRes = await fetch(`/api/movies/enrich?server_id=${serverId}`)
-        if (enrichRes.ok) {
-          const enrichData = await enrichRes.json()
+        const enrichRes = await api.get<EnrichResponse>('/api/movies/enrich', {
+          signal,
+          query: { server_id: serverId },
+          throwOnError: false,
+          responseSchema: EnrichResponseSchema,
+        })
+        if (isStale()) return
+        if (enrichRes.ok && enrichRes.data) {
+          const enrichData = enrichRes.data
+          if (isStale()) return
           saveEnrichmentCache(serverId, enrichData.sections)
           setSections((prev) => {
             const prevById = new Map<string, Movie>()
@@ -139,21 +174,32 @@ export function useMoviesData(downloadImages: boolean) {
           }
         }
       } finally {
-        setSyncing(false)
+        if (!isStale()) setSyncing(false)
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      if (signal.aborted || isStale()) return
+      if (err instanceof ApiError) setError(err.message)
+      else setError(err instanceof Error ? err.message : 'Unknown error')
       setLoading(false)
+    } finally {
+      if (activeLoadAbortRef.current === controller) {
+        activeLoadAbortRef.current = null
+      }
     }
   }
 
   // Fetch servers on mount, then load movies for the first server
   useEffect(() => {
+    const controller = new AbortController()
+
     const init = async () => {
       try {
-        const serversRes = await fetch('/api/plex_servers')
-        if (!serversRes.ok) throw new Error(`Failed to load servers: ${serversRes.status}`)
-        const servers: PlexServerInfo[] = await serversRes.json()
+        const serversRes = await api.get<PlexServerInfo[]>('/api/plex_servers', {
+          signal: controller.signal,
+          responseSchema: PlexServerInfoListSchema,
+        })
+        const servers = serversRes.data ?? []
+        if (controller.signal.aborted) return
         setPlexServers(servers)
         if (servers.length === 0) {
           setLoading(false)
@@ -164,11 +210,14 @@ export function useMoviesData(downloadImages: boolean) {
         setSelectedServerId(firstId)
         await loadMovies(firstId)
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
+        if (controller.signal.aborted) return
+        if (err instanceof ApiError) setError(err.message)
+        else setError(err instanceof Error ? err.message : 'Unknown error')
         setLoading(false)
       }
     }
     init()
+    return () => controller.abort()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -190,7 +239,7 @@ export function useMoviesData(downloadImages: boolean) {
   }
 
   async function updateMovie(movieId: string, patch: Partial<Movie>) {
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
+    if (!selectedServerId) throw new Error('No server selected')
 
     // Convert tag fields from comma-separated strings to arrays for the API
     const tagFields = ['genres', 'directors', 'writers', 'producers', 'collections', 'labels', 'country']
@@ -205,15 +254,11 @@ export function useMoviesData(downloadImages: boolean) {
       }
     }
 
-    const res = await fetch(`/api/movies/${movieId}?server_id=${selectedServerId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ movie: apiPatch }),
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error((data as { error?: string }).error ?? `Save failed (${res.status})`)
-    }
+    await api.patch<unknown, { movie: Record<string, unknown> }>(
+      `/api/movies/${movieId}`,
+      { movie: apiPatch },
+      { query: { server_id: selectedServerId }, csrf: true }
+    )
     setSections((prev) =>
       prev.map((section) => ({
         ...section,
@@ -226,9 +271,13 @@ export function useMoviesData(downloadImages: boolean) {
   async function refreshMovies(movieIds: string[]) {
     if (!selectedServerId) return
     await Promise.all(movieIds.map(async (movieId) => {
-      const res = await fetch(`/api/movies/${movieId}?server_id=${selectedServerId}`)
-      if (!res.ok) return
-      const detail: Partial<Movie> = await res.json()
+      const detailRes = await api.get<Partial<Movie>>(`/api/movies/${movieId}`, {
+        query: { server_id: selectedServerId },
+        throwOnError: false,
+        responseSchema: MovieDetailSchema,
+      })
+      if (!detailRes.ok || !detailRes.data) return
+      const detail = detailRes.data
       setSections((prev) =>
         prev.map((section) => ({
           ...section,
@@ -241,27 +290,19 @@ export function useMoviesData(downloadImages: boolean) {
 
   async function warmPosters(priorityIds: string[]) {
     if (!downloadImages || !selectedServerId || uncachedPosterMovies.length === 0) return
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
-    await fetch(
-      `/api/movies/warm_posters?server_id=${selectedServerId}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-        body: JSON.stringify({ priority_ids: priorityIds, movies: uncachedPosterMovies }),
-      }
+    await api.post<unknown, { priority_ids: string[]; movies: PosterMovie[] }>(
+      '/api/movies/warm_posters',
+      { priority_ids: priorityIds, movies: uncachedPosterMovies },
+      { query: { server_id: selectedServerId }, csrf: true, throwOnError: false }
     )
   }
 
   async function warmBackgrounds(priorityIds: string[]) {
     if (!downloadImages || !selectedServerId || uncachedBackgroundMovies.length === 0) return
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
-    await fetch(
-      `/api/movies/warm_backgrounds?server_id=${selectedServerId}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-        body: JSON.stringify({ priority_ids: priorityIds, movies: uncachedBackgroundMovies }),
-      }
+    await api.post<unknown, { priority_ids: string[]; movies: BackgroundMovie[] }>(
+      '/api/movies/warm_backgrounds',
+      { priority_ids: priorityIds, movies: uncachedBackgroundMovies },
+      { query: { server_id: selectedServerId }, csrf: true, throwOnError: false }
     )
   }
 

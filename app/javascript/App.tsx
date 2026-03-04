@@ -4,9 +4,14 @@ import LoginPage from '@/components/LoginPage'
 import SetupPage from '@/components/SetupPage'
 import SettingsPage from '@/components/SettingsPage'
 import HistoryPage from '@/components/HistoryPage'
+import { api } from '@/lib/apiClient'
+import { MeResponseSchema, SetupResponseSchema } from '@/lib/apiSchemas'
+import type { z } from 'zod'
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'setup'
 type Page = 'movies' | 'settings' | 'history'
+type MeResponse = z.infer<typeof MeResponseSchema>
+type SetupResponse = z.infer<typeof SetupResponseSchema>
 
 function LoadingScreen() {
   return (
@@ -36,17 +41,36 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/me').then(async (r) => {
-      if (r.ok) {
-        const data = await r.json()
-        setDownloadImages((data as { download_images: boolean }).download_images ?? false)
-        setAuthState('authenticated')
-      } else {
-        const setupRes = await fetch('/api/setup')
-        const setupData = await setupRes.json().catch(() => ({ needed: false }))
-        setAuthState((setupData as { needed: boolean }).needed ? 'setup' : 'unauthenticated')
+    const controller = new AbortController()
+
+    async function bootstrapAuth() {
+      try {
+        const meRes = await api.get<MeResponse>('/api/me', {
+          signal: controller.signal,
+          throwOnError: false,
+          responseSchema: MeResponseSchema,
+        })
+        if (meRes.ok && meRes.data) {
+          const data = meRes.data
+          setDownloadImages(data.download_images ?? false)
+          setAuthState('authenticated')
+          return
+        }
+
+        const setupRes = await api.get<SetupResponse>('/api/setup', {
+          signal: controller.signal,
+          throwOnError: false,
+          responseSchema: SetupResponseSchema,
+        })
+        setAuthState(setupRes.data?.needed ? 'setup' : 'unauthenticated')
+      } catch {
+        if (controller.signal.aborted) return
+        setAuthState('unauthenticated')
       }
-    })
+    }
+
+    bootstrapAuth()
+    return () => controller.abort()
   }, [])
 
   function navigateTo(newPage: Page) {
