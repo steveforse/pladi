@@ -31,6 +31,18 @@ vi.mock('@/lib/apiClient', () => {
 
 const mockedApi = vi.mocked(api)
 
+function mockBaseGets(servers: Array<{ id: number; name: string; url: string }> = []) {
+  mockedApi.get.mockImplementation(async (path: string) => {
+    if (path === '/api/me') {
+      return { ok: true, status: 200, data: { email_address: 'user@example.com' } }
+    }
+    if (path === '/api/plex_servers') {
+      return { ok: true, status: 200, data: servers }
+    }
+    return { ok: false, status: 404, data: null }
+  })
+}
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -119,6 +131,131 @@ describe('SettingsPage', () => {
       expect(onDownloadImagesChange).toHaveBeenCalledWith(true)
       expect(mockedApi.patch).toHaveBeenCalled()
     })
+    view.unmount()
+  })
+
+  it('validates email format client-side before submit', async () => {
+    mockBaseGets()
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    const emailInput = await screen.findByDisplayValue('user@example.com')
+    await userEvent.clear(emailInput)
+    await userEvent.type(emailInput, 'not-an-email')
+    await userEvent.tab()
+
+    expect(screen.getByText('Please enter a valid email address.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Update email' }))
+    expect(mockedApi.patch).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('submits password update and shows success', async () => {
+    mockBaseGets()
+    mockedApi.patch.mockResolvedValue({ ok: true, status: 200, data: null })
+
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    await userEvent.type(screen.getByLabelText('New password'), 'newpass123')
+    await userEvent.type(screen.getByLabelText('Confirm new password'), 'newpass123')
+    await userEvent.click(screen.getByRole('button', { name: 'Update password' }))
+
+    expect(await screen.findByText('Password updated.')).toBeInTheDocument()
+    expect(screen.getByLabelText('New password')).toHaveValue('')
+    expect(screen.getByLabelText('Confirm new password')).toHaveValue('')
+    view.unmount()
+  })
+
+  it('shows password mismatch validation and blocks request', async () => {
+    mockBaseGets()
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    await userEvent.type(screen.getByLabelText('New password'), 'newpass123')
+    await userEvent.type(screen.getByLabelText('Confirm new password'), 'different')
+    await userEvent.click(screen.getByRole('button', { name: 'Update password' }))
+
+    expect(screen.getByText('Passwords do not match.')).toBeInTheDocument()
+    expect(mockedApi.patch).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('looks up name when adding server and creates it with trimmed token', async () => {
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/me') return { ok: true, status: 200, data: { email_address: 'user@example.com' } }
+      if (path === '/api/plex_servers') return { ok: true, status: 200, data: [] }
+      if (path === '/api/plex_servers/lookup_name') return { ok: true, status: 200, data: { name: 'Detected Server' } }
+      return { ok: false, status: 404, data: null }
+    })
+    mockedApi.post.mockResolvedValue({ ok: true, status: 201, data: { id: 1 } })
+
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Servers' }))
+    await userEvent.click(screen.getByRole('button', { name: '+ Add Server' }))
+
+    const urlInput = screen.getByPlaceholderText('URL (e.g. https://plex.example.com)')
+    const tokenInput = screen.getByPlaceholderText('Plex token')
+
+    await userEvent.type(urlInput, 'http://plex.local')
+    await userEvent.type(tokenInput, ' token123 ')
+    await userEvent.tab()
+
+    expect(await screen.findByDisplayValue('Detected Server')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      '/api/plex_servers',
+      { plex_server: { name: 'Detected Server', url: 'http://plex.local', token: 'token123' } },
+      { csrf: true }
+    )
+    view.unmount()
+  })
+
+  it('shows joined API errors when server update fails and delete error fallback', async () => {
+    mockBaseGets([{ id: 1, name: 'Home', url: 'http://plex.local' }])
+    mockedApi.patch.mockRejectedValueOnce(new ApiError('update failed', 422, { errors: ['Bad URL', 'Bad token'] }))
+    mockedApi.del.mockRejectedValueOnce(new Error('delete failed'))
+
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Servers' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Bad URL, Bad token')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(await screen.findByText('Failed to delete server')).toBeInTheDocument()
     view.unmount()
   })
 })
