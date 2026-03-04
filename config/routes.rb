@@ -3,8 +3,8 @@
 Rails.application.routes.draw do
   get 'up' => 'rails/health#show', as: :rails_health_check
   mount ActionCable.server => '/cable'
-
   resource :session, only: %i[create destroy]
+  resources :passwords, param: :token, only: %i[new create edit update]
 
   namespace :api do
     resource :setup, only: %i[show create], controller: 'setup'
@@ -24,7 +24,7 @@ Rails.application.routes.draw do
       end
     end
     resources :plex_servers, only: %i[index create update destroy] do
-      collection { get :lookup_name }
+      get :lookup_name, on: :collection
     end
   end
 
