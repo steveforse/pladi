@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+FactoryBot.define do
+  factory :movie_audit_log do
+    user
+    plex_server
+    section_id { '1' }
+    section_title { 'Movies' }
+    movie_id { '100' }
+    movie_title { 'Example Movie' }
+    field_name { 'title' }
+    field_type { 'scalar' }
+    old_value { 'Old Title' }
+    new_value { 'New Title' }
+  end
+end
