@@ -31,7 +31,9 @@ class PasswordsController < ApplicationController
   private
 
   def set_user_by_token
-    @user = User.find_by!(password_reset_token: params[:token])
+    # rubocop:disable Rails/DynamicFindBy
+    @user = User.find_by_password_reset_token!(params[:token])
+    # rubocop:enable Rails/DynamicFindBy
   rescue ActiveSupport::MessageVerifier::InvalidSignature
     redirect_to new_password_path, alert: t('passwords.invalid_token')
   end

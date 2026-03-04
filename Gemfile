@@ -68,6 +68,7 @@ group :development, :test do
 
   # RSpec for Rails [https://github.com/rspec/rspec-rails]
   gem 'rspec-rails'
+  gem 'shoulda-matchers'
 
   # Factories and fake data for tests
   gem 'factory_bot_rails'

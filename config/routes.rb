@@ -3,7 +3,7 @@
 Rails.application.routes.draw do
   get 'up' => 'rails/health#show', as: :rails_health_check
   mount ActionCable.server => '/cable'
-  resource :session, only: %i[create destroy]
+  resource :session, only: %i[new create destroy]
   resources :passwords, param: :token, only: %i[new create edit update]
 
   namespace :api do
