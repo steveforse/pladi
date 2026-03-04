@@ -33,13 +33,26 @@ RSpec.describe Api::MoviesController do
   end
 
   describe 'GET /api/movies/:id' do
-    before do
-      allow(service).to receive(:detail_for).with('123').and_return(summary: 'Details')
-      get '/api/movies/123', params: { server_id: server.id }, as: :json
+    context 'when movie exists' do
+      before do
+        allow(service).to receive(:detail_for).with('123').and_return(summary: 'Details')
+        get '/api/movies/123', params: { server_id: server.id }, as: :json
+      end
+
+      it 'returns movie detail' do
+        expect(json_body).to eq('summary' => 'Details')
+      end
     end
 
-    it 'returns movie detail' do
-      expect(json_body).to eq('summary' => 'Details')
+    context 'when movie does not exist' do
+      before do
+        allow(service).to receive(:detail_for).with('123').and_return(nil)
+        get '/api/movies/123', params: { server_id: server.id }, as: :json
+      end
+
+      it 'returns not found error' do
+        expect(response).to have_api_error(status: :not_found, message: 'Movie not found')
+      end
     end
   end
 
@@ -89,6 +102,43 @@ RSpec.describe Api::MoviesController do
       expected_movies = [{ 'id' => '2', 'thumb' => '/b' }, { 'id' => '1', 'thumb' => '/a' }]
       expect(WarmPostersJob).to have_received(:perform_later).with(server.id, expected_movies)
     end
+
+    context 'when no movies are provided' do
+      let(:warm_params) { { server_id: server.id, movies: [], priority_ids: [] } }
+
+      it 'does not enqueue job' do
+        expect(WarmPostersJob).not_to have_received(:perform_later)
+      end
+    end
+  end
+
+  describe 'POST /api/movies/warm_backgrounds' do
+    before { allow(WarmBackgroundsJob).to receive(:perform_later) }
+
+    context 'when movies are provided' do
+      before do
+        post '/api/movies/warm_backgrounds', params: {
+          server_id: server.id,
+          priority_ids: ['2'],
+          movies: [{ id: '1', art: '/a' }, { id: '2', art: '/b' }]
+        }, as: :json
+      end
+
+      it 'enqueues prioritized background warming' do
+        expected_movies = [{ 'id' => '2', 'art' => '/b' }, { 'id' => '1', 'art' => '/a' }]
+        expect(WarmBackgroundsJob).to have_received(:perform_later).with(server.id, expected_movies)
+      end
+    end
+
+    context 'when no movies are provided' do
+      before do
+        post '/api/movies/warm_backgrounds', params: { server_id: server.id, movies: [], priority_ids: [] }, as: :json
+      end
+
+      it 'does not enqueue job' do
+        expect(WarmBackgroundsJob).not_to have_received(:perform_later)
+      end
+    end
   end
 
   describe 'PATCH /api/movies/:id' do
@@ -124,6 +174,20 @@ RSpec.describe Api::MoviesController do
     it 'returns not found when poster is missing' do
       allow(service).to receive(:poster_for).with('123').and_return(nil)
       get '/api/movies/123/poster', params: { server_id: server.id }, as: :json
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe 'GET /api/movies/:id/background' do
+    it 'returns image bytes when background exists' do
+      allow(service).to receive(:background_for).with('123').and_return(data: 'img', content_type: 'image/jpeg')
+      get '/api/movies/123/background', params: { server_id: server.id }, as: :json
+      expect(response.media_type).to eq('image/jpeg')
+    end
+
+    it 'returns not found when background is missing' do
+      allow(service).to receive(:background_for).with('123').and_return(nil)
+      get '/api/movies/123/background', params: { server_id: server.id }, as: :json
       expect(response).to have_http_status(:not_found)
     end
   end

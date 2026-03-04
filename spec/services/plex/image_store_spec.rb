@@ -11,25 +11,54 @@ RSpec.describe Plex::ImageStore do
   describe '#poster_for' do
     let(:image_data) { { data: 'poster-bytes', content_type: 'image/jpeg' } }
 
-    before do
-      allow(cache_store).to receive(:key).with('poster', '10').and_return('poster-key')
-      allow(cache_store).to receive(:fetch).with('poster-key', skip_nil: true).and_yield
-      allow(http_client).to receive(:get_image).with('/library/metadata/10/thumb').and_return(image_data)
+    context 'when fetch succeeds' do
+      before do
+        allow(cache_store).to receive(:key).with('poster', '10').and_return('poster-key')
+        allow(cache_store).to receive(:fetch).with('poster-key', skip_nil: true).and_yield
+        allow(http_client).to receive(:get_image).with('/library/metadata/10/thumb').and_return(image_data)
+      end
+
+      it 'returns poster image data' do
+        expect(store.poster_for('10')).to eq(image_data)
+      end
     end
 
-    it 'returns poster image data' do
-      expect(store.poster_for('10')).to eq(image_data)
+    context 'when fetch errors' do
+      before do
+        allow(cache_store).to receive(:key).with('poster', '10').and_return('poster-key')
+        allow(cache_store).to receive(:fetch).with('poster-key', skip_nil: true).and_raise(StandardError)
+      end
+
+      it 'returns nil' do
+        expect(store.poster_for('10')).to be_nil
+      end
     end
   end
 
   describe '#background_for' do
-    before do
-      allow(cache_store).to receive(:key).with('background', '10').and_return('background-key')
-      allow(cache_store).to receive(:fetch).with('background-key', skip_nil: true).and_raise(StandardError)
+    context 'when fetch succeeds' do
+      let(:image_data) { { data: 'bg-bytes', content_type: 'image/png' } }
+
+      before do
+        allow(cache_store).to receive(:key).with('background', '10').and_return('background-key')
+        allow(cache_store).to receive(:fetch).with('background-key', skip_nil: true).and_yield
+        allow(http_client).to receive(:get_image).with('/library/metadata/10/art').and_return(image_data)
+      end
+
+      it 'returns background image data' do
+        expect(store.background_for('10')).to eq(image_data)
+      end
     end
 
-    it 'returns nil when image fetch errors' do
-      expect(store.background_for('10')).to be_nil
+    context 'when image fetch errors' do
+      before do
+        allow(cache_store).to receive(:key).with('background', '10').and_return('background-key')
+        allow(cache_store).to receive(:fetch).with('background-key', skip_nil: true).and_raise(StandardError)
+      end
+
+      it 'returns nil' do
+        expect(store.background_for('10')).to be_nil
+      end
     end
   end
 

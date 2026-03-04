@@ -49,16 +49,28 @@ RSpec.describe Api::PlexServersController do
   end
 
   describe 'POST /api/plex_servers' do
-    let(:params) { { plex_server: { name: 'Office', url: 'http://plex.local', token: 'abc' } } }
+    context 'with valid params' do
+      let(:params) { { plex_server: { name: 'Office', url: 'http://plex.local', token: 'abc' } } }
 
-    before { post '/api/plex_servers', params: params, as: :json }
+      before { post '/api/plex_servers', params: params, as: :json }
 
-    it 'returns created status' do
-      expect(response).to have_http_status(:created)
+      it 'returns created status' do
+        expect(response).to have_http_status(:created)
+      end
+
+      it 'persists the server' do
+        expect(user.plex_servers.find_by(name: 'Office')).to be_present
+      end
     end
 
-    it 'persists the server' do
-      expect(user.plex_servers.find_by(name: 'Office')).to be_present
+    context 'with invalid params' do
+      let(:params) { { plex_server: { name: '', url: 'http://plex.local', token: 'abc' } } }
+
+      before { post '/api/plex_servers', params: params, as: :json }
+
+      it 'returns validation errors' do
+        expect(response).to have_api_errors(status: :unprocessable_content)
+      end
     end
   end
 
@@ -76,6 +88,26 @@ RSpec.describe Api::PlexServersController do
 
       it 'keeps existing token' do
         expect(server.reload.token).to eq('old-token')
+      end
+    end
+
+    context 'when token is present' do
+      let(:params) { { plex_server: { name: 'Updated', token: 'new-token' } } }
+
+      before { patch "/api/plex_servers/#{server.id}", params: params, as: :json }
+
+      it 'updates token' do
+        expect(server.reload.token).to eq('new-token')
+      end
+    end
+
+    context 'with invalid params' do
+      let(:params) { { plex_server: { name: '', token: 'new-token' } } }
+
+      before { patch "/api/plex_servers/#{server.id}", params: params, as: :json }
+
+      it 'returns validation errors' do
+        expect(response).to have_api_errors(status: :unprocessable_content)
       end
     end
   end

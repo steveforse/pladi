@@ -11,6 +11,48 @@ RSpec.describe Plex::CacheStore do
     end
   end
 
+  describe '#fetch' do
+    before do
+      allow(Rails.cache).to receive(:fetch).and_return('value')
+    end
+
+    it 'passes ttl to Rails cache fetch' do
+      cache_store.fetch('k')
+      expect(Rails.cache).to have_received(:fetch).with('k', expires_in: Plex::CacheStore::CACHE_TTL)
+    end
+  end
+
+  describe '#write' do
+    before do
+      allow(Rails.cache).to receive(:write)
+      cache_store.write('k', 'v')
+    end
+
+    it 'passes ttl to Rails cache write' do
+      expect(Rails.cache).to have_received(:write).with('k', 'v', expires_in: Plex::CacheStore::CACHE_TTL)
+    end
+  end
+
+  describe '#read' do
+    before do
+      allow(Rails.cache).to receive(:read).with('k').and_return('v')
+    end
+
+    it 'reads from Rails cache' do
+      expect(cache_store.read('k')).to eq('v')
+    end
+  end
+
+  describe '#read_multi' do
+    before do
+      allow(Rails.cache).to receive(:read_multi).with('a', 'b').and_return('a' => 1)
+    end
+
+    it 'delegates to Rails cache read_multi' do
+      expect(cache_store.read_multi('a', 'b')).to eq('a' => 1)
+    end
+  end
+
   describe '#enrich_version' do
     it 'returns zero when cache is empty' do
       allow(Rails.cache).to receive(:read).and_return(nil)
@@ -44,7 +86,8 @@ RSpec.describe Plex::CacheStore do
 
     it 'uses section key with enrich version' do
       cache_store.cached_movies_for('2', 100) { [] }
-      expect(Rails.cache).to have_received(:fetch).with('plex/server/10/section/2/100/1', expires_in: Plex::CacheStore::CACHE_TTL)
+      expect(Rails.cache).to have_received(:fetch).with('plex/server/10/section/2/100/1',
+                                                        expires_in: Plex::CacheStore::CACHE_TTL)
     end
   end
 

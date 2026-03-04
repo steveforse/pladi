@@ -32,6 +32,19 @@ RSpec.describe PasswordsController do
         expect(flash[:notice]).to eq('Password reset instructions sent (if user with that email address exists).')
       end
     end
+
+    context 'when rate limited' do
+      let(:email_address) { 'missing@example.com' }
+
+      before do
+        allow(Rails.cache).to receive(:increment).and_return(11)
+        post passwords_path, params: params
+      end
+
+      it 'redirects with rate limit alert' do
+        expect(flash[:alert]).to eq('Try again later.')
+      end
+    end
   end
 
   describe 'PATCH /passwords/:token' do
