@@ -20,8 +20,8 @@ RSpec.describe Api::PlexServersController do
     end
 
     def stub_failing_lookup
-      service = instance_double(PlexService)
-      allow(PlexService).to receive(:new).and_return(service)
+      service = instance_double(Plex::Server)
+      allow(Plex::Server).to receive(:new).and_return(service)
       allow(service).to receive(:friendly_name).and_raise(Plex::HttpClient::RequestError, 'Plex returned HTTP 401')
     end
 

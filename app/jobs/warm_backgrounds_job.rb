@@ -5,10 +5,10 @@ class WarmBackgroundsJob < ApplicationJob
 
   def perform(server_id, movies)
     server  = PlexServer.find(server_id)
-    service = PlexService.new(server)
+    service = Plex::Server.new(server)
     movies.each do |movie|
       movie = movie.with_indifferent_access
-      next unless service.warm_background(movie[:id])
+      next unless service.background_for(movie[:id])
 
       ActionCable.server.broadcast("backgrounds_#{server_id}", { movie_id: movie[:id] })
     end

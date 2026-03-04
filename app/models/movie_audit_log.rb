@@ -25,11 +25,11 @@ class MovieAuditLog < ApplicationRecord
   # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
   def self.extract_change(field, before, after)
-    if PlexService::TAG_FIELD_MAP.key?(field)
+    if Plex::FieldMaps::TAG_FIELD_MAP.key?(field)
       old_val = (before[field] || []).sort
       new_val = (after[field]  || []).sort
       ['tag', old_val.to_json, new_val.to_json]
-    elsif PlexService::SCALAR_FIELD_MAP.key?(field)
+    elsif Plex::FieldMaps::SCALAR_FIELD_MAP.key?(field)
       ['scalar', before[field].to_s, after[field].to_s]
     end
   end

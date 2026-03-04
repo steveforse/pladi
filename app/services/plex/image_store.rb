@@ -15,14 +15,6 @@ module Plex
       nil
     end
 
-    def warm_poster(movie_id)
-      @cache.fetch(@cache.key('poster', movie_id), skip_nil: true) do
-        fetch_poster(movie_id)
-      end
-    rescue StandardError
-      nil
-    end
-
     def background_for(movie_id)
       @cache.fetch(@cache.key('background', movie_id), skip_nil: true) do
         fetch_background(movie_id)
@@ -31,22 +23,14 @@ module Plex
       nil
     end
 
-    def warm_background(movie_id)
-      @cache.fetch(@cache.key('background', movie_id), skip_nil: true) do
-        fetch_background(movie_id)
-      end
-    rescue StandardError
-      nil
-    end
-
-    def poster_cache_partition(sections)
+    def partition_posters_by_cache(sections)
       all_movies    = sections.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
       poster_movies = all_movies.filter_map { |m| { id: m[:id], thumb: m[:thumb] } if m[:thumb] }
       cached_ids    = @cache.posters_cached(poster_movies.pluck(:id))
       poster_movies.partition { |m| cached_ids.include?(m[:id]) }
     end
 
-    def background_cache_partition(sections)
+    def partition_backgrounds_by_cache(sections)
       all_movies        = sections.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
       background_movies = all_movies.filter_map { |m| { id: m[:id], art: m[:art] } if m[:art] }
       cached_ids        = @cache.backgrounds_cached(background_movies.pluck(:id))

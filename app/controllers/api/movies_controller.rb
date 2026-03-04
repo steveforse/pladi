@@ -5,7 +5,7 @@ module Api
     before_action :load_server
 
     def index
-      render json: ::SectionSerializer.serialize(service.cached_sections)
+      render json: ::SectionSerializer.serialize(service.sections)
     end
 
     def show
@@ -16,21 +16,13 @@ module Api
     end
 
     def refresh
-      render json: ::SectionSerializer.serialize(service.refresh_sections)
+      render json: ::SectionSerializer.serialize(service.sections(refresh: true))
     end
 
     def enrich
-      enriched = service.enrich_sections(service.cached_sections)
-      cached_posters, uncached_posters = service.poster_cache_partition(enriched)
-      cached_backgrounds, uncached_backgrounds = service.background_cache_partition(enriched)
-
-      render json: {
-        sections: ::SectionSerializer.serialize(enriched),
-        cached_poster_ids: cached_posters.pluck(:id),
-        uncached_poster_movies: uncached_posters,
-        cached_background_ids: cached_backgrounds.pluck(:id),
-        uncached_background_movies: uncached_backgrounds
-      }
+      payload = service.enriched_library
+      payload[:sections] = ::SectionSerializer.serialize(payload[:sections])
+      render json: payload
     end
 
     def warm_posters
@@ -101,7 +93,7 @@ module Api
     end
 
     def service
-      @service ||= PlexService.new(@server)
+      @service ||= Plex::Server.new(@server)
     end
 
     def load_server

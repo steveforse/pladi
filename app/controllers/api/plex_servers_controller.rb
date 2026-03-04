@@ -15,7 +15,7 @@ module Api
       raise Api::Errors::BadRequest, 'url and token are required' if url.blank? || token.blank?
 
       stub = PlexServer.new(id: 0, url: url, token: token)
-      name = PlexService.new(stub).friendly_name
+      name = Plex::Server.new(stub).friendly_name
       render json: { name: name }
     end
 

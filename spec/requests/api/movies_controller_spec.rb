@@ -17,11 +17,11 @@ RSpec.describe Api::MoviesController do
   describe 'PATCH /api/movies/:id' do
     let(:user) { create(:user) }
     let(:server) { create(:plex_server, user:) }
-    let(:service) { instance_double(PlexService) }
+    let(:service) { instance_double(Plex::Server) }
 
     before do
       sign_in_as(user)
-      allow(PlexService).to receive(:new).with(server).and_return(service)
+      allow(Plex::Server).to receive(:new).with(server).and_return(service)
       allow(service).to receive(:update_movie).and_raise(Plex::HttpClient::RequestError, 'Unable to reach Plex server')
     end
 
