@@ -17,13 +17,21 @@ export default defineConfig({
   },
   test: {
     include: ['**/*.test.ts', '**/*.test.tsx'],
+    exclude: ['**/node_modules/**', '**/coverage/**', '**/dist/**'],
     environment: 'jsdom',
     setupFiles: ['test/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['**/*.ts', '**/*.tsx'],
-      exclude: ['**/*.test.ts', '**/*.test.tsx', 'entrypoints/**'],
+      exclude: [
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        '**/*.d.ts',
+        'entrypoints/**',
+        'test/**',
+        'vite.config.ts',
+      ],
     },
   },
 })

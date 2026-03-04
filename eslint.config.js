@@ -6,7 +6,15 @@ import testingLibrary from 'eslint-plugin-testing-library'
 import jestDom from 'eslint-plugin-jest-dom'
 
 export default tseslint.config(
-  { ignores: ['public/'] },
+  {
+    ignores: [
+      'coverage/',
+      'node_modules/',
+      'public/',
+      'tmp/',
+      'app/javascript/coverage/',
+    ],
+  },
   js.configs.recommended,
   tseslint.configs.recommended,
   {

@@ -26,5 +26,6 @@
       "@/*": ["app/javascript/*"]
     }
   },
-  "include": ["app/javascript/**/*.ts", "app/javascript/**/*.tsx", "vite.config.ts"]
+  "include": ["app/javascript/**/*.ts", "app/javascript/**/*.tsx", "vite.config.ts"],
+  "exclude": ["node_modules", "coverage", "tmp", "public/vite*"]
 }
