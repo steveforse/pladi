@@ -4,7 +4,6 @@
   <h1>Pladi</h1>
   <p>
     <a href="https://github.com/steveforse/pladi/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/steveforse/pladi/actions/workflows/ci.yml/badge.svg" /></a>
-    <a href="https://codecov.io/gh/steveforse/pladi"><img alt="Coverage" src="https://codecov.io/gh/steveforse/pladi/branch/main/graph/badge.svg" /></a>
     <a href="https://github.com/steveforse/pladi/actions/workflows/codeql.yml"><img alt="Security" src="https://github.com/steveforse/pladi/actions/workflows/codeql.yml/badge.svg" /></a>
     <a href="LICENSE"><img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg" /></a>
     <a href="https://www.ruby-lang.org/"><img alt="Ruby 4.0.1" src="https://img.shields.io/badge/Ruby-4.0.1-CC342D?logo=ruby&logoColor=white" /></a>

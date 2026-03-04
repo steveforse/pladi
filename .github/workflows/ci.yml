@@ -114,15 +114,6 @@ jobs:
           name: frontend-coverage
           path: app/javascript/coverage
 
-      - name: Upload frontend coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@v5
-        with:
-          files: app/javascript/coverage/lcov.info
-          flags: frontend
-          name: frontend-coverage
-          fail_ci_if_error: false
-
   test:
     runs-on: ubuntu-latest
 
@@ -153,12 +144,3 @@ jobs:
         with:
           name: rspec-results
           path: tmp/rspec/rspec.xml
-
-      - name: Upload backend coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@v5
-        with:
-          files: coverage/coverage.xml
-          flags: backend
-          name: backend-coverage
-          fail_ci_if_error: false
