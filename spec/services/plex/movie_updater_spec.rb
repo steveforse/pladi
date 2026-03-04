@@ -131,4 +131,36 @@ RSpec.describe Plex::MovieUpdater do
       expect(result[:unverified_fields]).to contain_exactly('summary', 'genres')
     end
   end
+
+  describe '#update_movie with unknown fields' do
+    let(:payload) do
+      {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'librarySectionID' => 1,
+              'librarySectionTitle' => 'Movies',
+              'title' => 'Same'
+            }
+          ]
+        }
+      }
+    end
+
+    before do
+      allow(http_client).to receive(:get).with('/library/metadata/9').and_return(payload, payload)
+      allow(http_client).to receive(:put)
+      allow(cache_store).to receive(:bump_enrich_version)
+    end
+
+    it 'does not include unknown field in query' do
+      updater.update_movie('9', unknown: 'value')
+      expect(http_client).to have_received(:put).with('/library/metadata/9?type=1')
+    end
+
+    it 'does not mark unknown field as unverified' do
+      result = updater.update_movie('9', unknown: 'value')
+      expect(result[:unverified_fields]).to eq([])
+    end
+  end
 end

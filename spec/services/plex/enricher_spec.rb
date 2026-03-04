@@ -22,24 +22,36 @@ RSpec.describe Plex::Enricher do
   describe '#enrich_movie' do
     subject(:result) { enricher.enrich_movie('123', '/movies/a.mkv') }
 
-    before do
-      allow(detail_fetcher).to receive(:fetch).with('123').and_return(
-        summary: 'My summary',
-        subtitles_by_file: { '/movies/a.mkv' => 'English (SRT)' },
-        audio_by_file: { '/movies/a.mkv' => 'English (AAC, 6ch, 640 kbps)' },
-        audio_language_by_file: { '/movies/a.mkv' => 'English' },
-        audio_bitrate_by_file: { '/movies/a.mkv' => 640 },
-        video_bitrate_by_file: { '/movies/a.mkv' => 12_000 }
-      )
+    context 'with full stream detail maps' do
+      before do
+        allow(detail_fetcher).to receive(:fetch).with('123').and_return(
+          summary: 'My summary',
+          subtitles_by_file: { '/movies/a.mkv' => 'English (SRT)' },
+          audio_by_file: { '/movies/a.mkv' => 'English (AAC, 6ch, 640 kbps)' },
+          audio_language_by_file: { '/movies/a.mkv' => 'English' },
+          audio_bitrate_by_file: { '/movies/a.mkv' => 640 },
+          video_bitrate_by_file: { '/movies/a.mkv' => 12_000 }
+        )
+      end
+
+      it { expect(result[:summary]).to eq('My summary') }
+      it { expect(result[:subtitles]).to eq('English (SRT)') }
+      it { expect(result[:audio_tracks]).to eq('English (AAC, 6ch, 640 kbps)') }
+      it { expect(result[:audio_language]).to eq('English') }
+      it { expect(result[:audio_bitrate]).to eq(640) }
+      it { expect(result[:video_bitrate]).to eq(12_000) }
+      it { expect(result).not_to have_key(:subtitles_by_file) }
     end
 
-    it { expect(result[:summary]).to eq('My summary') }
-    it { expect(result[:subtitles]).to eq('English (SRT)') }
-    it { expect(result[:audio_tracks]).to eq('English (AAC, 6ch, 640 kbps)') }
-    it { expect(result[:audio_language]).to eq('English') }
-    it { expect(result[:audio_bitrate]).to eq(640) }
-    it { expect(result[:video_bitrate]).to eq(12_000) }
-    it { expect(result).not_to have_key(:subtitles_by_file) }
+    context 'when stream detail maps are missing' do
+      before do
+        allow(detail_fetcher).to receive(:fetch).with('123').and_return(summary: 'Only summary')
+      end
+
+      it 'returns nil for subtitles' do
+        expect(result[:subtitles]).to be_nil
+      end
+    end
   end
 
   describe '#enrich_sections' do

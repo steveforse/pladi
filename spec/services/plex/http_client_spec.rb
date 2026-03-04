@@ -94,6 +94,11 @@ RSpec.describe Plex::HttpClient do
       allow(http).to receive(:request).and_return(redirect_response, redirected_success_response)
       expect(client.get_image('/library/metadata/1/thumb')).to eq(data: 'img', content_type: 'image/jpeg')
     end
+
+    it 'returns nil for redirect response without location' do
+      allow(http).to receive(:request).and_return(build_response(Net::HTTPFound, code: '302'))
+      expect(client.get_image('/library/metadata/1/thumb')).to be_nil
+    end
   end
 
   def capture_get_request
