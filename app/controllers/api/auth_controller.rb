@@ -1,16 +1,14 @@
 # frozen_string_literal: true
 
 module Api
-  class AuthController < ApplicationController
-    skip_before_action :require_authentication, only: [:me]
+  class AuthController < BaseController
+    allow_unauthenticated_access only: [:me]
 
     def me
       resume_session
-      if Current.user
-        render json: { email_address: Current.user.email_address, download_images: Current.user.download_images }
-      else
-        render json: { error: 'Unauthenticated' }, status: :unauthorized
-      end
+      raise Api::Errors::Unauthorized, 'Unauthenticated' unless Current.user
+
+      render json: { email_address: Current.user.email_address, download_images: Current.user.download_images }
     end
   end
 end

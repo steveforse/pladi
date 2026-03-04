@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Api
-  class PlexServersController < ApplicationController
-    before_action :require_authentication
+  class PlexServersController < BaseController
     before_action :load_server, only: %i[update destroy]
 
     def index
@@ -13,13 +12,11 @@ module Api
     def lookup_name
       url   = params[:url].to_s.strip
       token = params[:token].to_s.strip
-      return render json: { error: 'url and token are required' }, status: :bad_request if url.blank? || token.blank?
+      raise Api::Errors::BadRequest, 'url and token are required' if url.blank? || token.blank?
 
       stub = PlexServer.new(id: 0, url: url, token: token)
       name = PlexService.new(stub).friendly_name
       render json: { name: name }
-    rescue StandardError => e
-      render json: { error: e.message }, status: :unprocessable_content
     end
 
     def create
@@ -27,7 +24,7 @@ module Api
       if server.save
         render json: { id: server.id, name: server.name, url: server.url }, status: :created
       else
-        render json: { errors: server.errors.full_messages }, status: :unprocessable_content
+        render_errors(server.errors.full_messages)
       end
     end
 
@@ -37,7 +34,7 @@ module Api
       if @server.update(attrs)
         render json: { id: @server.id, name: @server.name, url: @server.url }
       else
-        render json: { errors: @server.errors.full_messages }, status: :unprocessable_content
+        render_errors(@server.errors.full_messages)
       end
     end
 
@@ -49,9 +46,7 @@ module Api
     private
 
     def load_server
-      @server = Current.user.plex_servers.find(params[:id])
-    rescue ActiveRecord::RecordNotFound
-      render json: { error: 'Server not found' }, status: :not_found
+      load_current_server!(:id)
     end
 
     def server_params

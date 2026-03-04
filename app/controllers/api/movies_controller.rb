@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Api
-  class MoviesController < ApplicationController
-    before_action :require_authentication
+  class MoviesController < BaseController
     before_action :load_server
 
     def index
@@ -11,7 +10,7 @@ module Api
 
     def show
       movie = service.detail_for(params[:id])
-      return render json: { error: 'Movie not found' }, status: :not_found if movie.nil?
+      raise Api::Errors::NotFound, 'Movie not found' if movie.nil?
 
       render json: movie
     end
@@ -49,14 +48,11 @@ module Api
     def update
       fields = movie_params.to_h
       result = service.update_movie(params[:id], fields)
-      if result[:unverified_fields].any?
-        render json: { error: 'Plex did not persist this update' }, status: :unprocessable_content
-        return
-      end
+
+      raise Api::Errors::Unprocessable, 'Plex did not persist this update' if result[:unverified_fields].any?
+
       log_update(result, fields)
       head :no_content
-    rescue StandardError => e
-      render json: { error: e.message }, status: :unprocessable_content
     end
 
     def poster
@@ -109,9 +105,7 @@ module Api
     end
 
     def load_server
-      @server = Current.user.plex_servers.find(params[:server_id])
-    rescue ActiveRecord::RecordNotFound
-      render json: { error: 'Server not found' }, status: :not_found
+      load_current_server!(:server_id)
     end
   end
 end

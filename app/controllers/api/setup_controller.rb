@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Api
-  class SetupController < ApplicationController
+  class SetupController < BaseController
     allow_unauthenticated_access
 
     def show
@@ -9,14 +9,14 @@ module Api
     end
 
     def create
-      return render json: { error: 'Setup already completed' }, status: :forbidden if User.exists?
+      raise Api::Errors::Forbidden, 'Setup already completed' if User.exists?
 
       user = User.new(setup_params)
       if user.save
         start_new_session_for user
         render json: { email_address: user.email_address }
       else
-        render json: { errors: user.errors.full_messages }, status: :unprocessable_content
+        render_errors(user.errors.full_messages)
       end
     end
 

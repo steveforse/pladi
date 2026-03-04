@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 module Api
-  class AccountController < ApplicationController
+  class AccountController < BaseController
     def update
       user = Current.user
       if user.update(account_params)
         render json: { email_address: user.email_address }
       else
-        render json: { errors: user.errors.full_messages }, status: :unprocessable_content
+        render_errors(user.errors.full_messages)
       end
     end
 
