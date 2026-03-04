@@ -75,4 +75,26 @@ describe('useHistory', () => {
       expect(result.current.logs).toEqual([])
     })
   })
+
+  it('handles non-ApiError failures with generic message mapping', async () => {
+    mockedApi.get.mockRejectedValue('bad')
+
+    const { result } = renderHook(() => useHistory())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+      expect(result.current.error).toBe('Unknown error')
+    })
+  })
+
+  it('handles native Error failures', async () => {
+    mockedApi.get.mockRejectedValue(new Error('boom'))
+
+    const { result } = renderHook(() => useHistory())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+      expect(result.current.error).toBe('boom')
+    })
+  })
 })

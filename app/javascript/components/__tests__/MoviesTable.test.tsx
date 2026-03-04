@@ -24,7 +24,15 @@ vi.mock('@/components/movies/WelcomeScreen', () => ({
   WelcomeScreen: () => <div>welcome-screen</div>,
 }))
 vi.mock('@/components/movies/FilterRow', () => ({
-  FilterRow: () => <div>filter-row</div>,
+  FilterRow: ({ onChange, onRemove }: {
+    onChange: (updated: { field: string; op: string; value: string }) => void
+    onRemove: () => void
+  }) => (
+    <div>
+      <button onClick={() => onChange({ field: 'title', op: 'includes', value: 'updated' })}>filter-change</button>
+      <button onClick={onRemove}>filter-remove</button>
+    </div>
+  ),
 }))
 vi.mock('@/components/movies/ColumnPicker', () => ({
   ColumnPicker: () => <div>column-picker</div>,
@@ -45,11 +53,12 @@ vi.mock('@/components/movies/Paginator', () => ({
   ),
 }))
 vi.mock('@/components/movies/MovieHeaderRow', () => ({
-  MovieHeaderRow: ({ onToggleAll }: { onToggleAll: () => void }) => (
+  MovieHeaderRow: ({ onToggleAll, onSort }: { onToggleAll: () => void; onSort: (key: string) => void }) => (
     <tr>
       <th>
         header-row
         <button onClick={onToggleAll}>toggle-all</button>
+        <button onClick={() => onSort('title')}>sort-title</button>
       </th>
     </tr>
   ),
@@ -70,10 +79,24 @@ vi.mock('@/components/movies/MovieRow', () => ({
   ),
 }))
 vi.mock('@/components/movies/PosterModal', () => ({
-  PosterModal: () => <div>poster-modal</div>,
+  PosterModal: ({ onPrev, onNext, onClose }: { onPrev: () => void; onNext: () => void; onClose: () => void }) => (
+    <div>
+      <div>poster-modal</div>
+      <button onClick={onPrev}>poster-prev</button>
+      <button onClick={onNext}>poster-next</button>
+      <button onClick={onClose}>poster-close</button>
+    </div>
+  ),
 }))
 vi.mock('@/components/movies/ImageModal', () => ({
-  ImageModal: () => <div>image-modal</div>,
+  ImageModal: ({ onPrev, onNext, onClose }: { onPrev: () => void; onNext: () => void; onClose: () => void }) => (
+    <div>
+      <div>image-modal</div>
+      <button onClick={onPrev}>image-prev</button>
+      <button onClick={onNext}>image-next</button>
+      <button onClick={onClose}>image-close</button>
+    </div>
+  ),
 }))
 vi.mock('@/components/movies/BulkEditModal', () => ({
   BulkEditModal: ({ onSave, onClose }: {
@@ -82,6 +105,7 @@ vi.mock('@/components/movies/BulkEditModal', () => ({
   }) => (
     <div>
       <button onClick={() => void onSave({ genres: ['Drama'] }, 'replace')}>bulk-save</button>
+      <button onClick={() => void onSave({ genres: ['Drama'] }, 'append')}>bulk-save-append</button>
       <button onClick={onClose}>bulk-close</button>
     </div>
   ),
@@ -281,6 +305,128 @@ describe('MoviesTable', () => {
 
     await waitFor(() => expect(baseData.updateMovie).toHaveBeenCalledWith('m1', { genres: 'Drama' }))
     await waitFor(() => expect(baseData.refreshMovies).toHaveBeenCalledWith(['m1']))
+    view.unmount()
+  })
+
+  it('wires server/library selectors, quick filters, advanced filters, and clear all', async () => {
+    const { baseData, baseFilterState } = setupHookMocks({
+      moviesData: {
+        sections: [
+          { title: 'Movies', movies: [{ id: 'm1', title: 'Alpha', file_path: '/x' }] },
+          { title: 'Shows', movies: [] },
+        ],
+      },
+      moviesFilter: {
+        filters: [{ id: 99, field: 'title', op: 'includes', value: 'alpha' }],
+      },
+    })
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={false} />)
+
+    const [serverSelect, librarySelect] = screen.getAllByRole('combobox')
+    await userEvent.selectOptions(serverSelect, '1')
+    expect(baseData.handleServerChange).toHaveBeenCalledWith(1)
+
+    await userEvent.selectOptions(librarySelect, 'Shows')
+    expect(baseData.setSelectedTitle).toHaveBeenCalledWith('Shows')
+
+    await userEvent.click(screen.getByRole('button', { name: /Filters/ }))
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mismatches file path' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mismatches filename' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mismatches Original Title' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Missing from file path' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'File path mismatches metadata' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Multiple files only' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Not in movie subfolder' }))
+
+    expect(baseFilterState.setUnmatchedOnly).toHaveBeenCalledWith(true)
+    expect(baseFilterState.setFilenameMismatch).toHaveBeenCalledWith(true)
+    expect(baseFilterState.setOriginalTitleMismatch).toHaveBeenCalledWith(true)
+    expect(baseFilterState.setNoYearInPath).toHaveBeenCalledWith(true)
+    expect(baseFilterState.setYearPathMismatch).toHaveBeenCalledWith(true)
+    expect(baseFilterState.setMultiOnly).toHaveBeenCalledWith(true)
+    expect(baseFilterState.setNotInSubfolder).toHaveBeenCalledWith(true)
+
+    await userEvent.click(screen.getByRole('button', { name: '+ Add Filter' }))
+    expect(baseFilterState.addFilter).toHaveBeenCalledTimes(1)
+
+    await userEvent.click(screen.getByRole('button', { name: 'filter-change' }))
+    expect(baseFilterState.updateFilter).toHaveBeenCalledWith(99, { field: 'title', op: 'includes', value: 'updated' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'filter-remove' }))
+    expect(baseFilterState.removeFilter).toHaveBeenCalledWith(99)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+    expect(baseFilterState.clearAllFilters).toHaveBeenCalledTimes(1)
+
+    await userEvent.click(screen.getByRole('button', { name: 'sort-title' }))
+    expect(baseFilterState.handleSort).toHaveBeenCalledWith('title')
+    view.unmount()
+  })
+
+  it('handles modal navigation callbacks and append bulk edit mode', async () => {
+    const { baseData } = setupHookMocks({
+      moviesData: {
+        sections: [{
+          title: 'Movies',
+          movies: [
+            { id: 'm1', title: 'Alpha', file_path: '/x', genres: 'Drama' },
+            { id: 'm2', title: 'Beta', file_path: '/y', genres: 'Drama, Comedy' },
+          ],
+        }],
+        posterReady: new Set(['m1', 'm2']),
+        backgroundReady: new Set(['m1', 'm2']),
+      },
+    })
+
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={true} />)
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'row-toggle' })[0])
+    await userEvent.click(screen.getByRole('button', { name: 'Bulk Edit (1)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'bulk-save-append' }))
+    await waitFor(() => expect(baseData.updateMovie).toHaveBeenCalledWith('m1', { genres: 'Drama' }))
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'open-poster' })[0])
+    await userEvent.click(screen.getByRole('button', { name: 'poster-next' }))
+    await userEvent.click(screen.getByRole('button', { name: 'poster-prev' }))
+    await userEvent.click(screen.getByRole('button', { name: 'poster-close' }))
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'open-background' })[0])
+    await userEvent.click(screen.getByRole('button', { name: 'image-next' }))
+    await userEvent.click(screen.getByRole('button', { name: 'image-prev' }))
+    await userEvent.click(screen.getByRole('button', { name: 'image-close' }))
+    view.unmount()
+  })
+
+  it('warms poster/background caches when syncing transitions to complete', () => {
+    const warmPosters = vi.fn()
+    const warmBackgrounds = vi.fn()
+    const sharedMovies = [{ id: 'm1', title: 'Alpha', file_path: '/x' }]
+
+    mockedMoviesData
+      .mockReturnValueOnce({
+        ...setupHookMocks().baseData,
+        syncing: true,
+        uncachedPosterMovies: ['m1'],
+        uncachedBackgroundMovies: ['m1'],
+        warmPosters,
+        warmBackgrounds,
+      })
+      .mockReturnValueOnce({
+        ...setupHookMocks().baseData,
+        sections: [{ title: 'Movies', movies: sharedMovies }],
+        syncing: false,
+        uncachedPosterMovies: ['m1'],
+        uncachedBackgroundMovies: ['m1'],
+        warmPosters,
+        warmBackgrounds,
+      })
+
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={true} />)
+    view.rerender(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={true} />)
+
+    expect(warmPosters).toHaveBeenCalledWith(['m1'])
+    expect(warmBackgrounds).toHaveBeenCalledWith(['m1'])
     view.unmount()
   })
 })

@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { EditableCell } from '@/components/movies/EditableCell'
@@ -104,6 +104,74 @@ describe('EditableCell', () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(['Action', 'Drama', 'Sci-Fi'])
     })
+    view.unmount()
+  })
+
+  it('supports tag editing escape/backspace/remove interactions', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+
+    const view = renderInTable(
+      <EditableCell
+        value={['Action', 'Drama']}
+        fieldType="tags"
+        onSave={onSave}
+        renderView={() => <span>Action, Drama</span>}
+      />
+    )
+
+    await userEvent.dblClick(screen.getByText('Action, Drama'))
+    const input = screen.getByPlaceholderText('Add tag…')
+
+    await userEvent.type(input, '{backspace}')
+    await waitFor(() => expect(screen.queryByText('Drama')).not.toBeInTheDocument())
+
+    const removeButtons = screen.getAllByRole('button')
+    fireEvent.mouseDown(removeButtons[0])
+    await waitFor(() => expect(screen.queryByText('Action')).not.toBeInTheDocument())
+
+    await userEvent.type(input, 'Keep{escape}')
+    await waitFor(() => expect(screen.queryByPlaceholderText('Add tag…')).not.toBeInTheDocument())
+    expect(onSave).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('cancels scalar editing with Escape', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+
+    const view = renderInTable(
+      <EditableCell
+        value="Alpha"
+        fieldType="text"
+        onSave={onSave}
+        renderView={() => <span>Alpha</span>}
+      />
+    )
+
+    await userEvent.dblClick(screen.getByText('Alpha'))
+    const input = screen.getByRole('textbox')
+    await userEvent.type(input, 'X{escape}')
+
+    await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())
+    expect(onSave).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('uses generic save error message for non-Error rejections', async () => {
+    const onSave = vi.fn().mockRejectedValue('bad')
+
+    const view = renderInTable(
+      <EditableCell
+        value="Alpha"
+        fieldType="text"
+        onSave={onSave}
+        renderView={() => <span>Alpha</span>}
+      />
+    )
+
+    await userEvent.dblClick(screen.getByText('Alpha'))
+    await userEvent.type(screen.getByRole('textbox'), 'Z{enter}')
+
+    expect(await screen.findByText('Save failed')).toBeInTheDocument()
     view.unmount()
   })
 })

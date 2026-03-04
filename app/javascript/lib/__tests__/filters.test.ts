@@ -80,10 +80,19 @@ describe('matchesFilter', () => {
     expect(matchesFilter(movie({ size: 10_485_760 }), filter('size', 'gt', '9'))).toBe(true)
     expect(matchesFilter(movie({ duration: 3_600_000 }), filter('duration', 'eq', '60'))).toBe(true)
     expect(matchesFilter(movie({ overall_bitrate: 6_000 }), filter('overall_bitrate', 'eq', '6'))).toBe(true)
+    expect(matchesFilter(movie({ year: 2020 }), filter('year', 'lte', '2020'))).toBe(true)
+    expect(matchesFilter(movie({ year: 2020 }), filter('year', 'lt', '2020'))).toBe(false)
+    expect(matchesFilter(movie({ year: 2020 }), filter('year', 'neq', '2020'))).toBe(false)
+    expect(matchesFilter(movie({ year: 2020 }), filter('year', 'gte', 'not-number'))).toBe(true)
   })
 
   it('supports string matching against display values', () => {
     expect(matchesFilter(movie({ frame_rate: 'NTSC Film' }), filter('frame_rate', 'includes', '23.976'))).toBe(true)
+    expect(matchesFilter(movie({ title: 'Alpha Beta' }), filter('title', 'starts', 'alpha'))).toBe(true)
+    expect(matchesFilter(movie({ title: 'Alpha Beta' }), filter('title', 'ends', 'beta'))).toBe(true)
+    expect(matchesFilter(movie({ title: 'Alpha Beta' }), filter('title', 'eq', 'alpha beta'))).toBe(true)
+    expect(matchesFilter(movie({ title: 'Alpha Beta' }), filter('title', 'neq', 'alpha beta'))).toBe(false)
+    expect(matchesFilter(movie({ title: 'Alpha Beta' }), filter('title', 'excludes', 'alpha'))).toBe(false)
   })
 
   it('compares date filters by local calendar day', () => {
@@ -92,5 +101,10 @@ describe('matchesFilter', () => {
     expect(matchesFilter(row, filter('originally_available', 'eq', '2022-01-15'))).toBe(true)
     expect(matchesFilter(row, filter('originally_available', 'lt', '2023-01-01'))).toBe(true)
     expect(matchesFilter(row, filter('originally_available', 'gt', '2023-01-01'))).toBe(false)
+    expect(matchesFilter(row, filter('originally_available', 'lte', '2022-01-15'))).toBe(true)
+    expect(matchesFilter(row, filter('originally_available', 'gte', '2022-01-15'))).toBe(true)
+    expect(matchesFilter(row, filter('originally_available', 'neq', '2022-01-15'))).toBe(false)
+    expect(matchesFilter(row, filter('originally_available', 'eq', 'bad-date'))).toBe(true)
+    expect(matchesFilter(movie({ originally_available: null }), filter('originally_available', 'eq', '2022-01-15'))).toBe(false)
   })
 })

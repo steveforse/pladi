@@ -335,4 +335,221 @@ describe('useMoviesData', () => {
     expect(mockedUpdateEnrichmentCacheMovie).toHaveBeenCalledWith(1, 'm1', { summary: 'Updated summary' })
     expect(mockedUpdateEnrichmentCacheMovie).not.toHaveBeenCalledWith(1, 'm2', expect.anything())
   })
+
+  it('aborts active load and disconnects cable consumer on unmount', async () => {
+    let moviesSignal: AbortSignal | undefined
+
+    mockedApi.get.mockImplementation(async (path: string, options?: { signal?: AbortSignal }) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/movies') {
+        moviesSignal = options?.signal
+        return new Promise(() => {})
+      }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { unmount } = renderHook(() => useMoviesData(false))
+    await waitFor(() => expect(mockedApi.get).toHaveBeenCalledWith('/api/movies', expect.any(Object)))
+
+    unmount()
+
+    expect(moviesSignal?.aborted).toBe(true)
+    expect(cableDisconnect).toHaveBeenCalledTimes(1)
+  })
+
+  it('maps non-tag patch fields directly and empty tag strings to empty arrays', async () => {
+    const baseSections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/movies') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/movies/refresh') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/movies/enrich') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            sections: baseSections,
+            cached_poster_ids: [],
+            uncached_poster_movies: [],
+            cached_background_ids: [],
+            uncached_background_movies: [],
+          },
+        }
+      }
+      return { ok: false, status: 404, data: null }
+    })
+    mockedApi.patch.mockResolvedValue({ ok: true, status: 204, data: null })
+
+    const { result } = renderHook(() => useMoviesData(false))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      await result.current.updateMovie('m1', { year: 2024, genres: '' })
+    })
+
+    expect(mockedApi.patch).toHaveBeenCalledWith(
+      '/api/movies/m1',
+      { movie: expect.objectContaining({ year: 2024, genres: [] }) },
+      expect.objectContaining({ query: { server_id: 1 } })
+    )
+  })
+
+  it('handles empty server bootstrap state without loading movies', async () => {
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') return { ok: true, status: 200, data: [] }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useMoviesData(false))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+      expect(result.current.plexServers).toEqual([])
+      expect(result.current.sections).toEqual([])
+    })
+    expect(mockedApi.get).not.toHaveBeenCalledWith('/api/movies', expect.any(Object))
+  })
+
+  it('stores selected server id and loads movies when switching servers', async () => {
+    const sections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return {
+          ok: true,
+          status: 200,
+          data: [
+            { id: 1, name: 'Main', url: 'http://plex.local' },
+            { id: 2, name: 'Backup', url: 'http://backup.local' },
+          ],
+        }
+      }
+      if (path === '/api/movies' || path === '/api/movies/refresh') {
+        const serverId = options?.query?.server_id
+        return { ok: true, status: 200, data: serverId === 2 ? [{ title: 'Movies 2', movies: [movie('m2', 'Beta')] }] : sections }
+      }
+      if (path === '/api/movies/enrich') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            sections,
+            cached_poster_ids: [],
+            uncached_poster_movies: [],
+            cached_background_ids: [],
+            uncached_background_movies: [],
+          },
+        }
+      }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useMoviesData(false))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    act(() => {
+      result.current.handleServerChange(2)
+    })
+
+    await waitFor(() => {
+      expect(result.current.selectedServerId).toBe(2)
+      expect(localStorage.getItem('pladi_selected_server_id')).toBe('2')
+      expect(mockedApi.get).toHaveBeenCalledWith('/api/movies', expect.objectContaining({
+        query: { server_id: 2 },
+      }))
+    })
+  })
+
+  it('updates selected library state and only persists non-null titles', async () => {
+    const sections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/movies' || path === '/api/movies/refresh') {
+        return { ok: true, status: 200, data: sections }
+      }
+      if (path === '/api/movies/enrich') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            sections,
+            cached_poster_ids: [],
+            uncached_poster_movies: [],
+            cached_background_ids: [],
+            uncached_background_movies: [],
+          },
+        }
+      }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useMoviesData(false))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    act(() => {
+      result.current.setSelectedTitle('Movies')
+    })
+    expect(localStorage.getItem('pladi_selected_library')).toBe('Movies')
+
+    act(() => {
+      result.current.setSelectedTitle(null)
+    })
+    expect(result.current.selectedTitle).toBeNull()
+    expect(localStorage.getItem('pladi_selected_library')).toBe('Movies')
+  })
+
+  it('sets fallback unknown error when server bootstrap throws non-Error value', async () => {
+    mockedApi.get.mockRejectedValue('bad')
+    const { result } = renderHook(() => useMoviesData(false))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+      expect(result.current.error).toBe('Unknown error')
+    })
+  })
+
+  it('handles first server added flow', async () => {
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') return { ok: true, status: 200, data: [] }
+      if (path === '/api/movies' || path === '/api/movies/refresh') {
+        return { ok: true, status: 200, data: [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }] }
+      }
+      if (path === '/api/movies/enrich') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            sections: [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }],
+            cached_poster_ids: [],
+            uncached_poster_movies: [],
+            cached_background_ids: [],
+            uncached_background_movies: [],
+          },
+        }
+      }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useMoviesData(false))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    act(() => {
+      result.current.handleServerAdded({ id: 7, name: 'Added', url: 'http://added.local' })
+    })
+
+    await waitFor(() => {
+      expect(result.current.selectedServerId).toBe(7)
+      expect(result.current.plexServers).toEqual([{ id: 7, name: 'Added', url: 'http://added.local' }])
+      expect(mockedApi.get).toHaveBeenCalledWith('/api/movies', expect.objectContaining({
+        query: { server_id: 7 },
+      }))
+    })
+  })
 })

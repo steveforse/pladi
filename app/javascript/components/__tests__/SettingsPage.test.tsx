@@ -107,6 +107,27 @@ describe('SettingsPage', () => {
     view.unmount()
   })
 
+  it('shows network fallback when email update throws non-ApiError', async () => {
+    mockBaseGets()
+    mockedApi.patch.mockRejectedValueOnce(new Error('offline'))
+
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    const emailInput = await screen.findByDisplayValue('user@example.com')
+    await userEvent.clear(emailInput)
+    await userEvent.type(emailInput, 'new@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Update email' }))
+
+    expect(await screen.findByText('Network error. Please try again.')).toBeInTheDocument()
+    view.unmount()
+  })
+
   it('updates preference toggle and calls callback', async () => {
     const onDownloadImagesChange = vi.fn()
     mockedApi.get.mockImplementation(async (path: string) => {
@@ -196,6 +217,30 @@ describe('SettingsPage', () => {
     view.unmount()
   })
 
+  it('shows password API and network errors', async () => {
+    mockBaseGets()
+    mockedApi.patch
+      .mockRejectedValueOnce(new ApiError('Bad password'))
+      .mockRejectedValueOnce(new Error('offline'))
+
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    await userEvent.type(screen.getByLabelText('New password'), 'newpass123')
+    await userEvent.type(screen.getByLabelText('Confirm new password'), 'newpass123')
+    await userEvent.click(screen.getByRole('button', { name: 'Update password' }))
+    expect(await screen.findByText('Bad password')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Update password' }))
+    expect(await screen.findByText('Network error. Please try again.')).toBeInTheDocument()
+    view.unmount()
+  })
+
   it('looks up name when adding server and creates it with trimmed token', async () => {
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/me') return { ok: true, status: 200, data: { email_address: 'user@example.com' } }
@@ -256,6 +301,54 @@ describe('SettingsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(await screen.findByText('Failed to delete server')).toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('does not lookup name when url/token are missing and supports add-server cancel', async () => {
+    mockBaseGets()
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Servers' }))
+    expect(screen.getByText('No Plex servers configured yet.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '+ Add Server' }))
+
+    const tokenInput = screen.getByPlaceholderText('Plex token')
+    await userEvent.type(tokenInput, 'abc')
+    await userEvent.tab()
+    expect(mockedApi.get).not.toHaveBeenCalledWith('/api/plex_servers/lookup_name', expect.any(Object))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('button', { name: '+ Add Server' })).toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('shows create-server fallback error for non-ApiError', async () => {
+    mockBaseGets()
+    mockedApi.post.mockRejectedValueOnce(new Error('boom'))
+
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Servers' }))
+    await userEvent.click(screen.getByRole('button', { name: '+ Add Server' }))
+
+    await userEvent.type(screen.getByPlaceholderText('URL (e.g. https://plex.example.com)'), 'http://plex.local')
+    await userEvent.type(screen.getByPlaceholderText('Plex token'), 'token123')
+    await userEvent.type(screen.getByPlaceholderText('Name (e.g. Home Server)'), 'Home')
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(await screen.findByText('Failed to create server')).toBeInTheDocument()
     view.unmount()
   })
 })

@@ -158,6 +158,20 @@ describe('MovieRow', () => {
     view.unmount()
   })
 
+  it('renders background loading placeholder when art exists but background is not ready', () => {
+    const { view } = renderRow({
+      rowMovie: movie({ art: '/art.jpg' }),
+      colOrder: ['title', 'background'],
+      visibleCols: new Set<ColumnId>(['background']),
+      downloadImages: true,
+      backgroundReady: new Set<string>(),
+    })
+
+    const placeholders = screen.getAllByRole('generic').filter((el) => el.className.includes('animate-pulse'))
+    expect(placeholders).toHaveLength(1)
+    view.unmount()
+  })
+
   it('opens image modals and maps editable saves to update patches', async () => {
     const rowMovie = movie()
     const { onUpdate, onOpenPoster, onOpenBackground, view } = renderRow({
@@ -232,6 +246,138 @@ describe('MovieRow', () => {
     expect(screen.getByText('StudioX')).toBeInTheDocument()
     expect(screen.getByText('Favorite')).toBeInTheDocument()
     expect(screen.getAllByText('✓')).toHaveLength(2)
+    view.unmount()
+  })
+
+  it('maps original title edits to nullable patch values', async () => {
+    const rowMovie = movie({ original_title: 'Original Alpha' })
+    const { onUpdate, view } = renderRow({
+      rowMovie,
+      colOrder: ['title', 'original_title'],
+      visibleCols: new Set<ColumnId>(['original_title']),
+      downloadImages: false,
+    })
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'save-text' })[1])
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith('m1', { original_title: 'Edited' }))
+    view.unmount()
+  })
+
+  it('renders nullable fallbacks for non-editable metadata and plain id when plex link is missing', () => {
+    const rowMovie = movie({
+      plex_url: null,
+      imdb_rating: null,
+      rt_audience_rating: null,
+      rt_critics_rating: null,
+      tmdb_rating: null,
+      file_path: null,
+      container: null,
+      video_codec: null,
+      video_resolution: null,
+      video_bitrate: null,
+      width: null,
+      height: null,
+      aspect_ratio: null,
+      frame_rate: null,
+      audio_codec: null,
+      audio_channels: null,
+      audio_bitrate: null,
+      audio_language: null,
+      audio_tracks: null,
+      subtitles: null,
+      overall_bitrate: null,
+      size: null,
+      duration: null,
+      updated_at: null,
+      thumb: null,
+      art: null,
+    })
+
+    const { view } = renderRow({
+      rowMovie,
+      colOrder: [
+        'title', 'id', 'imdb_rating', 'rt_audience_rating', 'rt_critics_rating', 'tmdb_rating',
+        'file_path', 'container', 'video_codec', 'video_resolution', 'video_bitrate',
+        'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels',
+        'audio_bitrate', 'audio_language', 'audio_tracks', 'subtitles', 'overall_bitrate',
+        'size', 'duration', 'updated_at', 'poster', 'background',
+      ],
+      visibleCols: new Set<ColumnId>([
+        'id', 'imdb_rating', 'rt_audience_rating', 'rt_critics_rating', 'tmdb_rating',
+        'file_path', 'container', 'video_codec', 'video_resolution', 'video_bitrate',
+        'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels',
+        'audio_bitrate', 'audio_language', 'audio_tracks', 'subtitles', 'overall_bitrate',
+        'size', 'duration', 'updated_at', 'poster', 'background',
+      ]),
+      downloadImages: false,
+    })
+
+    expect(screen.queryByRole('link', { name: 'm1' })).not.toBeInTheDocument()
+    expect(screen.getByText('m1')).toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(10)
+    view.unmount()
+  })
+
+  it('executes save handlers for all editable fields', async () => {
+    const rowMovie = movie({
+      original_title: 'Original Alpha',
+      content_rating: 'PG',
+      genres: 'Action',
+      directors: 'Director One',
+      summary: 'Summary',
+      sort_title: 'Alpha',
+      edition: 'Extended',
+      originally_available: '2020-01-01',
+      studio: 'Studio X',
+      tagline: 'Tagline',
+      country: 'US',
+      writers: 'Writer One',
+      producers: 'Producer One',
+      collections: 'Collection One',
+      labels: 'Label One',
+    })
+    const { onUpdate, view } = renderRow({
+      rowMovie,
+      colOrder: [
+        'title', 'original_title', 'year', 'content_rating', 'genres', 'directors', 'summary',
+        'sort_title', 'edition', 'originally_available', 'studio', 'tagline',
+        'country', 'writers', 'producers', 'collections', 'labels',
+      ],
+      visibleCols: new Set<ColumnId>([
+        'original_title', 'year', 'content_rating', 'genres', 'directors', 'summary',
+        'sort_title', 'edition', 'originally_available', 'studio', 'tagline',
+        'country', 'writers', 'producers', 'collections', 'labels',
+      ]),
+      downloadImages: false,
+    })
+
+    for (const button of screen.getAllByRole('button', { name: 'save-text' })) {
+      await userEvent.click(button)
+    }
+    await userEvent.click(screen.getByRole('button', { name: 'save-number' }))
+    await userEvent.click(screen.getByRole('button', { name: 'save-date' }))
+    for (const button of screen.getAllByRole('button', { name: 'save-tags' })) {
+      await userEvent.click(button)
+    }
+
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(17))
+    expect(onUpdate).toHaveBeenCalledWith('m1', { title: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { original_title: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { year: 1999 })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { content_rating: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { genres: 'Action, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { directors: 'Director One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { summary: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { sort_title: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { edition: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { originally_available: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { studio: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { tagline: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { country: 'US, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { writers: 'Writer One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { producers: 'Producer One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { collections: 'Collection One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith('m1', { labels: 'Label One, NewTag' })
     view.unmount()
   })
 })

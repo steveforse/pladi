@@ -82,4 +82,61 @@ describe('SetupPage', () => {
     expect(await screen.findByText('Email has already been taken')).toBeInTheDocument()
     view.unmount()
   })
+
+  it('trims/validates email on blur and clears error when corrected', async () => {
+    const view = render(<SetupPage onComplete={() => {}} />)
+
+    const email = screen.getByLabelText('Email address')
+    await userEvent.type(email, ' invalid ')
+    await userEvent.tab()
+    expect(await screen.findByText('Please enter a valid email address.')).toBeInTheDocument()
+
+    await userEvent.clear(email)
+    await userEvent.type(email, 'valid@example.com')
+    expect(screen.queryByText('Please enter a valid email address.')).not.toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('blocks submit for invalid email format', async () => {
+    const view = render(<SetupPage onComplete={() => {}} />)
+
+    await userEvent.type(screen.getByLabelText('Email address'), 'invalid-email')
+    await userEvent.type(screen.getByLabelText('Password'), 'secret')
+    await userEvent.type(screen.getByLabelText('Confirm password'), 'secret')
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(await screen.findByText('Please enter a valid email address.')).toBeInTheDocument()
+    expect(mockedApi.post).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('handles ApiError with single error string payload', async () => {
+    mockedApi.post.mockRejectedValue(
+      new ApiError('Bad request', 422, { error: 'Setup failed' })
+    )
+
+    const view = render(<SetupPage onComplete={() => {}} />)
+
+    await userEvent.type(screen.getByLabelText('Email address'), 'user@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'secret')
+    await userEvent.type(screen.getByLabelText('Confirm password'), 'secret')
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(await screen.findByText('Setup failed')).toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('shows network fallback error for non-ApiError failures', async () => {
+    mockedApi.post.mockRejectedValue(new Error('offline'))
+
+    const view = render(<SetupPage onComplete={() => {}} />)
+
+    await userEvent.type(screen.getByLabelText('Email address'), 'user@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'secret')
+    await userEvent.type(screen.getByLabelText('Confirm password'), 'secret')
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(await screen.findByText('Network error. Please try again.')).toBeInTheDocument()
+    view.unmount()
+  })
 })

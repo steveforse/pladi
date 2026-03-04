@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { MovieHeaderRow } from '@/components/movies/MovieHeaderRow'
+import { DEFAULT_COL_ORDER } from '@/lib/columns'
 import type { AllColumnId, ColumnId } from '@/lib/types'
 
 function renderHeader(overrides?: Partial<React.ComponentProps<typeof MovieHeaderRow>>) {
@@ -67,6 +68,24 @@ describe('MovieHeaderRow', () => {
 
     fireEvent.drop(idHeader)
     expect(handlers.onDrop).toHaveBeenCalledWith('id')
+    view.unmount()
+  })
+
+  it('renders every known column header when all columns are visible', () => {
+    const allVisibleColumns = DEFAULT_COL_ORDER.filter((id): id is ColumnId => id !== 'title')
+
+    const { view } = renderHeader({
+      colOrder: DEFAULT_COL_ORDER,
+      visibleCols: new Set<ColumnId>(allVisibleColumns),
+    })
+
+    expect(screen.getByText('Title')).toBeInTheDocument()
+    expect(screen.getByText('Original Title')).toBeInTheDocument()
+    expect(screen.getByText('TMDb Rating')).toBeInTheDocument()
+    expect(screen.getByText('Video Codec')).toBeInTheDocument()
+    expect(screen.getByText('Audio Tracks')).toBeInTheDocument()
+    expect(screen.getByText('Background')).toBeInTheDocument()
+    expect(screen.getByText('Poster')).toBeInTheDocument()
     view.unmount()
   })
 })

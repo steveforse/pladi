@@ -74,6 +74,15 @@ describe('pathMatching helpers', () => {
     expect(titleMatchesFilename(row)).toBe(true)
   })
 
+  it('returns false when filename does not match title and true for missing path/title', () => {
+    expect(titleMatchesFilename(movie({
+      title: 'The Matrix',
+      file_path: '/media/Movies/Other/CompletelyDifferent.mkv',
+    }))).toBe(false)
+    expect(titleMatchesFilename(movie({ title: 'The Matrix', file_path: null }))).toBe(true)
+    expect(titleMatchesFilename(movie({ title: '', file_path: '/x/file.mkv' }))).toBe(true)
+  })
+
   it('matches movie title against parent folder', () => {
     const row = movie({
       title: 'The Matrix',
@@ -81,6 +90,15 @@ describe('pathMatching helpers', () => {
     })
 
     expect(titleMatchesPath(row)).toBe(true)
+  })
+
+  it('returns false when folder does not match and true for missing path/title', () => {
+    expect(titleMatchesPath(movie({
+      title: 'The Matrix',
+      file_path: '/media/Movies/Another Folder/matrix.mkv',
+    }))).toBe(false)
+    expect(titleMatchesPath(movie({ title: 'The Matrix', file_path: null }))).toBe(true)
+    expect(titleMatchesPath(movie({ title: '', file_path: '/x/file.mkv' }))).toBe(true)
   })
 
   it('detects and validates year inside the path', () => {
@@ -94,9 +112,27 @@ describe('pathMatching helpers', () => {
     expect(pathYearMatchesMetadata(row)).toBe(true)
   })
 
+  it('handles year mismatch and no-year path cases', () => {
+    expect(pathContainsYear(movie({ file_path: '/media/Movies/NoYear/movie.mkv' }))).toBe(false)
+    expect(pathYearMatchesMetadata(movie({
+      year: 2001,
+      file_path: '/media/Movies/Film (1999)/film.mkv',
+    }))).toBe(false)
+    expect(pathYearMatchesMetadata(movie({
+      year: 2001,
+      file_path: '/media/Movies/NoYear/film.mkv',
+    }))).toBe(true)
+    expect(pathYearMatchesMetadata(movie({ year: null, file_path: '/media/Movies/Film (1999)/film.mkv' }))).toBe(true)
+  })
+
   it('detects when the file is not in a year-based movie subfolder', () => {
     const row = movie({ file_path: '/media/matrix.mkv' })
 
     expect(fileIsInSubfolder(row)).toBe(false)
+  })
+
+  it('detects year-based subfolders and missing path handling', () => {
+    expect(fileIsInSubfolder(movie({ file_path: '/media/Movies/Film (1999)/film.mkv' }))).toBe(true)
+    expect(fileIsInSubfolder(movie({ file_path: null }))).toBe(true)
   })
 })

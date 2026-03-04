@@ -125,4 +125,72 @@ describe('useMoviesFilter', () => {
     expect(result.current.filters).toHaveLength(0)
     expect(result.current.visibleMovies).toHaveLength(2)
   })
+
+  it('toggles sort direction and changes sort key', () => {
+    const sections = [{
+      title: 'A',
+      movies: [movie({ id: 'm1', title: 'Alpha', year: 2020 }), movie({ id: 'm2', title: 'Beta', year: 2019 })],
+    }]
+    const { result } = renderHook(() => useMoviesFilter(sections, null))
+
+    expect(result.current.sortKey).toBe('title')
+    expect(result.current.sortDir).toBe('asc')
+
+    act(() => result.current.handleSort('title'))
+    expect(result.current.sortDir).toBe('desc')
+
+    act(() => result.current.handleSort('year'))
+    expect(result.current.sortKey).toBe('year')
+    expect(result.current.sortDir).toBe('asc')
+  })
+
+  it('loads initial state from sessionStorage and applies additional quick filters', () => {
+    const storage = createSessionStorageMock()
+    storage.setItem('pladi.filters', JSON.stringify({
+      multiOnly: false,
+      unmatchedOnly: false,
+      filenameMismatch: false,
+      originalTitleMismatch: true,
+      noYearInPath: true,
+      yearPathMismatch: false,
+      notInSubfolder: true,
+      sortKey: 'title',
+      sortDir: 'asc',
+      filters: [],
+    }))
+    vi.stubGlobal('sessionStorage', storage)
+
+    const sections = [{
+      title: 'A',
+      movies: [
+        movie({ id: 'm1', title: 'Alpha', original_title: 'Alpha', year: 2020, file_path: '/movies/Alpha (2020)/Alpha (2020).mkv' }),
+        movie({ id: 'm2', title: 'Beta', original_title: 'Different', year: 2021, file_path: '/Beta.mkv' }),
+      ],
+    }]
+
+    const { result } = renderHook(() => useMoviesFilter(sections, null))
+
+    expect(result.current.originalTitleMismatch).toBe(true)
+    expect(result.current.noYearInPath).toBe(true)
+    expect(result.current.yearPathMismatch).toBe(false)
+    expect(result.current.notInSubfolder).toBe(true)
+    expect(result.current.visibleMovies.map((m) => m.id)).toEqual(['m2'])
+  })
+
+  it('handles storage parse/set failures without crashing', () => {
+    const badStorage = {
+      getItem: () => '{bad-json',
+      setItem: () => { throw new Error('storage down') },
+      removeItem: () => {},
+      clear: () => {},
+    }
+    vi.stubGlobal('sessionStorage', badStorage)
+
+    const sections = [{ title: 'A', movies: [movie({ id: 'm1', title: 'Alpha' })] }]
+    const { result } = renderHook(() => useMoviesFilter(sections, null))
+
+    expect(result.current.visibleMovies).toHaveLength(1)
+    act(() => result.current.setMultiOnly(true))
+    expect(result.current.visibleMovies).toHaveLength(0)
+  })
 })
