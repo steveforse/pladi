@@ -23,7 +23,7 @@ Rails.application.routes.draw do
         get :background
       end
     end
-    resources :shows, only: %i[index show] do
+    resources :shows, only: %i[index show update] do
       collection do
         get :refresh
         get :enrich

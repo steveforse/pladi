@@ -163,4 +163,48 @@ RSpec.describe Plex::MovieUpdater do
       expect(result[:unverified_fields]).to eq([])
     end
   end
+
+  describe '#update_show' do
+    let(:before_payload) do
+      {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'librarySectionID' => 2,
+              'librarySectionTitle' => 'TV Shows',
+              'title' => 'Old Show',
+              'summary' => 'Old summary'
+            }
+          ]
+        }
+      }
+    end
+    let(:after_payload) do
+      {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'librarySectionID' => 2,
+              'librarySectionTitle' => 'TV Shows',
+              'title' => 'New Show',
+              'summary' => 'New summary'
+            }
+          ]
+        }
+      }
+    end
+
+    before do
+      allow(http_client).to receive(:get).with('/library/metadata/88').and_return(before_payload, after_payload)
+      allow(http_client).to receive(:put)
+      allow(cache_store).to receive(:bump_enrich_version)
+    end
+
+    it 'uses Plex show type in update query' do
+      updater.update_show('88', title: 'New Show')
+      expect(http_client).to have_received(:put).with(
+        a_string_including('/library/metadata/88?', 'type=2', 'title.value=New+Show')
+      )
+    end
+  end
 end

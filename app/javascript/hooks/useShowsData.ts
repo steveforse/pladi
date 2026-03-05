@@ -162,6 +162,35 @@ export function useShowsData() {
     setSelectedTitle(title)
   }
 
+  async function updateShow(showId: string, patch: Record<string, unknown>) {
+    if (!selectedServerId) throw new Error('No server selected')
+
+    const tagFields = ['genres', 'writers', 'producers', 'collections', 'labels', 'country']
+    const apiPatch: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(patch)) {
+      if (tagFields.includes(key)) {
+        apiPatch[key] = typeof val === 'string' && val
+          ? val.split(', ').map((t) => t.trim()).filter(Boolean)
+          : []
+      } else {
+        apiPatch[key] = val
+      }
+    }
+
+    await api.patch<unknown, { show: Record<string, unknown> }>(
+      `/api/shows/${showId}`,
+      { show: apiPatch },
+      { query: { server_id: selectedServerId }, csrf: true }
+    )
+
+    setSections((prev) =>
+      prev.map((section) => ({
+        ...section,
+        movies: section.movies.map((s) => (s.id === showId ? { ...s, ...patch } : s)),
+      }))
+    )
+  }
+
   return {
     plexServers,
     selectedServerId,
@@ -173,5 +202,6 @@ export function useShowsData() {
     error,
     handleServerChange,
     handleLibraryChange,
+    updateShow,
   }
 }

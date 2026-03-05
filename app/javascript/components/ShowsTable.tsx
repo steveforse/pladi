@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
+import { EditableCell } from '@/components/movies/EditableCell'
 import { FilterRow } from '@/components/movies/FilterRow'
 import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
 import { Paginator } from '@/components/movies/Paginator'
@@ -48,6 +49,7 @@ export default function ShowsTable({
     error,
     handleServerChange,
     handleLibraryChange,
+    updateShow,
   } = useShowsData()
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -379,16 +381,61 @@ export default function ShowsTable({
             <tbody>
               {pagedShows.map((show) => (
                 <tr key={`${show.id}|${show.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
-                  {visibleCols.has('title') && <td className="px-4 py-2 font-medium whitespace-nowrap">{show.title}</td>}
-                  {visibleCols.has('year') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</td>}
+                  {visibleCols.has('title') && (
+                    <EditableCell
+                      value={show.title}
+                      fieldType="text"
+                      onSave={async (v) => updateShow(show.id, { title: v as string })}
+                      renderView={() => <span className="font-medium whitespace-nowrap">{show.title}</span>}
+                      className="px-4 py-2"
+                    />
+                  )}
+                  {visibleCols.has('year') && (
+                    <EditableCell
+                      value={show.year != null ? String(show.year) : null}
+                      fieldType="number"
+                      onSave={async (v) => {
+                        const year = (v as string) ? parseInt(v as string, 10) : null
+                        await updateShow(show.id, { year: Number.isFinite(year) ? year : null })
+                      }}
+                      renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</span>}
+                      className="px-4 py-2"
+                    />
+                  )}
                   {visibleCols.has('season_count') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.season_count ?? '—'}</td>}
                   {visibleCols.has('episode_count') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.episode_count ?? '—'}</td>}
                   {visibleCols.has('viewed_episode_count') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.viewed_episode_count ?? '—'}</td>}
-                  {visibleCols.has('studio') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.studio ?? '—'}</td>}
-                  {visibleCols.has('genres') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.genres ?? '—'}</td>}
-                  {visibleCols.has('summary') && <td className="px-4 py-2 text-muted-foreground text-xs">
-                    {show.summary ? show.summary.slice(0, 160) + (show.summary.length > 160 ? '…' : '') : '—'}
-                  </td>}
+                  {visibleCols.has('studio') && (
+                    <EditableCell
+                      value={show.studio}
+                      fieldType="text"
+                      onSave={async (v) => updateShow(show.id, { studio: (v as string) || null })}
+                      renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.studio ?? '—'}</span>}
+                      className="px-4 py-2"
+                    />
+                  )}
+                  {visibleCols.has('genres') && (
+                    <EditableCell
+                      value={show.genres ? show.genres.split(', ').filter(Boolean) : []}
+                      fieldType="tags"
+                      onSave={async (v) => updateShow(show.id, { genres: (v as string[]).join(', ') || null })}
+                      renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.genres ?? '—'}</span>}
+                      className="px-4 py-2"
+                    />
+                  )}
+                  {visibleCols.has('summary') && (
+                    <EditableCell
+                      value={show.summary}
+                      fieldType="text"
+                      onSave={async (v) => updateShow(show.id, { summary: (v as string) || null })}
+                      renderView={() => (
+                        <span className="text-muted-foreground text-xs">
+                          {show.summary ? show.summary.slice(0, 160) + (show.summary.length > 160 ? '…' : '') : '—'}
+                        </span>
+                      )}
+                      className="px-4 py-2"
+                    />
+                  )}
                 </tr>
               ))}
               {pagedShows.length === 0 && (

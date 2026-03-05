@@ -3,7 +3,7 @@
 module Plex
   class Server
     delegate :enrich_sections, to: :enricher
-    delegate :update_movie, to: :movie_updater
+    delegate :update_movie, :update_show, to: :movie_updater
     delegate :poster_for, :background_for, to: :image_store
 
     def initialize(server)

@@ -131,6 +131,12 @@ RSpec.describe Plex::Server do
       expect(plex_server_service.poster_for('10')).to eq(data: 'img')
     end
 
+    it 'delegates update_show' do
+      allow(movie_updater).to receive(:update_show).with('10', title: 'New Show')
+      plex_server_service.update_show('10', title: 'New Show')
+      expect(movie_updater).to have_received(:update_show).with('10', title: 'New Show')
+    end
+
     it 'delegates background_for' do
       allow(image_store).to receive(:background_for).with('10').and_return(data: 'img')
       expect(plex_server_service.background_for('10')).to eq(data: 'img')

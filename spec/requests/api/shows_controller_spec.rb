@@ -95,4 +95,27 @@ RSpec.describe Api::ShowsController do
       expect(json_body).to eq('sections' => [{ 'title' => 'TV Shows', 'movies' => [{ 'id' => '1' }] }])
     end
   end
+
+  describe 'PATCH /api/shows/:id' do
+    let(:show_params) { { title: 'Updated Show Title' } }
+
+    it 'returns a structured error when Plex request fails' do
+      allow(service).to receive(:update_show).and_raise(Plex::HttpClient::RequestError, 'Unable to reach Plex server')
+      patch '/api/shows/123', params: { server_id: server.id, show: show_params }, as: :json
+      expect(response).to have_api_error(status: :unprocessable_content, message: 'Unable to reach Plex server')
+    end
+
+    it 'returns unprocessable when update is not persisted' do
+      allow(service).to receive(:update_show).and_return(before: {}, after: {}, unverified_fields: ['title'])
+      patch '/api/shows/123', params: { server_id: server.id, show: show_params }, as: :json
+      expect(response).to have_api_error(status: :unprocessable_content, message: 'Plex did not persist this update')
+    end
+
+    it 'returns no content on successful update' do
+      allow(service).to receive(:update_show).and_return(before: {}, after: {}, unverified_fields: [])
+      allow(MovieAuditLog).to receive(:record_changes)
+      patch '/api/shows/123', params: { server_id: server.id, show: show_params }, as: :json
+      expect(response).to have_http_status(:no_content)
+    end
+  end
 end

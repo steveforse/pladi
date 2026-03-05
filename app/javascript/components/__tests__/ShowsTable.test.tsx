@@ -29,6 +29,7 @@ function setupHookMock(overrides: Partial<ReturnType<typeof useShowsData>> = {})
     error: null,
     handleServerChange: vi.fn(),
     handleLibraryChange: vi.fn(),
+    updateShow: vi.fn(),
     ...overrides,
   })
 }

@@ -26,7 +26,38 @@ module Api
       render json: payload
     end
 
+    def update
+      fields = show_params.to_h
+      result = service.update_show(params[:id], fields)
+
+      raise Api::Errors::Unprocessable, 'Plex did not persist this update' if result[:unverified_fields].any?
+
+      log_update(result, fields)
+      head :no_content
+    end
+
     private
+
+    def show_params
+      params.expect(
+        show: [:title, :sort_title, :summary, :tagline,
+               :studio, :content_rating, :year, :originally_available,
+               { genres: [], writers: [], producers: [],
+                 collections: [], labels: [], country: [] }]
+      )
+    end
+
+    def log_update(result, fields)
+      MovieAuditLog.record_changes(
+        user: Current.user,
+        plex_server: @server,
+        media_type: 'show',
+        media_id: params[:id],
+        fields: fields,
+        before: result[:before],
+        after: result[:after]
+      )
+    end
 
     def service
       @service ||= Plex::Server.new(@server)

@@ -171,6 +171,34 @@ describe('useShowsData', () => {
     expect(localStorage.getItem('pladi_selected_show_library')).toBe('TV Shows')
   })
 
+  it('converts tag patches to arrays when updating show', async () => {
+    const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/refresh') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: baseSections } }
+      return { ok: false, status: 404, data: null }
+    })
+    mockedApi.patch.mockResolvedValue({ ok: true, status: 204, data: null })
+
+    const { result } = renderHook(() => useShowsData())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      await result.current.updateShow('s1', { genres: 'Drama, Mystery' })
+    })
+
+    expect(mockedApi.patch).toHaveBeenCalledWith(
+      '/api/shows/s1',
+      { show: expect.objectContaining({ genres: ['Drama', 'Mystery'] }) },
+      expect.objectContaining({ query: { server_id: 1 } })
+    )
+  })
+
   it('applies cached show enrichment before enrich response', async () => {
     const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
     localStorage.setItem('pladi_show_enrichment_v1_1', JSON.stringify({ s1: { summary: 'Cached summary' } }))
