@@ -6,11 +6,13 @@ export function ColumnPicker({
   visible,
   onChange,
   onReset,
+  openDirection = 'down',
 }: {
   groups: ColumnGroup[]
   visible: Set<ColumnId>
   onChange: (id: ColumnId, checked: boolean) => void
   onReset: () => void
+  openDirection?: 'down' | 'up'
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -42,7 +44,9 @@ export function ColumnPicker({
         <span className="text-muted-foreground">▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 z-10 bg-card border rounded-md shadow-lg p-2 w-[32rem]">
+        <div className={`absolute right-0 z-10 bg-card border rounded-md shadow-lg p-2 w-[32rem] ${
+          openDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+        }`}>
           <div className="grid grid-cols-3 gap-x-2">
             {groups.map((group, i) => {
               const allOn = group.columns.every((col) => visible.has(col.id))

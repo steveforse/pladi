@@ -174,12 +174,33 @@ describe('ShowsTable', () => {
     expect(within(view.container).getByText('The Bear')).toBeInTheDocument()
   })
 
+  it('applies quick filters for fully watched shows', async () => {
+    setupHookMock({
+      sections: [
+        {
+          title: 'TV Shows',
+          movies: [
+            { id: 's1', title: 'Severance', year: 2022, season_count: 2, episode_count: 19, viewed_episode_count: 8, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null },
+            { id: 's2', title: 'The Bear', year: 2023, season_count: 3, episode_count: 28, viewed_episode_count: 28, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', file_path: null },
+          ],
+        },
+      ],
+    })
+
+    const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    await userEvent.click(within(view.container).getByRole('button', { name: 'Filters' }))
+    await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Fully watched' }))
+
+    expect(within(view.container).queryByText('Severance')).not.toBeInTheDocument()
+    expect(within(view.container).getByText('The Bear')).toBeInTheDocument()
+  })
+
   it('toggles TV table columns from the column picker', async () => {
     setupHookMock()
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
     expect(within(view.container).getByRole('columnheader', { name: /Summary/ })).toBeInTheDocument()
-    await userEvent.click(within(view.container).getByRole('button', { name: /Toggle Columns/i }))
+    await userEvent.click(within(view.container).getAllByRole('button', { name: /Toggle Columns/i })[0])
     expect(within(view.container).getByRole('checkbox', { name: 'Content Rating' })).toBeInTheDocument()
     await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Summary' }))
 

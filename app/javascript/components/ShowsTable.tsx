@@ -244,6 +244,7 @@ export default function ShowsTable({
 
   const [unwatchedOnly, setUnwatchedOnly] = useState(false)
   const [partiallyWatchedOnly, setPartiallyWatchedOnly] = useState(false)
+  const [fullyWatchedOnly, setFullyWatchedOnly] = useState(false)
   const [multiOnly, setMultiOnly] = useState(false)
   const [unmatchedOnly, setUnmatchedOnly] = useState(false)
   const [filenameMismatch, setFilenameMismatch] = useState(false)
@@ -305,7 +306,7 @@ export default function ShowsTable({
   }, [viewMode])
 
   const activeFilterCount =
-    [unwatchedOnly, partiallyWatchedOnly, multiOnly, unmatchedOnly, filenameMismatch, noYearInPath, yearPathMismatch, notInSubfolder].filter(Boolean).length +
+    [unwatchedOnly, partiallyWatchedOnly, fullyWatchedOnly, multiOnly, unmatchedOnly, filenameMismatch, noYearInPath, yearPathMismatch, notInSubfolder].filter(Boolean).length +
     filters.length
 
   function addFilter() {
@@ -327,6 +328,7 @@ export default function ShowsTable({
     setFilters([])
     setUnwatchedOnly(false)
     setPartiallyWatchedOnly(false)
+    setFullyWatchedOnly(false)
     setMultiOnly(false)
     setUnmatchedOnly(false)
     setFilenameMismatch(false)
@@ -376,6 +378,7 @@ export default function ShowsTable({
     setFilters([])
     setUnwatchedOnly(false)
     setPartiallyWatchedOnly(false)
+    setFullyWatchedOnly(false)
     setMultiOnly(false)
     setUnmatchedOnly(false)
     setFilenameMismatch(false)
@@ -432,6 +435,11 @@ export default function ShowsTable({
         const total = show.episode_count ?? 0
         if (!(viewed > 0 && total > 0 && viewed < total)) return false
       }
+      if (fullyWatchedOnly) {
+        const viewed = show.viewed_episode_count ?? 0
+        const total = show.episode_count ?? 0
+        if (!(total > 0 && viewed >= total)) return false
+      }
 
       return true
     })
@@ -468,6 +476,7 @@ export default function ShowsTable({
     filters,
     unwatchedOnly,
     partiallyWatchedOnly,
+    fullyWatchedOnly,
     multiOnly,
     unmatchedOnly,
     filenameMismatch,
@@ -698,10 +707,10 @@ export default function ShowsTable({
                         <input type="checkbox" checked={partiallyWatchedOnly} onChange={(e) => setPartiallyWatchedOnly(e.target.checked)} />
                         Partially watched
                       </label>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Metadata</p>
-                      <p className="text-xs text-muted-foreground">Use advanced filters for summary/poster checks.</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={fullyWatchedOnly} onChange={(e) => setFullyWatchedOnly(e.target.checked)} />
+                        Fully watched
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -1171,6 +1180,17 @@ export default function ShowsTable({
             </tbody>
           </table>
         </div>
+
+        <Paginator
+          page={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          total={filteredShows.length}
+          itemLabel={viewMode === 'episodes' ? 'episodes' : 'shows'}
+          onPage={setPage}
+          onPageSize={handlePageSize}
+          leftSlot={<ColumnPicker groups={viewMode === 'episodes' ? EPISODE_COLUMN_GROUPS : SHOW_COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} openDirection="up" />}
+        />
       </div>
 
       {posterModalShow && (

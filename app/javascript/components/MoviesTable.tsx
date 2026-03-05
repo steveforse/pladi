@@ -425,7 +425,7 @@ export default function MoviesTable({
             <Paginator
               page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
               onPage={setPage} onPageSize={handlePageSize}
-              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} />}
+              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} openDirection="up" />}
             />
           </div>
         )}
