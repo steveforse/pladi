@@ -19,11 +19,11 @@ module Plex
       @http_client.get('/').dig('MediaContainer', 'friendlyName')
     end
 
-    def sections(media_type: 'movie', refresh: false)
-      return refresh_sections(media_type: media_type) if refresh
+    def sections(media_type: 'movie', view_mode: 'shows', refresh: false)
+      return refresh_sections(media_type: media_type, view_mode: view_mode) if refresh
 
-      @cache_store.fetch(@cache_store.key('sections', media_type)) do
-        @library.fetch_sections(media_type: media_type)
+      @cache_store.fetch(@cache_store.key('sections', media_type, view_mode)) do
+        @library.fetch_sections(media_type: media_type, view_mode: view_mode)
       end
     end
 
@@ -38,8 +38,8 @@ module Plex
       end
     end
 
-    def enriched_library(media_type: 'movie')
-      enriched_sections = @enricher.enrich_sections(sections(media_type: media_type), media_type: media_type)
+    def enriched_library(media_type: 'movie', view_mode: 'shows')
+      enriched_sections = @enricher.enrich_sections(sections(media_type: media_type, view_mode: view_mode), media_type: media_type)
       cached_posters, uncached_posters = @image_store.partition_posters_by_cache(enriched_sections)
       cached_backgrounds, uncached_backgrounds = @image_store.partition_backgrounds_by_cache(enriched_sections)
 
@@ -54,14 +54,14 @@ module Plex
 
     private
 
-    def refresh_sections(media_type:)
-      @library.fetch_sections(media_type: media_type).tap do |section_data|
-        @cache_store.write(@cache_store.key('sections', media_type), section_data)
+    def refresh_sections(media_type:, view_mode:)
+      @library.fetch_sections(media_type: media_type, view_mode: view_mode).tap do |section_data|
+        @cache_store.write(@cache_store.key('sections', media_type, view_mode), section_data)
       end
     end
 
     def find_item(media_id, media_type:)
-      sections(media_type: media_type).flat_map { |section| section[:movies] }.find do |item|
+      sections(media_type: media_type, view_mode: 'shows').flat_map { |section| section[:movies] }.find do |item|
         item[:id].to_s == media_id.to_s
       end
     end

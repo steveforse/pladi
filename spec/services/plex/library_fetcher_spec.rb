@@ -139,6 +139,59 @@ RSpec.describe Plex::LibraryFetcher do
         viewed_episode_count: 12
       )
     end
+
+    it 'can fetch episode rows when show view_mode is episodes' do
+      episodes_payload = {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'ratingKey' => '401',
+              'title' => 'Pilot',
+              'grandparentTitle' => 'Show A',
+              'parentIndex' => 1,
+              'index' => 1,
+              'updatedAt' => 300,
+              'Media' => [
+                {
+                  'container' => 'mkv',
+                  'videoCodec' => 'h264',
+                  'audioCodec' => 'aac',
+                  'duration' => 2_700_000,
+                  'Part' => [
+                    {
+                      'file' => '/tv/show_a/s01e01.mkv',
+                      'size' => 1234,
+                      'Stream' => [
+                        { 'streamType' => 2, 'language' => 'English', 'bitrate' => 192 },
+                        { 'streamType' => 3, 'language' => 'English' }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+      allow(http_client).to receive(:get).with('/library/sections/2/all?type=4').and_return(episodes_payload)
+
+      episodes = fetcher.fetch_sections(media_type: 'show', view_mode: 'episodes')
+
+      expect(episodes.first).to include(id: '2', updated_at: 200, title: 'Shows')
+      expect(episodes.first[:movies].first).to include(
+        id: '401',
+        title: 'Pilot',
+        original_title: 'Show A',
+        episode_number: 'S01E01',
+        file_path: '/tv/show_a/s01e01.mkv',
+        container: 'mkv',
+        video_codec: 'h264',
+        audio_codec: 'aac',
+        subtitles: 'English',
+        audio_tracks: '1',
+        audio_language: 'English'
+      )
+    end
   end
 
   describe '#machine_id' do

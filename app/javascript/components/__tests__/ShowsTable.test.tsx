@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ShowsTable from '@/components/ShowsTable'
@@ -120,11 +120,13 @@ describe('ShowsTable', () => {
 
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
-    await userEvent.click(within(view.container).getByText('Episodes'))
+    const episodesHeader = within(view.container).getByRole('columnheader', { name: /Episodes/ })
+    const episodesSortLabel = within(episodesHeader).getByText('Episodes')
+    await userEvent.click(episodesSortLabel)
     const rows = within(view.container).getAllByRole('row')
     expect(rows[1]).toHaveTextContent('Severance')
 
-    await userEvent.click(within(view.container).getByText('Episodes'))
+    await userEvent.click(episodesSortLabel)
     const sortedDescRows = within(view.container).getAllByRole('row')
     expect(sortedDescRows[1]).toHaveTextContent('The Bear')
   })
@@ -220,8 +222,10 @@ describe('ShowsTable', () => {
     })
 
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
-    await userEvent.click(within(view.container).getByText('Episodes'))
-    await userEvent.click(within(view.container).getByText('Episodes'))
+    const episodesHeader = within(view.container).getByRole('columnheader', { name: /Episodes/ })
+    const episodesSortLabel = within(episodesHeader).getByText('Episodes')
+    await userEvent.click(episodesSortLabel)
+    await userEvent.click(episodesSortLabel)
 
     let rows = within(view.container).getAllByRole('row')
     expect(rows[1]).toHaveTextContent('The Bear')
@@ -231,5 +235,53 @@ describe('ShowsTable', () => {
     const utils = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
     rows = within(utils.container).getAllByRole('row')
     expect(rows[1]).toHaveTextContent('The Bear')
+  })
+
+  it('switches to episodes mode and shows episode file metadata columns', async () => {
+    setupHookMock({
+      sections: [
+        {
+          title: 'TV Shows',
+          movies: [
+            {
+              id: 'e1',
+              title: 'Good News About Hell',
+              original_title: 'Severance',
+              episode_number: 'S01E01',
+              year: 2022,
+              season_count: 1,
+              episode_count: 1,
+              viewed_episode_count: 0,
+              studio: 'Apple',
+              genres: 'Drama',
+              summary: 'Pilot',
+              file_path: '/tv/Severance/Season 01/Severance.S01E01.mkv',
+              container: 'mkv',
+              video_codec: 'h264',
+              video_resolution: '1080',
+              audio_codec: 'aac',
+              audio_channels: 6,
+              subtitles: 'English',
+              size: 1_500_000_000,
+              duration: 3_300_000,
+            },
+          ],
+        },
+      ],
+    })
+
+    const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    await userEvent.selectOptions(within(view.container).getByRole('combobox', { name: 'TV Mode' }), 'episodes')
+
+    await waitFor(() => {
+      expect(within(view.container).getByRole('columnheader', { name: /Show Title/ })).toBeInTheDocument()
+      expect(within(view.container).getByRole('columnheader', { name: /Episode Title/ })).toBeInTheDocument()
+      expect(within(view.container).getByRole('columnheader', { name: /File Path/ })).toBeInTheDocument()
+      expect(within(view.container).getByRole('columnheader', { name: /Video Codec/ })).toBeInTheDocument()
+      expect(within(view.container).getByRole('columnheader', { name: /Subtitles/ })).toBeInTheDocument()
+    })
+    expect(within(view.container).getByText('Good News About Hell')).toBeInTheDocument()
+    expect(within(view.container).getByText('/tv/Severance/Season 01/Severance.S01E01.mkv')).toBeInTheDocument()
+    expect(within(view.container).queryByRole('checkbox', { name: 'Unwatched only' })).not.toBeInTheDocument()
   })
 })

@@ -30,6 +30,7 @@ function show(id: string, title: string) {
     id,
     title,
     original_title: null,
+    episode_number: null,
     year: 2024,
     file_path: null,
     container: null,
@@ -108,7 +109,7 @@ describe('useShowsData', () => {
 
   it('restores saved TV server and library selections', async () => {
     localStorage.setItem('pladi_selected_show_server_id', '2')
-    localStorage.setItem('pladi_selected_show_library', 'Anime')
+    localStorage.setItem('pladi_selected_show_library_shows', 'Anime')
 
     const sections = [{ title: 'Anime', movies: [show('s1', 'Frieren')] }, { title: 'TV Shows', movies: [] }]
 
@@ -168,7 +169,7 @@ describe('useShowsData', () => {
 
     await waitFor(() => expect(result.current.selectedServerId).toBe(2))
     expect(localStorage.getItem('pladi_selected_show_server_id')).toBe('2')
-    expect(localStorage.getItem('pladi_selected_show_library')).toBe('TV Shows')
+    expect(localStorage.getItem('pladi_selected_show_library_shows')).toBe('TV Shows')
   })
 
   it('converts tag patches to arrays when updating show', async () => {
@@ -251,5 +252,36 @@ describe('useShowsData', () => {
     expect(loadedShow.season_count).toBe(2)
     expect(loadedShow.episode_count).toBe(20)
     expect(loadedShow.viewed_episode_count).toBe(5)
+  })
+
+  it('loads episode mode sections without running enrich', async () => {
+    const baseSections = [{ title: 'TV Shows', movies: [{ ...show('e1', 'Pilot'), original_title: 'Show A', episode_number: 'S01E01' }] }]
+    const observedViewModes: string[] = []
+
+    mockedApi.get.mockImplementation(async (path: string, options?: { query?: Record<string, unknown> }) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') {
+        observedViewModes.push(String(options?.query?.view_mode ?? ''))
+        return { ok: true, status: 200, data: baseSections }
+      }
+      if (path === '/api/shows/refresh') {
+        observedViewModes.push(String(options?.query?.view_mode ?? ''))
+        return { ok: true, status: 200, data: baseSections }
+      }
+      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: baseSections } }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useShowsData('episodes'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.sections[0].movies[0].id).toBe('e1')
+    expect(observedViewModes).toEqual(['episodes', 'episodes'])
+    expect(mockedApi.get).not.toHaveBeenCalledWith(
+      '/api/shows/enrich',
+      expect.objectContaining({ query: expect.objectContaining({ view_mode: 'episodes' }) })
+    )
   })
 })

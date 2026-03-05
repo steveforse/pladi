@@ -7,12 +7,12 @@ module Plex
       @cache = cache_store
     end
 
-    def fetch_sections(media_type: 'movie')
+    def fetch_sections(media_type: 'movie', view_mode: 'shows')
       fetch_sections_by_type(media_type).map do |section|
         section_id = section['key']
         updated_at = section['updatedAt']
         movies = @cache.cached_movies_for(section_id, updated_at) do
-          items_for_section(section_id, media_type: media_type).sort_by { |m| m[:title].downcase }
+          items_for_section(section_id, media_type: media_type, view_mode: view_mode).sort_by { |m| m[:title].downcase }
         end
         { id: section_id, updated_at: updated_at,
           title: section['title'], movies: movies }
@@ -35,7 +35,8 @@ module Plex
       "https://app.plex.tv/desktop/#!/server/#{machine_id}/details?key=#{escaped}"
     end
 
-    def items_for_section(section_key, media_type:)
+    def items_for_section(section_key, media_type:, view_mode:)
+      return episodes_for_section(section_key) if media_type == 'show' && view_mode == 'episodes'
       return shows_for_section(section_key) if media_type == 'show'
 
       movies_for_section(section_key)
@@ -60,6 +61,7 @@ module Plex
           id: item['ratingKey'],
           title: item['title'],
           original_title: item['originalTitle'],
+          episode_number: nil,
           year: item['year'],
           file_path: nil,
           container: nil,
@@ -89,12 +91,89 @@ module Plex
       end
     end
 
+    def episodes_for_section(section_key)
+      data = @http.get("/library/sections/#{section_key}/all?type=4")
+      items = data.dig('MediaContainer', 'Metadata') || []
+      items.flat_map do |item|
+        plex_url = plex_url_for(item['ratingKey'])
+        (item['Media'] || []).flat_map do |media|
+          (media['Part'] || []).map do |part|
+            build_episode_hash(item, media, part, plex_url)
+          end
+        end
+      end
+    end
+
+    def build_episode_hash(item, media, part, plex_url)
+      stream_info = stream_info_for(part)
+      {
+        id: item['ratingKey'],
+        title: item['title'],
+        original_title: item['grandparentTitle'],
+        episode_number: episode_code(item),
+        year: item['year'] || item['parentYear'],
+        file_path: part['file'],
+        container: media['container'],
+        video_codec: media['videoCodec'],
+        video_resolution: media['videoResolution'],
+        width: media['width'],
+        height: media['height'],
+        aspect_ratio: media['aspectRatio'],
+        frame_rate: media['videoFrameRate'],
+        audio_codec: media['audioCodec'],
+        audio_channels: media['audioChannels'],
+        overall_bitrate: media['bitrate'],
+        size: part['size'],
+        duration: media['duration'],
+        sort_title: item['titleSort'],
+        originally_available: item['originallyAvailableAt'],
+        studio: item['studio'],
+        tagline: nil,
+        season_count: item['parentIndex'],
+        episode_count: item['index'],
+        viewed_episode_count: item['viewCount'],
+        updated_at: item['updatedAt'],
+        thumb: item['thumb'] || item['grandparentThumb'],
+        art: item['art'] || item['grandparentArt'],
+        summary: item['summary'],
+        content_rating: item['contentRating'],
+        genres: nil,
+        subtitles: stream_info[:subtitles],
+        audio_tracks: stream_info[:audio_tracks],
+        audio_language: stream_info[:audio_language],
+        audio_bitrate: stream_info[:audio_bitrate],
+        video_bitrate: media['videoBitrate'],
+        plex_url: plex_url
+      }
+    end
+
+    def episode_code(item)
+      season = item['parentIndex']
+      episode = item['index']
+      return nil unless season && episode
+
+      format('S%02dE%02d', season, episode)
+    end
+
+    def stream_info_for(part)
+      streams = part['Stream'] || []
+      audio_streams = streams.select { |s| s['streamType'] == 2 }
+      subtitle_streams = streams.select { |s| s['streamType'] == 3 }
+      {
+        subtitles: subtitle_streams.map { |s| s['displayTitle'] || s['language'] }.compact_blank.uniq.join(', ').presence,
+        audio_tracks: audio_streams.any? ? audio_streams.size.to_s : nil,
+        audio_language: audio_streams.map { |s| s['language'] || s['languageCode'] }.compact_blank.uniq.join(', ').presence,
+        audio_bitrate: audio_streams.map { |s| s['bitrate'] }.compact.first
+      }
+    end
+
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def build_movie_hash(item, media, part, plex_url)
       {
         id: item['ratingKey'],
         title: item['title'],
         original_title: item['originalTitle'],
+        episode_number: nil,
         year: item['year'],
         file_path: part['file'],
         container: media['container'],

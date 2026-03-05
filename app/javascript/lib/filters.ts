@@ -6,6 +6,7 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'id',                   label: 'ID',                   type: 'string' },
     { id: 'duration',             label: 'Duration',             type: 'numeric', unit: 'min' },
     { id: 'edition',              label: 'Edition',              type: 'string' },
+    { id: 'episode_number',       label: 'Episode Number',       type: 'string' },
     { id: 'updated_at',           label: 'Last Updated',         type: 'date' },
     { id: 'originally_available', label: 'Originally Available', type: 'date' },
     { id: 'original_title',       label: 'Original Title',       type: 'string' },

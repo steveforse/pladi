@@ -5,7 +5,7 @@ module Api
     before_action :load_server
 
     def index
-      render json: ::SectionSerializer.serialize(service.sections(media_type: 'show'))
+      render json: ::SectionSerializer.serialize(service.sections(media_type: 'show', view_mode: view_mode))
     end
 
     def show
@@ -16,11 +16,11 @@ module Api
     end
 
     def refresh
-      render json: ::SectionSerializer.serialize(service.sections(media_type: 'show', refresh: true))
+      render json: ::SectionSerializer.serialize(service.sections(media_type: 'show', view_mode: view_mode, refresh: true))
     end
 
     def enrich
-      payload = service.enriched_library(media_type: 'show')
+      payload = service.enriched_library(media_type: 'show', view_mode: view_mode)
       payload[:sections] = ::SectionSerializer.serialize(payload[:sections])
       payload.except!(:cached_poster_ids, :uncached_poster_movies, :cached_background_ids, :uncached_background_movies)
       render json: payload
@@ -73,6 +73,10 @@ module Api
 
     def load_server
       load_current_server!(:server_id)
+    end
+
+    def view_mode
+      %w[shows episodes].include?(params[:view_mode]) ? params[:view_mode] : 'shows'
     end
 
     def send_image(image)

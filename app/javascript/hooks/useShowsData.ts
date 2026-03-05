@@ -6,13 +6,14 @@ import type { PlexServerInfo, Section } from '@/lib/types'
 import type { z } from 'zod'
 
 type EnrichResponse = z.infer<typeof EnrichResponseSchema>
+export type ShowsViewMode = 'shows' | 'episodes'
 
 const STORAGE_KEYS = {
   serverId: 'pladi_selected_show_server_id',
-  library: 'pladi_selected_show_library',
+  library: (viewMode: ShowsViewMode) => `pladi_selected_show_library_${viewMode}`,
 }
 
-export function useShowsData() {
+export function useShowsData(viewMode: ShowsViewMode = 'shows') {
   const [plexServers, setPlexServers] = useState<PlexServerInfo[]>([])
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
   const [sections, setSections] = useState<Section[]>([])
@@ -41,14 +42,14 @@ export function useShowsData() {
     try {
       const listRes = await api.get<Section[]>('/api/shows', {
         signal,
-        query: { server_id: serverId },
+        query: { server_id: serverId, view_mode: viewMode },
         responseSchema: SectionListSchema,
       })
       const data = listRes.data ?? []
       if (isStale()) return
-      setSections(mergeShowEnrichmentCache(serverId, data))
+      setSections(viewMode === 'shows' ? mergeShowEnrichmentCache(serverId, data) : data)
       if (data.length > 0) {
-        const savedLibrary = localStorage.getItem(STORAGE_KEYS.library)
+        const savedLibrary = localStorage.getItem(STORAGE_KEYS.library(viewMode))
         const restored = savedLibrary && data.some((s) => s.title === savedLibrary) ? savedLibrary : data[0].title
         setSelectedTitle(restored)
       }
@@ -58,14 +59,14 @@ export function useShowsData() {
       try {
         const refreshRes = await api.get<Section[]>('/api/shows/refresh', {
           signal,
-          query: { server_id: serverId },
+          query: { server_id: serverId, view_mode: viewMode },
           throwOnError: false,
           responseSchema: SectionListSchema,
         })
         if (isStale()) return
         if (refreshRes.ok && refreshRes.data) {
           const fresh = refreshRes.data
-          setSections(mergeShowEnrichmentCache(serverId, fresh))
+          setSections(viewMode === 'shows' ? mergeShowEnrichmentCache(serverId, fresh) : fresh)
           setSelectedTitle((prev) =>
             prev === null || fresh.some((s) => s.title === prev)
               ? prev
@@ -76,11 +77,16 @@ export function useShowsData() {
         if (!isStale()) setRefreshing(false)
       }
 
+      if (viewMode !== 'shows') {
+        if (!isStale()) setSyncing(false)
+        return
+      }
+
       setSyncing(true)
       try {
         const enrichRes = await api.get<EnrichResponse>('/api/shows/enrich', {
           signal,
-          query: { server_id: serverId },
+          query: { server_id: serverId, view_mode: viewMode },
           throwOnError: false,
           responseSchema: EnrichResponseSchema,
         })
@@ -149,7 +155,7 @@ export function useShowsData() {
       controller.abort()
       activeLoadAbortRef.current?.abort()
     }
-  }, [])
+  }, [viewMode])
 
   function handleServerChange(id: number) {
     localStorage.setItem(STORAGE_KEYS.serverId, String(id))
@@ -158,7 +164,7 @@ export function useShowsData() {
   }
 
   function handleLibraryChange(title: string | null) {
-    if (title !== null) localStorage.setItem(STORAGE_KEYS.library, title)
+    if (title !== null) localStorage.setItem(STORAGE_KEYS.library(viewMode), title)
     setSelectedTitle(title)
   }
 

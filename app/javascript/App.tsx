@@ -99,6 +99,7 @@ export default function App() {
         onLogout={() => setAuthState('unauthenticated')}
         onSettings={() => navigateTo('settings')}
         onHistory={() => navigateTo('history')}
+        downloadImages={downloadImages}
       />
     )
 

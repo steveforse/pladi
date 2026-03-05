@@ -22,7 +22,7 @@ RSpec.describe Api::ShowsController do
 
     context 'when server exists' do
       before do
-        allow(service).to receive(:sections).with(media_type: 'show').and_return(
+        allow(service).to receive(:sections).with(media_type: 'show', view_mode: 'shows').and_return(
           [{
             title: 'TV Shows',
             movies: [{
@@ -90,7 +90,7 @@ RSpec.describe Api::ShowsController do
 
   describe 'GET /api/shows/refresh' do
     before do
-      allow(service).to receive(:sections).with(media_type: 'show', refresh: true).and_return([{ title: 'TV Shows', movies: [] }])
+      allow(service).to receive(:sections).with(media_type: 'show', view_mode: 'shows', refresh: true).and_return([{ title: 'TV Shows', movies: [] }])
       get '/api/shows/refresh', params: { server_id: server.id }, as: :json
     end
 
@@ -101,7 +101,7 @@ RSpec.describe Api::ShowsController do
 
   describe 'GET /api/shows/enrich' do
     before do
-      allow(service).to receive(:enriched_library).with(media_type: 'show').and_return(
+      allow(service).to receive(:enriched_library).with(media_type: 'show', view_mode: 'shows').and_return(
         sections: [{
           title: 'TV Shows',
           movies: [{
@@ -131,6 +131,17 @@ RSpec.describe Api::ShowsController do
           }]
         }]
       )
+    end
+  end
+
+  describe 'GET /api/shows with episode view_mode' do
+    it 'passes episode view_mode through to service' do
+      allow(service).to receive(:sections).with(media_type: 'show', view_mode: 'episodes').and_return([{ title: 'TV Shows', movies: [] }])
+
+      get '/api/shows', params: { server_id: server.id, view_mode: 'episodes' }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body).to eq([{ 'title' => 'TV Shows', 'movies' => [] }])
     end
   end
 
