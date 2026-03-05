@@ -1,0 +1,72 @@
+import React from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import ShowsTable from '@/components/ShowsTable'
+import { useShowsData } from '@/hooks/useShowsData'
+
+vi.mock('@/hooks/useShowsData', () => ({
+  useShowsData: vi.fn(),
+}))
+
+vi.mock('@/components/movies/HamburgerMenu', () => ({
+  HamburgerMenu: ({ onSettings }: { onSettings: () => void }) => (
+    <button onClick={onSettings}>menu-settings</button>
+  ),
+}))
+
+const mockedUseShowsData = vi.mocked(useShowsData)
+
+function setupHookMock(overrides: Partial<ReturnType<typeof useShowsData>> = {}) {
+  mockedUseShowsData.mockReturnValue({
+    plexServers: [{ id: 1, name: 'Main', url: 'http://plex.local' }],
+    selectedServerId: 1,
+    sections: [{ title: 'TV Shows', movies: [{ id: 's1', title: 'Severance', year: 2022, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null }] }],
+    selectedTitle: 'TV Shows',
+    loading: false,
+    refreshing: false,
+    syncing: false,
+    error: null,
+    handleServerChange: vi.fn(),
+    handleLibraryChange: vi.fn(),
+    ...overrides,
+  })
+}
+
+describe('ShowsTable', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders loading skeleton', () => {
+    setupHookMock({ loading: true })
+    render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    const pulseRows = screen.getAllByRole('generic').filter((el) => el.className.includes('animate-pulse'))
+    expect(pulseRows).toHaveLength(8)
+  })
+
+  it('renders error state and settings action', async () => {
+    const onSettings = vi.fn()
+    setupHookMock({ error: 'bad request' })
+    render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={onSettings} onHistory={() => {}} />)
+    expect(screen.getByText('Failed to load TV shows: bad request')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Open Settings' }))
+    expect(onSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders empty-server message', () => {
+    setupHookMock({ plexServers: [] })
+    render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    expect(screen.getByText('Add a Plex server in Settings to browse TV libraries.')).toBeInTheDocument()
+  })
+
+  it('renders shows list and allows switching back to movies', async () => {
+    const onMovies = vi.fn()
+    setupHookMock()
+    render(<ShowsTable onMovies={onMovies} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+
+    expect(screen.getByText('Severance')).toBeInTheDocument()
+    await userEvent.click(screen.getAllByRole('button', { name: 'Switch to Movies' }).at(-1)!)
+    expect(onMovies).toHaveBeenCalledTimes(1)
+  })
+})
