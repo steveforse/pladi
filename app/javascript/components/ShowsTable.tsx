@@ -264,6 +264,9 @@ export default function ShowsTable({
               <tr className="border-b bg-muted/30">
                 <th className="px-4 py-2 text-left font-medium">Title</th>
                 <th className="px-4 py-2 text-left font-medium">Year</th>
+                <th className="px-4 py-2 text-left font-medium">Seasons</th>
+                <th className="px-4 py-2 text-left font-medium">Episodes</th>
+                <th className="px-4 py-2 text-left font-medium">Watched</th>
                 <th className="px-4 py-2 text-left font-medium">Studio</th>
                 <th className="px-4 py-2 text-left font-medium">Genres</th>
                 <th className="px-4 py-2 text-left font-medium">Summary</th>
@@ -274,6 +277,9 @@ export default function ShowsTable({
                 <tr key={`${show.id}|${show.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
                   <td className="px-4 py-2 font-medium whitespace-nowrap">{show.title}</td>
                   <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</td>
+                  <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.season_count ?? '—'}</td>
+                  <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.episode_count ?? '—'}</td>
+                  <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.viewed_episode_count ?? '—'}</td>
                   <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.studio ?? '—'}</td>
                   <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.genres ?? '—'}</td>
                   <td className="px-4 py-2 text-muted-foreground text-xs">
@@ -283,7 +289,7 @@ export default function ShowsTable({
               ))}
               {pagedShows.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-muted-foreground text-sm" colSpan={5}>
+                  <td className="px-4 py-6 text-muted-foreground text-sm" colSpan={8}>
                     No shows found in this selection.
                   </td>
                 </tr>

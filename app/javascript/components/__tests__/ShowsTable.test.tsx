@@ -21,7 +21,7 @@ function setupHookMock(overrides: Partial<ReturnType<typeof useShowsData>> = {})
   mockedUseShowsData.mockReturnValue({
     plexServers: [{ id: 1, name: 'Main', url: 'http://plex.local' }],
     selectedServerId: 1,
-    sections: [{ title: 'TV Shows', movies: [{ id: 's1', title: 'Severance', year: 2022, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null }] }],
+    sections: [{ title: 'TV Shows', movies: [{ id: 's1', title: 'Severance', year: 2022, season_count: 2, episode_count: 19, viewed_episode_count: 8, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null }] }],
     selectedTitle: 'TV Shows',
     loading: false,
     refreshing: false,
@@ -76,8 +76,8 @@ describe('ShowsTable', () => {
         {
           title: 'TV Shows',
           movies: [
-            { id: 's1', title: 'Severance', year: 2022, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null },
-            { id: 's2', title: 'The Bear', year: 2023, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', file_path: null },
+            { id: 's1', title: 'Severance', year: 2022, season_count: 2, episode_count: 19, viewed_episode_count: 8, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null },
+            { id: 's2', title: 'The Bear', year: 2023, season_count: 3, episode_count: 28, viewed_episode_count: 28, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', file_path: null },
           ],
         },
       ],
@@ -96,8 +96,8 @@ describe('ShowsTable', () => {
         {
           title: 'TV Shows',
           movies: [
-            { id: 's1', title: 'Severance', year: 2022, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null },
-            { id: 's2', title: 'The Bear', year: 2023, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', file_path: null },
+            { id: 's1', title: 'Severance', year: 2022, season_count: 2, episode_count: 19, viewed_episode_count: 8, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null },
+            { id: 's2', title: 'The Bear', year: 2023, season_count: 3, episode_count: 28, viewed_episode_count: 28, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', file_path: null },
           ],
         },
       ],

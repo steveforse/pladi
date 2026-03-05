@@ -114,6 +114,9 @@ RSpec.describe Plex::LibraryFetcher do
               'ratingKey' => '301',
               'title' => 'Show A',
               'year' => 2022,
+              'childCount' => 4,
+              'leafCount' => 36,
+              'viewedLeafCount' => 12,
               'updatedAt' => 200,
               'thumb' => '/thumb-a',
               'art' => '/art-a'
@@ -127,7 +130,14 @@ RSpec.describe Plex::LibraryFetcher do
 
       expect(shows.first).to include(id: '2', updated_at: 200, title: 'Shows')
       expect(shows.first[:movies].size).to eq(1)
-      expect(shows.first[:movies].first).to include(id: '301', title: 'Show A', file_path: nil)
+      expect(shows.first[:movies].first).to include(
+        id: '301',
+        title: 'Show A',
+        file_path: nil,
+        season_count: 4,
+        episode_count: 36,
+        viewed_episode_count: 12
+      )
     end
   end
 

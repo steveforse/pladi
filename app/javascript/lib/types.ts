@@ -32,6 +32,9 @@ export interface Movie {
   originally_available: string | null
   studio: string | null
   tagline: string | null
+  season_count: number | null
+  episode_count: number | null
+  viewed_episode_count: number | null
   country: string | null
   writers: string | null
   producers: string | null
