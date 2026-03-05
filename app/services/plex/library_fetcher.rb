@@ -7,12 +7,12 @@ module Plex
       @cache = cache_store
     end
 
-    def fetch_sections
-      fetch_movie_sections.map do |section|
+    def fetch_sections(media_type: 'movie')
+      fetch_sections_by_type(media_type).map do |section|
         section_id = section['key']
         updated_at = section['updatedAt']
         movies = @cache.cached_movies_for(section_id, updated_at) do
-          movies_for_section(section_id).sort_by { |m| m[:title].downcase }
+          items_for_section(section_id, media_type: media_type).sort_by { |m| m[:title].downcase }
         end
         { id: section_id, updated_at: updated_at,
           title: section['title'], movies: movies }
@@ -25,14 +25,20 @@ module Plex
 
     private
 
-    def fetch_movie_sections
+    def fetch_sections_by_type(media_type)
       payload = @http.get('/library/sections')
-      (payload.dig('MediaContainer', 'Directory') || []).select { |d| d['type'] == 'movie' }
+      (payload.dig('MediaContainer', 'Directory') || []).select { |d| d['type'] == media_type }
     end
 
     def plex_url_for(movie_id)
       escaped = CGI.escape("/library/metadata/#{movie_id}")
       "https://app.plex.tv/desktop/#!/server/#{machine_id}/details?key=#{escaped}"
+    end
+
+    def items_for_section(section_key, media_type:)
+      return shows_for_section(section_key) if media_type == 'show'
+
+      movies_for_section(section_key)
     end
 
     def movies_for_section(section_key)
@@ -43,6 +49,40 @@ module Plex
         (item['Media'] || []).flat_map do |media|
           (media['Part'] || []).map { |part| build_movie_hash(item, media, part, plex_url) }
         end
+      end
+    end
+
+    def shows_for_section(section_key)
+      data  = @http.get("/library/sections/#{section_key}/all")
+      items = data.dig('MediaContainer', 'Metadata') || []
+      items.map do |item|
+        {
+          id: item['ratingKey'],
+          title: item['title'],
+          original_title: item['originalTitle'],
+          year: item['year'],
+          file_path: nil,
+          container: nil,
+          video_codec: nil,
+          video_resolution: nil,
+          width: nil,
+          height: nil,
+          aspect_ratio: nil,
+          frame_rate: nil,
+          audio_codec: nil,
+          audio_channels: nil,
+          overall_bitrate: nil,
+          size: nil,
+          duration: nil,
+          sort_title: item['titleSort'],
+          originally_available: item['originallyAvailableAt'],
+          studio: item['studio'],
+          tagline: item['tagline'],
+          updated_at: item['updatedAt'],
+          thumb: item['thumb'],
+          art: item['art'],
+          plex_url: plex_url_for(item['ratingKey'])
+        }
       end
     end
 

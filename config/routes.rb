@@ -23,6 +23,12 @@ Rails.application.routes.draw do
         get :background
       end
     end
+    resources :shows, only: %i[index show] do
+      collection do
+        get :refresh
+        get :enrich
+      end
+    end
     resources :plex_servers, only: %i[index create update destroy] do
       get :lookup_name, on: :collection
     end

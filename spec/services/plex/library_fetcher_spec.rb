@@ -105,6 +105,30 @@ RSpec.describe Plex::LibraryFetcher do
 
       expect(cache_store).to have_received(:cached_movies_for).with('1', 100)
     end
+
+    it 'can fetch show sections when requested' do
+      show_payload = {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'ratingKey' => '301',
+              'title' => 'Show A',
+              'year' => 2022,
+              'updatedAt' => 200,
+              'thumb' => '/thumb-a',
+              'art' => '/art-a'
+            }
+          ]
+        }
+      }
+      allow(http_client).to receive(:get).with('/library/sections/2/all').and_return(show_payload)
+
+      shows = fetcher.fetch_sections(media_type: 'show')
+
+      expect(shows.first).to include(id: '2', updated_at: 200, title: 'Shows')
+      expect(shows.first[:movies].size).to eq(1)
+      expect(shows.first[:movies].first).to include(id: '301', title: 'Show A', file_path: nil)
+    end
   end
 
   describe '#machine_id' do

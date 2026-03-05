@@ -19,21 +19,23 @@ module Plex
       @http_client.get('/').dig('MediaContainer', 'friendlyName')
     end
 
-    def sections(refresh: false)
-      return refresh_sections if refresh
+    def sections(media_type: 'movie', refresh: false)
+      return refresh_sections(media_type: media_type) if refresh
 
-      @cache_store.fetch(@cache_store.key('sections')) { @library.fetch_sections }
+      @cache_store.fetch(@cache_store.key('sections', media_type)) do
+        @library.fetch_sections(media_type: media_type)
+      end
     end
 
-    def detail_for(movie_id)
-      movie = find_movie(movie_id)
-      return nil unless movie
+    def detail_for(media_id, media_type: 'movie')
+      media = find_item(media_id, media_type: media_type)
+      return nil unless media
 
-      @enricher.enrich_movie(movie_id, movie[:file_path])
+      @enricher.enrich_movie(media_id, media[:file_path])
     end
 
-    def enriched_library
-      enriched_sections = @enricher.enrich_sections(sections)
+    def enriched_library(media_type: 'movie')
+      enriched_sections = @enricher.enrich_sections(sections(media_type: media_type))
       cached_posters, uncached_posters = @image_store.partition_posters_by_cache(enriched_sections)
       cached_backgrounds, uncached_backgrounds = @image_store.partition_backgrounds_by_cache(enriched_sections)
 
@@ -48,14 +50,16 @@ module Plex
 
     private
 
-    def refresh_sections
-      @library.fetch_sections.tap do |section_data|
-        @cache_store.write(@cache_store.key('sections'), section_data)
+    def refresh_sections(media_type:)
+      @library.fetch_sections(media_type: media_type).tap do |section_data|
+        @cache_store.write(@cache_store.key('sections', media_type), section_data)
       end
     end
 
-    def find_movie(movie_id)
-      sections.flat_map { |section| section[:movies] }.find { |movie| movie[:id].to_s == movie_id.to_s }
+    def find_item(media_id, media_type:)
+      sections(media_type: media_type).flat_map { |section| section[:movies] }.find do |item|
+        item[:id].to_s == media_id.to_s
+      end
     end
 
     attr_reader :enricher, :movie_updater, :image_store

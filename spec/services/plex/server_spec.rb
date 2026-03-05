@@ -34,9 +34,12 @@ RSpec.describe Plex::Server do
 
   describe '#sections' do
     before do
-      allow(cache_store).to receive(:key).with('sections').and_return('sections-key')
+      allow(cache_store).to receive(:key).with('sections', 'movie').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return([{ title: 'Movies' }])
-      allow(library_fetcher).to receive(:fetch_sections).and_return([{ title: 'Fresh' }])
+      allow(library_fetcher).to receive(:fetch_sections).with(media_type: 'movie').and_return([{ title: 'Fresh' }])
+      allow(library_fetcher).to receive(:fetch_sections).with(media_type: 'show').and_return([{ title: 'TV Shows' }])
+      allow(cache_store).to receive(:key).with('sections', 'show').and_return('shows-sections-key')
+      allow(cache_store).to receive(:fetch).with('shows-sections-key').and_return([{ title: 'TV Shows' }])
       allow(cache_store).to receive(:write)
     end
 
@@ -52,13 +55,17 @@ RSpec.describe Plex::Server do
       plex_server_service.sections(refresh: true)
       expect(cache_store).to have_received(:write).with('sections-key', [{ title: 'Fresh' }])
     end
+
+    it 'uses distinct cache keys for show sections' do
+      expect(plex_server_service.sections(media_type: 'show')).to eq([{ title: 'TV Shows' }])
+    end
   end
 
   describe '#detail_for' do
     let(:sections) { [{ movies: [{ id: '7', file_path: '/movies/7.mkv' }] }] }
 
     before do
-      allow(cache_store).to receive(:key).with('sections').and_return('sections-key')
+      allow(cache_store).to receive(:key).with('sections', 'movie').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
       allow(enricher).to receive(:enrich_movie).with('7', '/movies/7.mkv').and_return(summary: 'enriched')
     end
@@ -76,7 +83,7 @@ RSpec.describe Plex::Server do
     let(:sections) { [{ movies: [{ id: '1' }, { id: '2' }] }] }
 
     before do
-      allow(cache_store).to receive(:key).with('sections').and_return('sections-key')
+      allow(cache_store).to receive(:key).with('sections', 'movie').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
       allow(enricher).to receive(:enrich_sections).with(sections).and_return(sections)
       allow(image_store).to receive(:partition_posters_by_cache).with(sections).and_return(
