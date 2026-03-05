@@ -124,6 +124,28 @@ describe('enrichmentCache', () => {
     }])
 
     expect(merged[0].movies[0].summary).toBe('Summary')
+    expect(merged[0].movies[0].episode_count).toBeNull()
+    expect(merged[0].movies[0].viewed_episode_count).toBeNull()
+  })
+
+  it('ignores non-whitelisted fields from legacy show enrichment cache payloads', () => {
+    const storage = createStorageMock()
+    vi.stubGlobal('localStorage', storage)
+
+    storage.setItem('pladi_show_enrichment_v1_11', JSON.stringify({
+      m1: { summary: 'Cached summary', episode_count: null, viewed_episode_count: null, season_count: null },
+    }))
+
+    const input = sections()
+    input[0].movies[0].season_count = 2
+    input[0].movies[0].episode_count = 20
+    input[0].movies[0].viewed_episode_count = 5
+    input[0].movies[0].summary = 'Live summary'
+
+    const merged = mergeShowEnrichmentCache(11, input)
+
+    expect(merged[0].movies[0].summary).toBe('Cached summary')
+    expect(merged[0].movies[0].season_count).toBe(2)
     expect(merged[0].movies[0].episode_count).toBe(20)
     expect(merged[0].movies[0].viewed_episode_count).toBe(5)
   })

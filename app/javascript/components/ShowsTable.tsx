@@ -111,8 +111,6 @@ export default function ShowsTable({
 
   const [unwatchedOnly, setUnwatchedOnly] = useState(false)
   const [partiallyWatchedOnly, setPartiallyWatchedOnly] = useState(false)
-  const [noSummaryOnly, setNoSummaryOnly] = useState(false)
-  const [missingPosterOnly, setMissingPosterOnly] = useState(false)
 
   const [filtersOpen, setFiltersOpen] = useState(() => {
     try {
@@ -160,7 +158,7 @@ export default function ShowsTable({
   const nextId = useRef(filters.length > 0 ? Math.max(...filters.map((f) => f.id)) + 1 : 1)
 
   const activeFilterCount =
-    [unwatchedOnly, partiallyWatchedOnly, noSummaryOnly, missingPosterOnly].filter(Boolean).length +
+    [unwatchedOnly, partiallyWatchedOnly].filter(Boolean).length +
     filters.length
 
   function addFilter() {
@@ -182,8 +180,6 @@ export default function ShowsTable({
     setFilters([])
     setUnwatchedOnly(false)
     setPartiallyWatchedOnly(false)
-    setNoSummaryOnly(false)
-    setMissingPosterOnly(false)
   }
 
   function handleSort(key: SortKey) {
@@ -267,9 +263,6 @@ export default function ShowsTable({
         if (!(viewed > 0 && total > 0 && viewed < total)) return false
       }
 
-      if (noSummaryOnly && (show.summary ?? '').trim() !== '') return false
-      if (missingPosterOnly && show.thumb) return false
-
       return true
     })
 
@@ -286,8 +279,6 @@ export default function ShowsTable({
     filters,
     unwatchedOnly,
     partiallyWatchedOnly,
-    noSummaryOnly,
-    missingPosterOnly,
   ])
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
@@ -456,14 +447,7 @@ export default function ShowsTable({
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Metadata</p>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={noSummaryOnly} onChange={(e) => setNoSummaryOnly(e.target.checked)} />
-                      Missing summary
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={missingPosterOnly} onChange={(e) => setMissingPosterOnly(e.target.checked)} />
-                      Missing poster
-                    </label>
+                    <p className="text-xs text-muted-foreground">Use advanced filters for summary/poster checks.</p>
                   </div>
                 </div>
               </div>

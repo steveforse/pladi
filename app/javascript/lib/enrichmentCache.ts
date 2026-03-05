@@ -38,9 +38,6 @@ export const SHOW_ENRICHMENT_FIELDS: (keyof Movie)[] = [
   'producers',
   'collections',
   'labels',
-  'season_count',
-  'episode_count',
-  'viewed_episode_count',
 ]
 
 const VERSION = 1
@@ -54,6 +51,17 @@ function showCacheKey(serverId: number) {
 }
 
 type EnrichmentData = Record<string, Partial<Movie>>
+
+function mergeCachedFields(movie: Movie, cached: Partial<Movie> | undefined, fields: (keyof Movie)[]): Movie {
+  if (!cached) return movie
+  const merged = { ...movie }
+  for (const field of fields) {
+    if (field in cached) {
+      merged[field] = cached[field] as never
+    }
+  }
+  return merged
+}
 
 export function saveEnrichmentCache(serverId: number, sections: Section[]): void {
   try {
@@ -80,10 +88,7 @@ export function mergeEnrichmentCache(serverId: number, sections: Section[]): Sec
     const data: EnrichmentData = JSON.parse(raw)
     return sections.map((section) => ({
       ...section,
-      movies: section.movies.map((movie) => {
-        const cached = data[movie.id]
-        return cached ? { ...movie, ...cached } : movie
-      }),
+      movies: section.movies.map((movie) => mergeCachedFields(movie, data[movie.id], ENRICHMENT_FIELDS)),
     }))
   } catch {
     return sections
@@ -115,10 +120,7 @@ export function mergeShowEnrichmentCache(serverId: number, sections: Section[]):
     const data: EnrichmentData = JSON.parse(raw)
     return sections.map((section) => ({
       ...section,
-      movies: section.movies.map((show) => {
-        const cached = data[show.id]
-        return cached ? { ...show, ...cached } : show
-      }),
+      movies: section.movies.map((show) => mergeCachedFields(show, data[show.id], SHOW_ENRICHMENT_FIELDS)),
     }))
   } catch {
     return sections
