@@ -18,6 +18,7 @@ import type { ActiveFilter, AllColumnId, ColumnId, SortDir, SortKey } from '@/li
 const FILTERS_STORAGE_KEY = 'pladi.shows.filters'
 const COLUMNS_STORAGE_KEY = 'pladi.shows.columns'
 const FILTERS_OPEN_STORAGE_KEY = 'pladi.shows.filters_open'
+const SORT_STORAGE_KEY = 'pladi.shows.sort'
 
 const DEFAULT_VISIBLE_COLUMNS: ColumnId[] = [
   'id',
@@ -81,6 +82,20 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   return <span className="ml-1 text-primary">{dir === 'asc' ? '↑' : '↓'}</span>
 }
 
+function loadSortFromStorage(): { sortKey: SortKey; sortDir: SortDir } {
+  try {
+    const raw = localStorage.getItem(SORT_STORAGE_KEY)
+    if (!raw) return { sortKey: 'title', sortDir: 'asc' }
+    const parsed = JSON.parse(raw) as { sortKey?: SortKey; sortDir?: SortDir }
+    const validSortKeys = new Set(SHOW_TABLE_COLUMNS.filter((col) => col.sortKey).map((col) => col.sortKey as SortKey))
+    const sortKey = parsed.sortKey && validSortKeys.has(parsed.sortKey) ? parsed.sortKey : 'title'
+    const sortDir = parsed.sortDir === 'desc' ? 'desc' : 'asc'
+    return { sortKey, sortDir }
+  } catch {
+    return { sortKey: 'title', sortDir: 'asc' }
+  }
+}
+
 export default function ShowsTable({
   onMovies,
   onLogout,
@@ -106,8 +121,8 @@ export default function ShowsTable({
     updateShow,
   } = useShowsData()
 
-  const [sortKey, setSortKey] = useState<SortKey>('title')
-  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [sortKey, setSortKey] = useState<SortKey>(() => loadSortFromStorage().sortKey)
+  const [sortDir, setSortDir] = useState<SortDir>(() => loadSortFromStorage().sortDir)
 
   const [unwatchedOnly, setUnwatchedOnly] = useState(false)
   const [partiallyWatchedOnly, setPartiallyWatchedOnly] = useState(false)
@@ -302,6 +317,14 @@ export default function ShowsTable({
       // storage unavailable
     }
   }, [visibleCols, colOrder])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify({ sortKey, sortDir }))
+    } catch {
+      // storage unavailable
+    }
+  }, [sortKey, sortDir])
 
   if (loading) {
     return (

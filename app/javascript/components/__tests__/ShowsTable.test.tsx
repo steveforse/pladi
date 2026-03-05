@@ -205,4 +205,31 @@ describe('ShowsTable', () => {
     reorderedHeaders = within(utils.container).getAllByRole('columnheader')
     expect(reorderedHeaders[0]).toHaveTextContent('Year')
   })
+
+  it('persists selected sort key and direction', async () => {
+    setupHookMock({
+      sections: [
+        {
+          title: 'TV Shows',
+          movies: [
+            { id: 's1', title: 'Severance', year: 2022, season_count: 2, episode_count: 19, viewed_episode_count: 8, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null },
+            { id: 's2', title: 'The Bear', year: 2023, season_count: 3, episode_count: 28, viewed_episode_count: 28, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', file_path: null },
+          ],
+        },
+      ],
+    })
+
+    const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    await userEvent.click(within(view.container).getByText('Episodes'))
+    await userEvent.click(within(view.container).getByText('Episodes'))
+
+    let rows = within(view.container).getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('The Bear')
+
+    view.unmount()
+
+    const utils = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    rows = within(utils.container).getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('The Bear')
+  })
 })
