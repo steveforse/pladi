@@ -155,5 +155,45 @@ RSpec.describe Api::ShowsController do
       patch '/api/shows/123', params: { server_id: server.id, show: show_params }, as: :json
       expect(response).to have_http_status(:no_content)
     end
+
+    it 'passes permitted tag arrays through to update_show' do
+      show_fields = {
+        genres: ['Drama', 'Sci-Fi'],
+        collections: ['Favorites'],
+        labels: ['Priority'],
+        country: ['US', 'CA']
+      }
+      allow(service).to receive(:update_show).and_return(before: {}, after: {}, unverified_fields: [])
+      allow(MovieAuditLog).to receive(:record_changes)
+
+      patch '/api/shows/123', params: { server_id: server.id, show: show_fields }, as: :json
+
+      expect(service).to have_received(:update_show).with('123', hash_including(show_fields.transform_keys(&:to_s)))
+      expect(response).to have_http_status(:no_content)
+    end
+  end
+
+  describe 'GET /api/shows/:id/poster' do
+    it 'returns poster image data when available' do
+      allow(service).to receive(:poster_for).with('123').and_return(data: 'img', content_type: 'image/jpeg')
+
+      get '/api/shows/123/poster', params: { server_id: server.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('image/jpeg')
+      expect(response.body).to eq('img')
+    end
+  end
+
+  describe 'GET /api/shows/:id/background' do
+    it 'returns background image data when available' do
+      allow(service).to receive(:background_for).with('123').and_return(data: 'img-bg', content_type: 'image/png')
+
+      get '/api/shows/123/background', params: { server_id: server.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('image/png')
+      expect(response.body).to eq('img-bg')
+    end
   end
 end

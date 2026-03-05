@@ -4,6 +4,7 @@ import pladiLogo from '@/assets/pladi_logo.png'
 import { EditableCell } from '@/components/movies/EditableCell'
 import { FilterRow } from '@/components/movies/FilterRow'
 import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
+import { ImageModal } from '@/components/movies/ImageModal'
 import { ColumnPicker } from '@/components/movies/ColumnPicker'
 import { Paginator } from '@/components/movies/Paginator'
 import { usePagination } from '@/hooks/usePagination'
@@ -76,6 +77,7 @@ const SHOW_TABLE_COLUMNS: Array<{ id: AllColumnId; label: string; sortKey?: Sort
   { id: 'poster', label: 'Poster' },
   { id: 'background', label: 'Background' },
 ]
+const SHOW_VALID_COLUMN_IDS = new Set<ColumnId>(SHOW_TABLE_COLUMNS.filter((col) => col.id !== 'title').map((col) => col.id as ColumnId))
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return <span className="ml-1 text-muted-foreground/40">↕</span>
@@ -123,6 +125,8 @@ export default function ShowsTable({
 
   const [sortKey, setSortKey] = useState<SortKey>(() => loadSortFromStorage().sortKey)
   const [sortDir, setSortDir] = useState<SortDir>(() => loadSortFromStorage().sortDir)
+  const [openPosterShowId, setOpenPosterShowId] = useState<string | null>(null)
+  const [openBackgroundShowId, setOpenBackgroundShowId] = useState<string | null>(null)
 
   const [unwatchedOnly, setUnwatchedOnly] = useState(false)
   const [partiallyWatchedOnly, setPartiallyWatchedOnly] = useState(false)
@@ -140,8 +144,9 @@ export default function ShowsTable({
       const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
       if (!raw) return new Set(DEFAULT_VISIBLE_COLUMNS)
       const parsed = JSON.parse(raw) as ColumnId[] | { visibleCols?: ColumnId[]; colOrder?: AllColumnId[] }
-      if (Array.isArray(parsed)) return new Set(parsed)
-      return new Set(parsed.visibleCols ?? DEFAULT_VISIBLE_COLUMNS)
+      const storedVisible = Array.isArray(parsed) ? parsed : (parsed.visibleCols ?? DEFAULT_VISIBLE_COLUMNS)
+      const normalizedVisible = storedVisible.filter((id): id is ColumnId => SHOW_VALID_COLUMN_IDS.has(id as ColumnId))
+      return new Set(normalizedVisible)
     } catch {
       return new Set(DEFAULT_VISIBLE_COLUMNS)
     }
@@ -151,9 +156,10 @@ export default function ShowsTable({
       const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
       if (!raw) return [...SHOW_DEFAULT_COL_ORDER]
       const parsed = JSON.parse(raw) as ColumnId[] | { visibleCols?: ColumnId[]; colOrder?: AllColumnId[] }
-      if (Array.isArray(parsed)) return [...SHOW_DEFAULT_COL_ORDER]
-      const stored = parsed.colOrder ?? []
-      return [...stored, ...SHOW_DEFAULT_COL_ORDER.filter((id) => !stored.includes(id))]
+      const stored = Array.isArray(parsed) ? [] : (parsed.colOrder ?? [])
+      const normalized = stored.filter((id): id is AllColumnId => SHOW_DEFAULT_COL_ORDER.includes(id as AllColumnId))
+      const deduped = Array.from(new Set(normalized))
+      return [...deduped, ...SHOW_DEFAULT_COL_ORDER.filter((id) => !deduped.includes(id))]
     } catch {
       return [...SHOW_DEFAULT_COL_ORDER]
     }
@@ -298,6 +304,12 @@ export default function ShowsTable({
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
   const pagedShows = pageSize === 0 ? filteredShows : filteredShows.slice((page - 1) * pageSize, page * pageSize)
+  const posterShows = filteredShows.filter((show) => show.thumb)
+  const posterModalIdx = openPosterShowId ? posterShows.findIndex((show) => show.id === openPosterShowId) : -1
+  const posterModalShow = posterModalIdx >= 0 ? posterShows[posterModalIdx] : null
+  const backgroundShows = filteredShows.filter((show) => show.art)
+  const backgroundModalIdx = openBackgroundShowId ? backgroundShows.findIndex((show) => show.id === openBackgroundShowId) : -1
+  const backgroundModalShow = backgroundModalIdx >= 0 ? backgroundShows[backgroundModalIdx] : null
 
   useEffect(() => {
     try {
@@ -724,9 +736,41 @@ export default function ShowsTable({
                           />
                         )
                       case 'poster':
-                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.thumb ? '✓' : '—'}</td>
+                        return show.thumb
+                          ? (
+                              <td key={id} className="px-2 py-1">
+                                <button
+                                  onClick={() => setOpenPosterShowId(show.id)}
+                                  className="cursor-pointer focus:outline-none"
+                                  aria-label={`Open poster for ${show.title}`}
+                                >
+                                  <img
+                                    src={`/api/shows/${show.id}/poster?server_id=${selectedServerId}`}
+                                    alt=""
+                                    className="h-16 w-auto rounded hover:opacity-80 transition-opacity"
+                                  />
+                                </button>
+                              </td>
+                            )
+                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">—</td>
                       case 'background':
-                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.art ? '✓' : '—'}</td>
+                        return show.art
+                          ? (
+                              <td key={id} className="px-2 py-1">
+                                <button
+                                  onClick={() => setOpenBackgroundShowId(show.id)}
+                                  className="cursor-pointer focus:outline-none"
+                                  aria-label={`Open background for ${show.title}`}
+                                >
+                                  <img
+                                    src={`/api/shows/${show.id}/background?server_id=${selectedServerId}`}
+                                    alt=""
+                                    className="h-10 w-auto rounded hover:opacity-80 transition-opacity"
+                                  />
+                                </button>
+                              </td>
+                            )
+                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">—</td>
                     }
                   })}
                 </tr>
@@ -742,6 +786,34 @@ export default function ShowsTable({
           </table>
         </div>
       </div>
+
+      {posterModalShow && (
+        <ImageModal
+          movie={posterModalShow}
+          imageUrl={`/api/shows/${posterModalShow.id}/poster?server_id=${selectedServerId}`}
+          hasPrev={posterModalIdx > 0}
+          hasNext={posterModalIdx < posterShows.length - 1}
+          position={posterModalIdx + 1}
+          total={posterShows.length}
+          onClose={() => setOpenPosterShowId(null)}
+          onPrev={() => setOpenPosterShowId(posterShows[posterModalIdx - 1].id)}
+          onNext={() => setOpenPosterShowId(posterShows[posterModalIdx + 1].id)}
+        />
+      )}
+
+      {backgroundModalShow && (
+        <ImageModal
+          movie={backgroundModalShow}
+          imageUrl={`/api/shows/${backgroundModalShow.id}/background?server_id=${selectedServerId}`}
+          hasPrev={backgroundModalIdx > 0}
+          hasNext={backgroundModalIdx < backgroundShows.length - 1}
+          position={backgroundModalIdx + 1}
+          total={backgroundShows.length}
+          onClose={() => setOpenBackgroundShowId(null)}
+          onPrev={() => setOpenBackgroundShowId(backgroundShows[backgroundModalIdx - 1].id)}
+          onNext={() => setOpenBackgroundShowId(backgroundShows[backgroundModalIdx + 1].id)}
+        />
+      )}
     </div>
   )
 }

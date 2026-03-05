@@ -36,6 +36,14 @@ module Api
       head :no_content
     end
 
+    def poster
+      send_image service.poster_for(params[:id])
+    end
+
+    def background
+      send_image service.background_for(params[:id])
+    end
+
     private
 
     def show_params
@@ -65,6 +73,14 @@ module Api
 
     def load_server
       load_current_server!(:server_id)
+    end
+
+    def send_image(image)
+      if image
+        send_data image[:data], type: image[:content_type], disposition: 'inline'
+      else
+        head :not_found
+      end
     end
   end
 end

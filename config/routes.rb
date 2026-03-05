@@ -28,6 +28,10 @@ Rails.application.routes.draw do
         get :refresh
         get :enrich
       end
+      member do
+        get :poster
+        get :background
+      end
     end
     resources :plex_servers, only: %i[index create update destroy] do
       get :lookup_name, on: :collection
