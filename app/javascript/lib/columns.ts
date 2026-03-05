@@ -23,12 +23,13 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
     { id: 'sort_title', label: 'Sort Title' },
     { id: 'year', label: 'Year' },
   ]},
-  { label: 'Ratings', columns: [
-    { id: 'content_rating',     label: 'Content Rating' },
-    { id: 'imdb_rating',        label: 'IMDb Rating' },
-    { id: 'rt_audience_rating', label: 'RT Audience Rating' },
-    { id: 'rt_critics_rating',  label: 'RT Critics Rating' },
-    { id: 'tmdb_rating',        label: 'TMDb Rating' },
+  { label: 'Audio', columns: [
+    { id: 'audio_bitrate', label: 'Audio Bitrate' },
+    { id: 'audio_channels', label: 'Audio Channels' },
+    { id: 'audio_codec', label: 'Audio Codec' },
+    { id: 'audio_language', label: 'Audio Language' },
+    { id: 'audio_tracks', label: 'Audio Tracks' },
+    { id: 'subtitles', label: 'Subtitles' },
   ]},
   { label: 'Credits', columns: [
     { id: 'directors', label: 'Directors' },
@@ -44,23 +45,6 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
     { id: 'summary', label: 'Summary' },
     { id: 'tagline', label: 'Tagline' },
   ]},
-  { label: 'Video', columns: [
-    { id: 'aspect_ratio', label: 'Aspect Ratio' },
-    { id: 'frame_rate', label: 'Frame Rate' },
-    { id: 'width', label: 'Width' },
-    { id: 'height', label: 'Height' },
-    { id: 'video_resolution', label: 'Resolution' },
-    { id: 'video_bitrate', label: 'Video Bitrate' },
-    { id: 'video_codec', label: 'Video Codec' },
-  ]},
-  { label: 'Audio', columns: [
-    { id: 'audio_bitrate', label: 'Audio Bitrate' },
-    { id: 'audio_channels', label: 'Audio Channels' },
-    { id: 'audio_codec', label: 'Audio Codec' },
-    { id: 'audio_language', label: 'Audio Language' },
-    { id: 'audio_tracks', label: 'Audio Tracks' },
-    { id: 'subtitles', label: 'Subtitles' },
-  ]},
   { label: 'File', columns: [
     { id: 'container', label: 'Container' },
     { id: 'file_path', label: 'File Path' },
@@ -70,6 +54,22 @@ export const COLUMN_GROUPS: ColumnGroup[] = [
   { label: 'Images', columns: [
     { id: 'background', label: 'Background' },
     { id: 'poster', label: 'Poster' },
+  ]},
+  { label: 'Ratings', columns: [
+    { id: 'content_rating',     label: 'Content Rating' },
+    { id: 'imdb_rating',        label: 'IMDb Rating' },
+    { id: 'rt_audience_rating', label: 'RT Audience Rating' },
+    { id: 'rt_critics_rating',  label: 'RT Critics Rating' },
+    { id: 'tmdb_rating',        label: 'TMDb Rating' },
+  ]},
+  { label: 'Video', columns: [
+    { id: 'aspect_ratio', label: 'Aspect Ratio' },
+    { id: 'frame_rate', label: 'Frame Rate' },
+    { id: 'width', label: 'Width' },
+    { id: 'height', label: 'Height' },
+    { id: 'video_resolution', label: 'Resolution' },
+    { id: 'video_bitrate', label: 'Video Bitrate' },
+    { id: 'video_codec', label: 'Video Codec' },
   ]},
 ]
 

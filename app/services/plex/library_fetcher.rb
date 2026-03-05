@@ -11,7 +11,7 @@ module Plex
       fetch_sections_by_type(media_type).map do |section|
         section_id = section['key']
         updated_at = section['updatedAt']
-        movies = @cache.cached_movies_for(section_id, updated_at) do
+        movies = @cache.cached_movies_for(section_id, updated_at, media_type: media_type, view_mode: view_mode) do
           items_for_section(section_id, media_type: media_type, view_mode: view_mode).sort_by { |m| m[:title].downcase }
         end
         { id: section_id, updated_at: updated_at,

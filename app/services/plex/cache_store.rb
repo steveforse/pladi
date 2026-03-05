@@ -39,9 +39,9 @@ module Plex
       Rails.cache.write(key('enrich_version'), enrich_version + 1, expires_in: CACHE_TTL)
     end
 
-    def cached_movies_for(section_id, updated_at, &)
+    def cached_movies_for(section_id, updated_at, media_type: 'movie', view_mode: 'shows', &)
       Rails.cache.fetch(
-        key('section', section_id, updated_at, enrich_version),
+        key('section', media_type, view_mode, section_id, updated_at, enrich_version),
         expires_in: CACHE_TTL,
         &
       )

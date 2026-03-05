@@ -50,7 +50,7 @@ module Api
       params.expect(
         show: [:title, :sort_title, :summary, :tagline,
                :studio, :content_rating, :year, :originally_available,
-               { genres: [], writers: [], producers: [],
+               { genres: [],
                  collections: [], labels: [], country: [] }]
       )
     end

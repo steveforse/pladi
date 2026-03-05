@@ -14,12 +14,13 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'title',                label: 'Title',                type: 'string' },
     { id: 'year',                 label: 'Year',                 type: 'numeric' },
   ]},
-  { label: 'Ratings', fields: [
-    { id: 'content_rating',     label: 'Content Rating',     type: 'string' },
-    { id: 'imdb_rating',        label: 'IMDb Rating',        type: 'numeric' },
-    { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
-    { id: 'rt_critics_rating',  label: 'RT Critics Rating',  type: 'numeric' },
-    { id: 'tmdb_rating',        label: 'TMDb Rating',        type: 'numeric' },
+  { label: 'Audio', fields: [
+    { id: 'audio_bitrate',   label: 'Audio Bitrate',   type: 'numeric', unit: 'kbps' },
+    { id: 'audio_channels',  label: 'Audio Channels',  type: 'numeric' },
+    { id: 'audio_codec',     label: 'Audio Codec',     type: 'string' },
+    { id: 'audio_language',  label: 'Audio Language',  type: 'string' },
+    { id: 'audio_tracks',    label: 'Audio Tracks',    type: 'string' },
+    { id: 'subtitles',       label: 'Subtitles',       type: 'string' },
   ]},
   { label: 'Credits', fields: [
     { id: 'directors',  label: 'Directors',  type: 'string' },
@@ -35,23 +36,6 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'summary',      label: 'Summary',      type: 'string' },
     { id: 'tagline',      label: 'Tagline',      type: 'string' },
   ]},
-  { label: 'Video', fields: [
-    { id: 'aspect_ratio',     label: 'Aspect Ratio', type: 'numeric' },
-    { id: 'frame_rate',       label: 'Frame Rate',   type: 'string', displayValue: formatFrameRate },
-    { id: 'height',           label: 'Height',       type: 'numeric', unit: 'px' },
-    { id: 'video_resolution', label: 'Resolution',    type: 'string' },
-    { id: 'video_bitrate',    label: 'Video Bitrate', type: 'numeric', unit: 'kbps' },
-    { id: 'video_codec',      label: 'Video Codec',   type: 'string' },
-    { id: 'width',            label: 'Width',        type: 'numeric', unit: 'px' },
-  ]},
-  { label: 'Audio', fields: [
-    { id: 'audio_bitrate',   label: 'Audio Bitrate',   type: 'numeric', unit: 'kbps' },
-    { id: 'audio_channels',  label: 'Audio Channels',  type: 'numeric' },
-    { id: 'audio_codec',     label: 'Audio Codec',     type: 'string' },
-    { id: 'audio_language',  label: 'Audio Language',  type: 'string' },
-    { id: 'audio_tracks',    label: 'Audio Tracks',    type: 'string' },
-    { id: 'subtitles',       label: 'Subtitles',       type: 'string' },
-  ]},
   { label: 'File', fields: [
     { id: 'container',       label: 'Container',      type: 'string' },
     { id: 'file_path',       label: 'File Path',      type: 'string' },
@@ -61,6 +45,22 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
   { label: 'Images', fields: [
     { id: 'background', label: 'Background', type: 'string', nullOnly: true },
     { id: 'poster',     label: 'Poster',     type: 'string', nullOnly: true },
+  ]},
+  { label: 'Ratings', fields: [
+    { id: 'content_rating',     label: 'Content Rating',     type: 'string' },
+    { id: 'imdb_rating',        label: 'IMDb Rating',        type: 'numeric' },
+    { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
+    { id: 'rt_critics_rating',  label: 'RT Critics Rating',  type: 'numeric' },
+    { id: 'tmdb_rating',        label: 'TMDb Rating',        type: 'numeric' },
+  ]},
+  { label: 'Video', fields: [
+    { id: 'aspect_ratio',     label: 'Aspect Ratio', type: 'numeric' },
+    { id: 'frame_rate',       label: 'Frame Rate',   type: 'string', displayValue: formatFrameRate },
+    { id: 'height',           label: 'Height',       type: 'numeric', unit: 'px' },
+    { id: 'video_resolution', label: 'Resolution',    type: 'string' },
+    { id: 'video_bitrate',    label: 'Video Bitrate', type: 'numeric', unit: 'kbps' },
+    { id: 'video_codec',      label: 'Video Codec',   type: 'string' },
+    { id: 'width',            label: 'Width',        type: 'numeric', unit: 'px' },
   ]},
 ]
 

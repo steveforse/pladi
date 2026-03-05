@@ -3,6 +3,7 @@
 module Plex
   class ShowDetailParser
     TAG_FIELDS = {
+      directors: 'Director',
       genres: 'Genre',
       country: 'Country',
       writers: 'Writer',

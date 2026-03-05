@@ -14,6 +14,7 @@ RSpec.describe Plex::ShowDetailParser do
       'childCount' => 8,
       'leafCount' => 73,
       'viewedLeafCount' => 50,
+      'Director' => [{ 'tag' => 'Director Name' }],
       'Genre' => [{ 'tag' => 'Drama' }, { 'tag' => 'Fantasy' }],
       'Country' => [{ 'tag' => 'USA' }],
       'Writer' => [{ 'tag' => 'Writer Name' }],
@@ -36,6 +37,7 @@ RSpec.describe Plex::ShowDetailParser do
   it { expect(result[:season_count]).to eq(8) }
   it { expect(result[:episode_count]).to eq(73) }
   it { expect(result[:viewed_episode_count]).to eq(50) }
+  it { expect(result[:directors]).to eq('Director Name') }
   it { expect(result[:genres]).to eq('Drama, Fantasy') }
   it { expect(result[:country]).to eq('USA') }
   it { expect(result[:writers]).to eq('Writer Name') }

@@ -28,8 +28,8 @@ module Plex
       )
     end
 
-    def enrich_sections(sections, media_type: 'movie')
-      sections.map { |section| enrich_section(section, media_type: media_type) }
+    def enrich_sections(sections, media_type: 'movie', view_mode: 'shows')
+      sections.map { |section| enrich_section(section, media_type: media_type, view_mode: view_mode) }
     end
 
     def enrich_movie(movie_id, file_path)
@@ -51,8 +51,8 @@ module Plex
 
     private
 
-    def enrich_section(section, media_type:)
-      key = @cache.key('section', media_type, section[:id], section[:updated_at], 'enriched', @cache.enrich_version)
+    def enrich_section(section, media_type:, view_mode:)
+      key = @cache.key('section', media_type, view_mode, section[:id], section[:updated_at], 'enriched', @cache.enrich_version)
       @cache.fetch(key) do
         movies = section[:movies]
         details = concurrent_fetcher_for(media_type, movies).fetch(movies)

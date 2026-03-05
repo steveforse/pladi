@@ -39,7 +39,11 @@ module Plex
     end
 
     def enriched_library(media_type: 'movie', view_mode: 'shows')
-      enriched_sections = @enricher.enrich_sections(sections(media_type: media_type, view_mode: view_mode), media_type: media_type)
+      enriched_sections = @enricher.enrich_sections(
+        sections(media_type: media_type, view_mode: view_mode),
+        media_type: media_type,
+        view_mode: view_mode
+      )
       cached_posters, uncached_posters = @image_store.partition_posters_by_cache(enriched_sections)
       cached_backgrounds, uncached_backgrounds = @image_store.partition_backgrounds_by_cache(enriched_sections)
 

@@ -17,28 +17,15 @@ export const SHOW_FILTER_FIELD_GROUPS: FilterGroup[] = [
     ],
   },
   {
-    label: 'Ratings',
-    fields: [
-      { id: 'content_rating', label: 'Content Rating', type: 'string' },
-      { id: 'imdb_rating', label: 'IMDb Rating', type: 'numeric' },
-      { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
-      { id: 'rt_critics_rating', label: 'RT Critics Rating', type: 'numeric' },
-      { id: 'tmdb_rating', label: 'TMDb Rating', type: 'numeric' },
-    ],
-  },
-  {
     label: 'Details',
     fields: [
       { id: 'collections', label: 'Collections', type: 'string' },
       { id: 'country', label: 'Country', type: 'string' },
-      { id: 'directors', label: 'Directors', type: 'string' },
       { id: 'genres', label: 'Genres', type: 'string' },
       { id: 'labels', label: 'Labels', type: 'string' },
-      { id: 'producers', label: 'Producers', type: 'string' },
       { id: 'studio', label: 'Studio', type: 'string' },
       { id: 'summary', label: 'Summary', type: 'string' },
       { id: 'tagline', label: 'Tagline', type: 'string' },
-      { id: 'writers', label: 'Writers', type: 'string' },
     ],
   },
   {
@@ -46,6 +33,16 @@ export const SHOW_FILTER_FIELD_GROUPS: FilterGroup[] = [
     fields: [
       { id: 'background', label: 'Background', type: 'string', nullOnly: true },
       { id: 'poster', label: 'Poster', type: 'string', nullOnly: true },
+    ],
+  },
+  {
+    label: 'Ratings',
+    fields: [
+      { id: 'content_rating', label: 'Content Rating', type: 'string' },
+      { id: 'imdb_rating', label: 'IMDb Rating', type: 'numeric' },
+      { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
+      { id: 'rt_critics_rating', label: 'RT Critics Rating', type: 'numeric' },
+      { id: 'tmdb_rating', label: 'TMDb Rating', type: 'numeric' },
     ],
   },
 ]
@@ -67,35 +64,6 @@ export const EPISODE_FILTER_FIELD_GROUPS: FilterGroup[] = [
     ],
   },
   {
-    label: 'Ratings',
-    fields: [
-      { id: 'content_rating', label: 'Content Rating', type: 'string' },
-      { id: 'imdb_rating', label: 'IMDb Rating', type: 'numeric' },
-      { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
-      { id: 'rt_critics_rating', label: 'RT Critics Rating', type: 'numeric' },
-      { id: 'tmdb_rating', label: 'TMDb Rating', type: 'numeric' },
-    ],
-  },
-  {
-    label: 'Details',
-    fields: [
-      { id: 'summary', label: 'Summary', type: 'string' },
-      { id: 'tagline', label: 'Tagline', type: 'string' },
-    ],
-  },
-  {
-    label: 'Video',
-    fields: [
-      { id: 'aspect_ratio', label: 'Aspect Ratio', type: 'numeric' },
-      { id: 'frame_rate', label: 'Frame Rate', type: 'string' },
-      { id: 'height', label: 'Height', type: 'numeric', unit: 'px' },
-      { id: 'video_resolution', label: 'Resolution', type: 'string' },
-      { id: 'video_bitrate', label: 'Video Bitrate', type: 'numeric', unit: 'kbps' },
-      { id: 'video_codec', label: 'Video Codec', type: 'string' },
-      { id: 'width', label: 'Width', type: 'numeric', unit: 'px' },
-    ],
-  },
-  {
     label: 'Audio',
     fields: [
       { id: 'audio_bitrate', label: 'Audio Bitrate', type: 'numeric', unit: 'kbps' },
@@ -114,6 +82,13 @@ export const EPISODE_FILTER_FIELD_GROUPS: FilterGroup[] = [
     ],
   },
   {
+    label: 'Details',
+    fields: [
+      { id: 'summary', label: 'Summary', type: 'string' },
+      { id: 'tagline', label: 'Tagline', type: 'string' },
+    ],
+  },
+  {
     label: 'File',
     fields: [
       { id: 'container', label: 'Container', type: 'string' },
@@ -127,6 +102,28 @@ export const EPISODE_FILTER_FIELD_GROUPS: FilterGroup[] = [
     fields: [
       { id: 'background', label: 'Background', type: 'string', nullOnly: true },
       { id: 'poster', label: 'Poster', type: 'string', nullOnly: true },
+    ],
+  },
+  {
+    label: 'Ratings',
+    fields: [
+      { id: 'content_rating', label: 'Content Rating', type: 'string' },
+      { id: 'imdb_rating', label: 'IMDb Rating', type: 'numeric' },
+      { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
+      { id: 'rt_critics_rating', label: 'RT Critics Rating', type: 'numeric' },
+      { id: 'tmdb_rating', label: 'TMDb Rating', type: 'numeric' },
+    ],
+  },
+  {
+    label: 'Video',
+    fields: [
+      { id: 'aspect_ratio', label: 'Aspect Ratio', type: 'numeric' },
+      { id: 'frame_rate', label: 'Frame Rate', type: 'string' },
+      { id: 'height', label: 'Height', type: 'numeric', unit: 'px' },
+      { id: 'video_resolution', label: 'Resolution', type: 'string' },
+      { id: 'video_bitrate', label: 'Video Bitrate', type: 'numeric', unit: 'kbps' },
+      { id: 'video_codec', label: 'Video Codec', type: 'string' },
+      { id: 'width', label: 'Width', type: 'numeric', unit: 'px' },
     ],
   },
 ]

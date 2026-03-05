@@ -29,6 +29,7 @@ export const ENRICHMENT_FIELDS: (keyof Movie)[] = [
 export const SHOW_ENRICHMENT_FIELDS: (keyof Movie)[] = [
   'summary',
   'content_rating',
+  'directors',
   'genres',
   'writers',
   'studio',

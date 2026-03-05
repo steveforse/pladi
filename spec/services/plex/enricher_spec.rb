@@ -80,7 +80,7 @@ RSpec.describe Plex::Enricher do
 
     before do
       allow(cache_store).to receive(:enrich_version).and_return(7)
-      allow(cache_store).to receive(:key).with('section', 'movie', '10', 1234, 'enriched', 7).and_return('section-cache-key')
+      allow(cache_store).to receive(:key).with('section', 'movie', 'shows', '10', 1234, 'enriched', 7).and_return('section-cache-key')
       allow(cache_store).to receive(:fetch).with('section-cache-key').and_yield
       allow(movie_concurrent_fetcher).to receive(:fetch).with(section[:movies]).and_return('m1' => detail)
     end
@@ -124,7 +124,7 @@ RSpec.describe Plex::Enricher do
 
     before do
       allow(cache_store).to receive(:enrich_version).and_return(8)
-      allow(cache_store).to receive(:key).with('section', 'show', '12', 4321, 'enriched', 8).and_return('show-section-cache-key')
+      allow(cache_store).to receive(:key).with('section', 'show', 'shows', '12', 4321, 'enriched', 8).and_return('show-section-cache-key')
       allow(cache_store).to receive(:fetch).with('show-section-cache-key').and_yield
       allow(show_concurrent_fetcher).to receive(:fetch).with(section[:movies]).and_return('s1' => detail)
     end
@@ -148,7 +148,7 @@ RSpec.describe Plex::Enricher do
         video_bitrate_by_file: { '/tv/show/s01e01.mkv' => 3200 }
       }
 
-      allow(cache_store).to receive(:key).with('section', 'show', '13', 5331, 'enriched', 8).and_return('episode-section-cache-key')
+      allow(cache_store).to receive(:key).with('section', 'show', 'shows', '13', 5331, 'enriched', 8).and_return('episode-section-cache-key')
       allow(cache_store).to receive(:fetch).with('episode-section-cache-key').and_yield
       allow(movie_concurrent_fetcher).to receive(:fetch).with(episode_section[:movies]).and_return('e1' => stream_detail)
 

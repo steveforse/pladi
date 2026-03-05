@@ -86,7 +86,7 @@ RSpec.describe Plex::CacheStore do
 
     it 'uses section key with enrich version' do
       cache_store.cached_movies_for('2', 100) { [] }
-      expect(Rails.cache).to have_received(:fetch).with('plex/server/10/v2/section/2/100/1',
+      expect(Rails.cache).to have_received(:fetch).with('plex/server/10/v2/section/movie/shows/2/100/1',
                                                         expires_in: Plex::CacheStore::CACHE_TTL)
     end
   end

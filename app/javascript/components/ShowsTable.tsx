@@ -25,6 +25,7 @@ const SORT_STORAGE_KEY = 'pladi.shows.sort'
 const VIEW_MODE_STORAGE_KEY = 'pladi.shows.view_mode'
 
 const DEFAULT_VISIBLE_COLUMNS: ColumnId[] = [
+  'title',
   'id',
   'year',
   'season_count',
@@ -74,9 +75,6 @@ const SHOW_DEFAULT_COL_ORDER: AllColumnId[] = [
   'collections',
   'labels',
   'country',
-  'directors',
-  'producers',
-  'writers',
   'poster',
   'background',
 ]
@@ -170,7 +168,7 @@ const SHOW_TABLE_COLUMNS: Array<{ id: AllColumnId; label: string; sortKey?: Sort
   { id: 'poster', label: 'Poster' },
   { id: 'background', label: 'Background' },
 ]
-const SHOW_VALID_COLUMN_IDS = new Set<ColumnId>(SHOW_TABLE_COLUMNS.filter((col) => col.id !== 'title').map((col) => col.id as ColumnId))
+const SHOW_VALID_COLUMN_IDS = new Set<ColumnId>(SHOW_TABLE_COLUMNS.map((col) => col.id as ColumnId))
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return <span className="ml-1 text-muted-foreground/40">↕</span>

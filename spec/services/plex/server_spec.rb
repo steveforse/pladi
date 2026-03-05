@@ -93,7 +93,7 @@ RSpec.describe Plex::Server do
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
-      allow(enricher).to receive(:enrich_sections).with(sections, media_type: 'movie').and_return(sections)
+      allow(enricher).to receive(:enrich_sections).with(sections, media_type: 'movie', view_mode: 'shows').and_return(sections)
       allow(image_store).to receive(:partition_posters_by_cache).with(sections).and_return(
         [[{ id: '1' }], [{ id: '2' }]]
       )

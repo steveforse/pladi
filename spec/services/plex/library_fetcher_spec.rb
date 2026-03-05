@@ -104,7 +104,7 @@ RSpec.describe Plex::LibraryFetcher do
     it 'uses section id and timestamp when reading cache' do
       result
 
-      expect(cache_store).to have_received(:cached_movies_for).with('1', 100)
+      expect(cache_store).to have_received(:cached_movies_for).with('1', 100, media_type: 'movie', view_mode: 'shows')
     end
 
     it 'can fetch show sections when requested' do
