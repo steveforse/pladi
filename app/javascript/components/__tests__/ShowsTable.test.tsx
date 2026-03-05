@@ -33,9 +33,21 @@ function setupHookMock(overrides: Partial<ReturnType<typeof useShowsData>> = {})
   })
 }
 
+function createStorageMock() {
+  const store = new Map<string, string>()
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => { store.set(key, value) },
+    removeItem: (key: string) => { store.delete(key) },
+    clear: () => { store.clear() },
+  }
+}
+
 describe('ShowsTable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('localStorage', createStorageMock())
+    vi.stubGlobal('sessionStorage', createStorageMock())
   })
 
   it('renders loading skeleton', () => {
@@ -133,5 +145,36 @@ describe('ShowsTable', () => {
 
     expect(within(view.container).queryByText('Severance')).not.toBeInTheDocument()
     expect(within(view.container).getByText('The Bear')).toBeInTheDocument()
+  })
+
+  it('applies quick filters for unwatched shows', async () => {
+    setupHookMock({
+      sections: [
+        {
+          title: 'TV Shows',
+          movies: [
+            { id: 's1', title: 'Severance', year: 2022, season_count: 2, episode_count: 19, viewed_episode_count: 8, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', thumb: '/thumb.jpg', file_path: null },
+            { id: 's2', title: 'The Bear', year: 2023, season_count: 3, episode_count: 28, viewed_episode_count: 0, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', thumb: null, file_path: null },
+          ],
+        },
+      ],
+    })
+
+    const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Unwatched only' }))
+
+    expect(within(view.container).queryByText('Severance')).not.toBeInTheDocument()
+    expect(within(view.container).getByText('The Bear')).toBeInTheDocument()
+  })
+
+  it('toggles TV table columns from the column picker', async () => {
+    setupHookMock()
+    const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+
+    expect(within(view.container).getByRole('columnheader', { name: 'Summary' })).toBeInTheDocument()
+    await userEvent.click(within(view.container).getByRole('button', { name: 'Columns' }))
+    await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Summary' }))
+
+    expect(within(view.container).queryByRole('columnheader', { name: 'Summary' })).not.toBeInTheDocument()
   })
 })
