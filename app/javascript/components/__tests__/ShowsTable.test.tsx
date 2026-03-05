@@ -83,7 +83,7 @@ describe('ShowsTable', () => {
     expect(onMovies).toHaveBeenCalledTimes(1)
   })
 
-  it('filters shows by search query', async () => {
+  it('filters shows by title using advanced filters', async () => {
     setupHookMock({
       sections: [
         {
@@ -97,7 +97,9 @@ describe('ShowsTable', () => {
     })
 
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
-    await userEvent.type(within(view.container).getByPlaceholderText('Title, studio, genre...'), 'bear')
+    await userEvent.click(within(view.container).getByRole('button', { name: 'Filters' }))
+    await userEvent.click(within(view.container).getByRole('button', { name: '+ Add Filter' }))
+    await userEvent.type(within(view.container).getByPlaceholderText('value'), 'bear')
 
     expect(within(view.container).queryByText('Severance')).not.toBeInTheDocument()
     expect(within(view.container).getByText('The Bear')).toBeInTheDocument()
@@ -118,11 +120,11 @@ describe('ShowsTable', () => {
 
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
-    await userEvent.click(within(view.container).getByRole('button', { name: 'Episodes' }))
+    await userEvent.click(within(view.container).getByRole('button', { name: /^Episodes/ }))
     const rows = within(view.container).getAllByRole('row')
     expect(rows[1]).toHaveTextContent('Severance')
 
-    await userEvent.click(within(view.container).getByRole('button', { name: 'Episodes' }))
+    await userEvent.click(within(view.container).getByRole('button', { name: /^Episodes/ }))
     const sortedDescRows = within(view.container).getAllByRole('row')
     expect(sortedDescRows[1]).toHaveTextContent('The Bear')
   })
@@ -141,6 +143,7 @@ describe('ShowsTable', () => {
     })
 
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    await userEvent.click(within(view.container).getByRole('button', { name: 'Filters' }))
     await userEvent.click(within(view.container).getByRole('button', { name: '+ Add Filter' }))
     await userEvent.type(within(view.container).getByPlaceholderText('value'), 'bear')
 
@@ -162,6 +165,7 @@ describe('ShowsTable', () => {
     })
 
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    await userEvent.click(within(view.container).getByRole('button', { name: 'Filters' }))
     await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Unwatched only' }))
 
     expect(within(view.container).queryByText('Severance')).not.toBeInTheDocument()
@@ -173,7 +177,7 @@ describe('ShowsTable', () => {
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
     expect(within(view.container).getByRole('columnheader', { name: 'Summary' })).toBeInTheDocument()
-    await userEvent.click(within(view.container).getByRole('button', { name: 'Columns' }))
+    await userEvent.click(within(view.container).getByRole('button', { name: /Toggle Columns/i }))
     await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Summary' }))
 
     expect(within(view.container).queryByRole('columnheader', { name: 'Summary' })).not.toBeInTheDocument()

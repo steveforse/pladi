@@ -1,30 +1,31 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 import { EditableCell } from '@/components/movies/EditableCell'
 import { FilterRow } from '@/components/movies/FilterRow'
 import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
+import { ColumnPicker } from '@/components/movies/ColumnPicker'
 import { Paginator } from '@/components/movies/Paginator'
 import { usePagination } from '@/hooks/usePagination'
 import { matchesFilterWithFields } from '@/lib/filters'
 import { SHOW_FILTER_FIELDS, SHOW_FILTER_FIELD_GROUPS } from '@/lib/showFilters'
+import { SHOW_COLUMN_GROUPS } from '@/lib/showColumns'
 import { useShowsData } from '@/hooks/useShowsData'
 import { sortMovies } from '@/lib/sorting'
-import type { ActiveFilter, SortDir, SortKey } from '@/lib/types'
+import type { ActiveFilter, ColumnId, SortDir, SortKey } from '@/lib/types'
 
 const FILTERS_STORAGE_KEY = 'pladi.shows.filters'
 const COLUMNS_STORAGE_KEY = 'pladi.shows.columns'
+const FILTERS_OPEN_STORAGE_KEY = 'pladi.shows.filters_open'
 
-type ShowColumnId = 'title' | 'year' | 'season_count' | 'episode_count' | 'viewed_episode_count' | 'studio' | 'genres' | 'summary'
-const SHOW_COLUMNS: { id: ShowColumnId; label: string }[] = [
-  { id: 'title', label: 'Title' },
-  { id: 'year', label: 'Year' },
-  { id: 'season_count', label: 'Seasons' },
-  { id: 'episode_count', label: 'Episodes' },
-  { id: 'viewed_episode_count', label: 'Watched' },
-  { id: 'studio', label: 'Studio' },
-  { id: 'genres', label: 'Genres' },
-  { id: 'summary', label: 'Summary' },
+const DEFAULT_VISIBLE_COLUMNS: ColumnId[] = [
+  'year',
+  'season_count',
+  'episode_count',
+  'viewed_episode_count',
+  'studio',
+  'genres',
+  'summary',
 ]
 
 export default function ShowsTable({
@@ -51,24 +52,34 @@ export default function ShowsTable({
     handleLibraryChange,
     updateShow,
   } = useShowsData()
+
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const [query, setQuery] = useState('')
+
   const [unwatchedOnly, setUnwatchedOnly] = useState(false)
   const [partiallyWatchedOnly, setPartiallyWatchedOnly] = useState(false)
   const [noSummaryOnly, setNoSummaryOnly] = useState(false)
   const [missingPosterOnly, setMissingPosterOnly] = useState(false)
-  const [columnsOpen, setColumnsOpen] = useState(false)
-  const [visibleCols, setVisibleCols] = useState<Set<ShowColumnId>>(() => {
+
+  const [filtersOpen, setFiltersOpen] = useState(() => {
     try {
-      const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
-      if (!raw) return new Set(SHOW_COLUMNS.map((c) => c.id))
-      const parsed = JSON.parse(raw) as ShowColumnId[]
-      return new Set(parsed)
+      return localStorage.getItem(FILTERS_OPEN_STORAGE_KEY) === 'true'
     } catch {
-      return new Set(SHOW_COLUMNS.map((c) => c.id))
+      return false
     }
   })
+
+  const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(() => {
+    try {
+      const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
+      if (!raw) return new Set(DEFAULT_VISIBLE_COLUMNS)
+      const parsed = JSON.parse(raw) as ColumnId[]
+      return new Set(parsed)
+    } catch {
+      return new Set(DEFAULT_VISIBLE_COLUMNS)
+    }
+  })
+
   const [filters, setFilters] = useState<ActiveFilter[]>(() => {
     try {
       const raw = sessionStorage.getItem(FILTERS_STORAGE_KEY)
@@ -77,7 +88,12 @@ export default function ShowsTable({
       return []
     }
   })
+
   const nextId = useRef(filters.length > 0 ? Math.max(...filters.map((f) => f.id)) + 1 : 1)
+
+  const activeFilterCount =
+    [unwatchedOnly, partiallyWatchedOnly, noSummaryOnly, missingPosterOnly].filter(Boolean).length +
+    filters.length
 
   function addFilter() {
     setFilters((prev) => [
@@ -96,46 +112,85 @@ export default function ShowsTable({
 
   function clearAllFilters() {
     setFilters([])
+    setUnwatchedOnly(false)
+    setPartiallyWatchedOnly(false)
+    setNoSummaryOnly(false)
+    setMissingPosterOnly(false)
   }
 
   function handleSort(key: SortKey) {
-    if (key === sortKey) setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-    else {
+    if (key === sortKey) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
       setSortKey(key)
       setSortDir('asc')
     }
+  }
+
+  function toggleFiltersOpen() {
+    setFiltersOpen((open) => {
+      const next = !open
+      try {
+        localStorage.setItem(FILTERS_OPEN_STORAGE_KEY, String(next))
+      } catch {
+        // storage unavailable
+      }
+      return next
+    })
+  }
+
+  function handleColChange(id: ColumnId, checked: boolean) {
+    setVisibleCols((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  function resetColumns() {
+    setVisibleCols(new Set(DEFAULT_VISIBLE_COLUMNS))
   }
 
   const filteredShows = useMemo(() => {
     const shows = selectedTitle === null
       ? sections.flatMap((s) => s.movies)
       : (sections.find((s) => s.title === selectedTitle)?.movies ?? [])
-    const normalized = query.trim().toLowerCase()
-    const searched = normalized.length === 0
-      ? shows
-      : shows.filter((show) => {
-          const searchable = [show.title, show.summary, show.studio, show.genres].filter(Boolean).join(' ').toLowerCase()
-          return searchable.includes(normalized)
-        })
-    const quickFiltered = searched.filter((show) => {
+
+    const quickFiltered = shows.filter((show) => {
       if (unwatchedOnly && (show.viewed_episode_count ?? 0) > 0) return false
+
       if (partiallyWatchedOnly) {
         const viewed = show.viewed_episode_count ?? 0
         const total = show.episode_count ?? 0
         if (!(viewed > 0 && total > 0 && viewed < total)) return false
       }
+
       if (noSummaryOnly && (show.summary ?? '').trim() !== '') return false
       if (missingPosterOnly && show.thumb) return false
+
       return true
     })
+
     const advancedFiltered = filters.length > 0
       ? quickFiltered.filter((show) => filters.every((f) => matchesFilterWithFields(SHOW_FILTER_FIELDS, show, f)))
       : quickFiltered
+
     return sortMovies(advancedFiltered, sortKey, sortDir)
-  }, [sections, selectedTitle, sortKey, sortDir, query, filters, unwatchedOnly, partiallyWatchedOnly, noSummaryOnly, missingPosterOnly])
+  }, [
+    sections,
+    selectedTitle,
+    sortKey,
+    sortDir,
+    filters,
+    unwatchedOnly,
+    partiallyWatchedOnly,
+    noSummaryOnly,
+    missingPosterOnly,
+  ])
+
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
   const pagedShows = pageSize === 0 ? filteredShows : filteredShows.slice((page - 1) * pageSize, page * pageSize)
-  const activeFilterCount = filters.length
 
   useEffect(() => {
     try {
@@ -263,95 +318,77 @@ export default function ShowsTable({
               <option value="">All libraries</option>
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Sort:</label>
-            <button onClick={() => handleSort('title')} className="btn px-3 py-1.5 text-sm">
-              {sortKey === 'title' ? `Title (${sortDir})` : 'Title'}
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Search:</label>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Title, studio, genre..."
-              className="border rounded px-3 py-1.5 text-sm bg-background w-56"
-            />
-          </div>
-          <div className="relative">
-            <button onClick={() => setColumnsOpen((o) => !o)} className="btn px-3 py-1.5 text-sm">
-              Columns
-            </button>
-            {columnsOpen && (
-              <div className="absolute z-20 mt-1 right-0 bg-card border rounded-md shadow-lg p-2 space-y-1 min-w-40">
-                {SHOW_COLUMNS.map((col) => (
-                  <label key={col.id} className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={visibleCols.has(col.id)}
-                      onChange={(e) => {
-                        setVisibleCols((prev) => {
-                          const next = new Set(prev)
-                          if (e.target.checked) next.add(col.id)
-                          else next.delete(col.id)
-                          return next
-                        })
-                      }}
-                    />
-                    {col.label}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="border rounded-md p-3 w-fit">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Quick filters</p>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={unwatchedOnly} onChange={(e) => setUnwatchedOnly(e.target.checked)} />
-              Unwatched only
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={partiallyWatchedOnly} onChange={(e) => setPartiallyWatchedOnly(e.target.checked)} />
-              Partially watched
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={noSummaryOnly} onChange={(e) => setNoSummaryOnly(e.target.checked)} />
-              Missing summary
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={missingPosterOnly} onChange={(e) => setMissingPosterOnly(e.target.checked)} />
-              Missing poster
-            </label>
-          </div>
-        </div>
-
-        <div className="border rounded-md p-3 space-y-2 w-fit">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Advanced filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
-          </p>
-          {filters.map((f) => (
-            <FilterRow
-              key={f.id}
-              filter={f}
-              onChange={(updated) => updateFilter(f.id, updated)}
-              onRemove={() => removeFilter(f.id)}
-              fieldDefs={SHOW_FILTER_FIELDS}
-              fieldGroups={SHOW_FILTER_FIELD_GROUPS}
-            />
-          ))}
-          <div className="flex items-center gap-2">
-            <button onClick={addFilter} className="btn px-3 py-1.5 text-sm">
-              + Add Filter
-            </button>
+        <div className="border rounded-md w-fit">
+          <button
+            onClick={toggleFiltersOpen}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {filtersOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            Filters
             {activeFilterCount > 0 && (
-              <button onClick={clearAllFilters} className="btn px-3 py-1.5 text-sm text-destructive">
-                Clear all
-              </button>
+              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full font-semibold" style={{ backgroundColor: '#E5A00D', color: '#161b1f' }}>
+                {activeFilterCount}
+              </span>
             )}
-          </div>
+          </button>
+
+          {filtersOpen && (
+            <div className="px-3 pb-3 space-y-3 border-t pt-3">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</p>
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Watch Status</p>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={unwatchedOnly} onChange={(e) => setUnwatchedOnly(e.target.checked)} />
+                      Unwatched only
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={partiallyWatchedOnly} onChange={(e) => setPartiallyWatchedOnly(e.target.checked)} />
+                      Partially watched
+                    </label>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Metadata</p>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={noSummaryOnly} onChange={(e) => setNoSummaryOnly(e.target.checked)} />
+                      Missing summary
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={missingPosterOnly} onChange={(e) => setMissingPosterOnly(e.target.checked)} />
+                      Missing poster
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Advanced filters</p>
+                {filters.map((f) => (
+                  <FilterRow
+                    key={f.id}
+                    filter={f}
+                    onChange={(updated) => updateFilter(f.id, updated)}
+                    onRemove={() => removeFilter(f.id)}
+                    fieldDefs={SHOW_FILTER_FIELDS}
+                    fieldGroups={SHOW_FILTER_FIELD_GROUPS}
+                  />
+                ))}
+                <div className="flex items-center gap-2">
+                  <button onClick={addFilter} className="btn px-3 py-1.5 text-sm">
+                    + Add Filter
+                  </button>
+                  {activeFilterCount > 0 && (
+                    <button onClick={clearAllFilters} className="btn px-3 py-1.5 text-sm text-destructive">
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <Paginator
@@ -362,17 +399,46 @@ export default function ShowsTable({
           itemLabel="shows"
           onPage={setPage}
           onPageSize={handlePageSize}
+          leftSlot={<ColumnPicker groups={SHOW_COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} />}
         />
 
         <div className="rounded-md border overflow-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
-                {visibleCols.has('title') && <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('title')} className="hover:underline">Title</button></th>}
-                {visibleCols.has('year') && <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('year')} className="hover:underline">Year</button></th>}
-                {visibleCols.has('season_count') && <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('season_count')} className="hover:underline">Seasons</button></th>}
-                {visibleCols.has('episode_count') && <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('episode_count')} className="hover:underline">Episodes</button></th>}
-                {visibleCols.has('viewed_episode_count') && <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('viewed_episode_count')} className="hover:underline">Watched</button></th>}
+                <th className="px-4 py-2 text-left font-medium">
+                  <button onClick={() => handleSort('title')} className="hover:underline">
+                    Title {sortKey === 'title' ? `(${sortDir})` : ''}
+                  </button>
+                </th>
+                {visibleCols.has('year') && (
+                  <th className="px-4 py-2 text-left font-medium">
+                    <button onClick={() => handleSort('year')} className="hover:underline">
+                      Year {sortKey === 'year' ? `(${sortDir})` : ''}
+                    </button>
+                  </th>
+                )}
+                {visibleCols.has('season_count') && (
+                  <th className="px-4 py-2 text-left font-medium">
+                    <button onClick={() => handleSort('season_count')} className="hover:underline">
+                      Seasons {sortKey === 'season_count' ? `(${sortDir})` : ''}
+                    </button>
+                  </th>
+                )}
+                {visibleCols.has('episode_count') && (
+                  <th className="px-4 py-2 text-left font-medium">
+                    <button onClick={() => handleSort('episode_count')} className="hover:underline">
+                      Episodes {sortKey === 'episode_count' ? `(${sortDir})` : ''}
+                    </button>
+                  </th>
+                )}
+                {visibleCols.has('viewed_episode_count') && (
+                  <th className="px-4 py-2 text-left font-medium">
+                    <button onClick={() => handleSort('viewed_episode_count')} className="hover:underline">
+                      Watched {sortKey === 'viewed_episode_count' ? `(${sortDir})` : ''}
+                    </button>
+                  </th>
+                )}
                 {visibleCols.has('studio') && <th className="px-4 py-2 text-left font-medium">Studio</th>}
                 {visibleCols.has('genres') && <th className="px-4 py-2 text-left font-medium">Genres</th>}
                 {visibleCols.has('summary') && <th className="px-4 py-2 text-left font-medium">Summary</th>}
@@ -381,15 +447,13 @@ export default function ShowsTable({
             <tbody>
               {pagedShows.map((show) => (
                 <tr key={`${show.id}|${show.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
-                  {visibleCols.has('title') && (
-                    <EditableCell
-                      value={show.title}
-                      fieldType="text"
-                      onSave={async (v) => updateShow(show.id, { title: v as string })}
-                      renderView={() => <span className="font-medium whitespace-nowrap">{show.title}</span>}
-                      className="px-4 py-2"
-                    />
-                  )}
+                  <EditableCell
+                    value={show.title}
+                    fieldType="text"
+                    onSave={async (v) => updateShow(show.id, { title: v as string })}
+                    renderView={() => <span className="font-medium whitespace-nowrap">{show.title}</span>}
+                    className="px-4 py-2"
+                  />
                   {visibleCols.has('year') && (
                     <EditableCell
                       value={show.year != null ? String(show.year) : null}
@@ -440,7 +504,7 @@ export default function ShowsTable({
               ))}
               {pagedShows.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-muted-foreground text-sm" colSpan={Math.max(1, visibleCols.size)}>
+                  <td className="px-4 py-6 text-muted-foreground text-sm" colSpan={Math.max(1, visibleCols.size + 1)}>
                     No shows found in this selection.
                   </td>
                 </tr>
