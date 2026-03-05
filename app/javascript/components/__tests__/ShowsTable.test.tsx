@@ -79,7 +79,7 @@ describe('ShowsTable', () => {
     const view = render(<ShowsTable onMovies={onMovies} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
     expect(screen.getByText('Severance')).toBeInTheDocument()
-    await userEvent.click(within(view.container).getByRole('button', { name: 'Switch to Movies' }))
+    await userEvent.selectOptions(within(view.container).getByLabelText('Library Type'), 'movies')
     expect(onMovies).toHaveBeenCalledTimes(1)
   })
 

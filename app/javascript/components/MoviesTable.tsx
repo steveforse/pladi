@@ -199,12 +199,6 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, onShows, 
 
         {/* Server + Library selector */}
         <div className="flex items-center gap-4 flex-wrap">
-          <button
-            onClick={onShows}
-            className="btn px-3 py-1.5 text-sm"
-          >
-            TV Shows
-          </button>
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-muted-foreground">Server:</label>
             <select
@@ -215,6 +209,20 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, onShows, 
               {plexServers.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-muted-foreground">Library Type:</label>
+            <select
+              aria-label="Library Type"
+              value="movies"
+              onChange={(e) => {
+                if (e.target.value === 'shows') onShows()
+              }}
+              className="border rounded px-3 py-1.5 text-sm bg-background"
+            >
+              <option value="movies">Movies</option>
+              <option value="shows">TV Shows</option>
             </select>
           </div>
           <div className="flex items-center gap-2">

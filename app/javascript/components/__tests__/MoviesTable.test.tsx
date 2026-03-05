@@ -320,11 +320,15 @@ describe('MoviesTable', () => {
         filters: [{ id: 99, field: 'title', op: 'includes', value: 'alpha' }],
       },
     })
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
+    const onShows = vi.fn()
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={onShows} downloadImages={false} />)
 
-    const [serverSelect, librarySelect] = screen.getAllByRole('combobox')
+    const [serverSelect, libraryTypeSelect, librarySelect] = screen.getAllByRole('combobox')
     await userEvent.selectOptions(serverSelect, '1')
     expect(baseData.handleServerChange).toHaveBeenCalledWith(1)
+
+    await userEvent.selectOptions(libraryTypeSelect, 'shows')
+    expect(onShows).toHaveBeenCalledTimes(1)
 
     await userEvent.selectOptions(librarySelect, 'Shows')
     expect(baseData.setSelectedTitle).toHaveBeenCalledWith('Shows')

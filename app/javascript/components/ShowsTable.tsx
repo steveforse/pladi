@@ -375,11 +375,7 @@ export default function ShowsTable({
             <img src={pladiLogo} alt="Pladi logo" className="h-10 w-auto" />
             <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
           </div>
-          <div className="flex-1 flex justify-center">
-            <button onClick={onMovies} className="btn px-3 py-1.5 text-sm">
-              Switch to Movies
-            </button>
-          </div>
+          <div className="flex-1" />
           <HamburgerMenu onLogout={onLogout} onSettings={onSettings} onHistory={onHistory} />
         </div>
         <div className="px-8 py-6 space-y-2">
@@ -400,17 +396,12 @@ export default function ShowsTable({
           <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
         </div>
         <div className="flex-1 flex justify-center">
-          <div className="flex items-center gap-2">
-            <button onClick={onMovies} className="btn px-3 py-1.5 text-sm">
-              Switch to Movies
-            </button>
-            {syncing && (
-              <span className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border" style={{ backgroundColor: '#E5A00D15', borderColor: '#E5A00D50', color: '#E5A00D' }}>
-                <Loader2 size={12} className="animate-spin" />
-                Syncing
-              </span>
-            )}
-          </div>
+          {syncing && (
+            <span className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border" style={{ backgroundColor: '#E5A00D15', borderColor: '#E5A00D50', color: '#E5A00D' }}>
+              <Loader2 size={12} className="animate-spin" />
+              Syncing
+            </span>
+          )}
         </div>
         {refreshing && (
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -433,6 +424,20 @@ export default function ShowsTable({
               {plexServers.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-muted-foreground">Library Type:</label>
+            <select
+              aria-label="Library Type"
+              value="shows"
+              onChange={(e) => {
+                if (e.target.value === 'movies') onMovies()
+              }}
+              className="border rounded px-3 py-1.5 text-sm bg-background"
+            >
+              <option value="movies">Movies</option>
+              <option value="shows">TV Shows</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
