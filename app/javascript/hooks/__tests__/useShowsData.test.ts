@@ -1,0 +1,170 @@
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useShowsData } from '@/hooks/useShowsData'
+import { api } from '@/lib/apiClient'
+
+vi.mock('@/lib/apiClient', () => ({
+  ApiError: class extends Error {},
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    del: vi.fn(),
+  },
+}))
+
+const mockedApi = vi.mocked(api)
+
+function createStorageMock() {
+  const store = new Map<string, string>()
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => { store.set(key, value) },
+    removeItem: (key: string) => { store.delete(key) },
+    clear: () => { store.clear() },
+  }
+}
+
+function show(id: string, title: string) {
+  return {
+    id,
+    title,
+    original_title: null,
+    year: 2024,
+    file_path: null,
+    container: null,
+    video_codec: null,
+    video_resolution: null,
+    width: null,
+    height: null,
+    aspect_ratio: null,
+    frame_rate: null,
+    audio_codec: null,
+    audio_channels: null,
+    overall_bitrate: null,
+    size: null,
+    duration: null,
+    updated_at: 1_700_000_000,
+    thumb: null,
+    plex_url: 'https://app.plex.tv/x',
+    summary: null,
+    content_rating: null,
+    imdb_rating: null,
+    rt_critics_rating: null,
+    rt_audience_rating: null,
+    tmdb_rating: null,
+    genres: null,
+    directors: null,
+    sort_title: title,
+    edition: null,
+    originally_available: null,
+    studio: null,
+    tagline: null,
+    country: null,
+    writers: null,
+    producers: null,
+    collections: null,
+    labels: null,
+    art: null,
+    subtitles: null,
+    audio_tracks: null,
+    audio_language: null,
+    audio_bitrate: null,
+    video_bitrate: null,
+  }
+}
+
+describe('useShowsData', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('localStorage', createStorageMock())
+  })
+
+  it('loads initial server and sections on mount', async () => {
+    const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
+    const enrichedSections = [{ title: 'TV Shows', movies: [{ ...show('s1', 'Severance'), summary: 'Refined details' }] }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/refresh') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: enrichedSections } }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useShowsData())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+      expect(result.current.selectedServerId).toBe(1)
+      expect(result.current.sections[0].movies[0].summary).toBe('Refined details')
+    })
+  })
+
+  it('restores saved TV server and library selections', async () => {
+    localStorage.setItem('pladi_selected_show_server_id', '2')
+    localStorage.setItem('pladi_selected_show_library', 'Anime')
+
+    const sections = [{ title: 'Anime', movies: [show('s1', 'Frieren')] }, { title: 'TV Shows', movies: [] }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return {
+          ok: true,
+          status: 200,
+          data: [
+            { id: 1, name: 'A', url: 'http://a.local' },
+            { id: 2, name: 'B', url: 'http://b.local' },
+          ],
+        }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: sections }
+      if (path === '/api/shows/refresh') return { ok: false, status: 500, data: null }
+      if (path === '/api/shows/enrich') return { ok: false, status: 500, data: null }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useShowsData())
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.selectedServerId).toBe(2)
+    expect(result.current.selectedTitle).toBe('Anime')
+  })
+
+  it('handles explicit server and library changes', async () => {
+    const sectionsA = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
+    const sectionsB = [{ title: 'Anime', movies: [show('s2', 'Dandadan')] }]
+
+    mockedApi.get.mockImplementation(async (path: string, options?: { query?: Record<string, unknown> }) => {
+      if (path === '/api/plex_servers') {
+        return {
+          ok: true,
+          status: 200,
+          data: [
+            { id: 1, name: 'A', url: 'http://a.local' },
+            { id: 2, name: 'B', url: 'http://b.local' },
+          ],
+        }
+      }
+      if (path === '/api/shows' && options?.query?.server_id === 1) return { ok: true, status: 200, data: sectionsA }
+      if (path === '/api/shows' && options?.query?.server_id === 2) return { ok: true, status: 200, data: sectionsB }
+      if (path === '/api/shows/refresh') return { ok: true, status: 200, data: sectionsB }
+      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: sectionsB } }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useShowsData())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    act(() => {
+      result.current.handleLibraryChange('TV Shows')
+      result.current.handleServerChange(2)
+    })
+
+    await waitFor(() => expect(result.current.selectedServerId).toBe(2))
+    expect(localStorage.getItem('pladi_selected_show_server_id')).toBe('2')
+    expect(localStorage.getItem('pladi_selected_show_library')).toBe('TV Shows')
+  })
+})
