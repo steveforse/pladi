@@ -4,8 +4,8 @@ export const SHOW_COLUMN_GROUPS: ColumnGroup[] = [
   {
     label: 'General',
     columns: [
-      { id: 'episode_count', label: 'Episodes' },
       { id: 'id', label: 'ID' },
+      { id: 'episode_count', label: 'Episodes' },
       { id: 'updated_at', label: 'Last Updated' },
       { id: 'original_title', label: 'Original Title' },
       { id: 'originally_available', label: 'Originally Available' },
@@ -16,16 +16,28 @@ export const SHOW_COLUMN_GROUPS: ColumnGroup[] = [
     ],
   },
   {
+    label: 'Ratings',
+    columns: [
+      { id: 'content_rating', label: 'Content Rating' },
+      { id: 'imdb_rating', label: 'IMDb Rating' },
+      { id: 'rt_audience_rating', label: 'RT Audience Rating' },
+      { id: 'rt_critics_rating', label: 'RT Critics Rating' },
+      { id: 'tmdb_rating', label: 'TMDb Rating' },
+    ],
+  },
+  {
     label: 'Details',
     columns: [
       { id: 'collections', label: 'Collections' },
-      { id: 'content_rating', label: 'Content Rating' },
       { id: 'country', label: 'Country' },
+      { id: 'directors', label: 'Directors' },
       { id: 'genres', label: 'Genres' },
       { id: 'labels', label: 'Labels' },
+      { id: 'producers', label: 'Producers' },
       { id: 'studio', label: 'Studio' },
       { id: 'summary', label: 'Summary' },
       { id: 'tagline', label: 'Tagline' },
+      { id: 'writers', label: 'Writers' },
     ],
   },
   {
@@ -41,12 +53,31 @@ export const EPISODE_COLUMN_GROUPS: ColumnGroup[] = [
   {
     label: 'General',
     columns: [
+      { id: 'id', label: 'ID' },
       { id: 'duration', label: 'Duration' },
       { id: 'episode_count', label: 'Episode' },
-      { id: 'id', label: 'ID' },
       { id: 'updated_at', label: 'Last Updated' },
+      { id: 'originally_available', label: 'Originally Available' },
       { id: 'season_count', label: 'Season' },
+      { id: 'sort_title', label: 'Sort Title' },
       { id: 'year', label: 'Year' },
+    ],
+  },
+  {
+    label: 'Ratings',
+    columns: [
+      { id: 'content_rating', label: 'Content Rating' },
+      { id: 'imdb_rating', label: 'IMDb Rating' },
+      { id: 'rt_audience_rating', label: 'RT Audience Rating' },
+      { id: 'rt_critics_rating', label: 'RT Critics Rating' },
+      { id: 'tmdb_rating', label: 'TMDb Rating' },
+    ],
+  },
+  {
+    label: 'Details',
+    columns: [
+      { id: 'summary', label: 'Summary' },
+      { id: 'tagline', label: 'Tagline' },
     ],
   },
   {
@@ -70,6 +101,13 @@ export const EPISODE_COLUMN_GROUPS: ColumnGroup[] = [
       { id: 'audio_language', label: 'Audio Language' },
       { id: 'audio_tracks', label: 'Audio Tracks' },
       { id: 'subtitles', label: 'Subtitles' },
+    ],
+  },
+  {
+    label: 'Credits',
+    columns: [
+      { id: 'directors', label: 'Directors' },
+      { id: 'writers', label: 'Writers' },
     ],
   },
   {

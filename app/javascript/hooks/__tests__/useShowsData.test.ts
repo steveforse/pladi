@@ -30,6 +30,7 @@ function show(id: string, title: string) {
     id,
     title,
     original_title: null,
+    show_title: null,
     episode_number: null,
     year: 2024,
     file_path: null,
@@ -254,8 +255,8 @@ describe('useShowsData', () => {
     expect(loadedShow.viewed_episode_count).toBe(5)
   })
 
-  it('loads episode mode sections without running enrich', async () => {
-    const baseSections = [{ title: 'TV Shows', movies: [{ ...show('e1', 'Pilot'), original_title: 'Show A', episode_number: 'S01E01' }] }]
+  it('loads episode mode sections and runs enrich', async () => {
+    const baseSections = [{ title: 'TV Shows', movies: [{ ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01' }] }]
     const observedViewModes: string[] = []
 
     mockedApi.get.mockImplementation(async (path: string, options?: { query?: Record<string, unknown> }) => {
@@ -279,7 +280,7 @@ describe('useShowsData', () => {
 
     expect(result.current.sections[0].movies[0].id).toBe('e1')
     expect(observedViewModes).toEqual(['episodes', 'episodes'])
-    expect(mockedApi.get).not.toHaveBeenCalledWith(
+    expect(mockedApi.get).toHaveBeenCalledWith(
       '/api/shows/enrich',
       expect.objectContaining({ query: expect.objectContaining({ view_mode: 'episodes' }) })
     )

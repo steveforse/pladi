@@ -3,13 +3,14 @@
 module Plex
   class CacheStore
     CACHE_TTL = 30.days
+    CACHE_SCHEMA_VERSION = 2
 
     def initialize(server_id)
       @server_id = server_id
     end
 
     def key(*parts)
-      "plex/server/#{@server_id}/#{parts.join('/')}"
+      "plex/server/#{@server_id}/v#{CACHE_SCHEMA_VERSION}/#{parts.join('/')}"
     end
 
     # rubocop:disable Style/ArgumentsForwarding, Naming/BlockForwarding

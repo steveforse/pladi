@@ -89,6 +89,19 @@ RSpec.describe Plex::Enricher do
     it { expect(result_movie[:title]).to eq('Movie 1') }
     it { expect(result_movie[:summary]).to eq('Detailed summary') }
     it { expect(result_movie[:subtitles]).to eq('Thai (SRT)') }
+
+    it 'preserves existing stream-derived values when detail omits them' do
+      section_with_existing_bitrate = {
+        id: '10',
+        updated_at: 1234,
+        movies: [{ id: 'm1', file_path: '/movies/m1.mkv', title: 'Movie 1', video_bitrate: 2_400 }]
+      }
+      detail_without_stream_fields = { summary: 'Detailed summary' }
+      allow(movie_concurrent_fetcher).to receive(:fetch).with(section_with_existing_bitrate[:movies]).and_return('m1' => detail_without_stream_fields)
+
+      result = enricher.enrich_sections([section_with_existing_bitrate]).first[:movies].first
+      expect(result[:video_bitrate]).to eq(2_400)
+    end
   end
 
   describe '#enrich_show' do
@@ -119,6 +132,34 @@ RSpec.describe Plex::Enricher do
     it 'uses the show detail fetcher pipeline' do
       result_show = enricher.enrich_sections([section], media_type: 'show').first[:movies].first
       expect(result_show).to include(id: 's1', summary: 'Show details', season_count: 3)
+    end
+
+    it 'uses stream-aware detail pipeline for episode-like show rows' do
+      episode_section = {
+        id: '13',
+        updated_at: 5331,
+        movies: [{ id: 'e1', file_path: '/tv/show/s01e01.mkv', title: 'Pilot' }]
+      }
+      stream_detail = {
+        subtitles_by_file: { '/tv/show/s01e01.mkv' => 'English (SRT)' },
+        audio_by_file: { '/tv/show/s01e01.mkv' => 'English (AAC, 6ch, 640 kbps)' },
+        audio_language_by_file: { '/tv/show/s01e01.mkv' => 'English' },
+        audio_bitrate_by_file: { '/tv/show/s01e01.mkv' => 640 },
+        video_bitrate_by_file: { '/tv/show/s01e01.mkv' => 3200 }
+      }
+
+      allow(cache_store).to receive(:key).with('section', 'show', '13', 5331, 'enriched', 8).and_return('episode-section-cache-key')
+      allow(cache_store).to receive(:fetch).with('episode-section-cache-key').and_yield
+      allow(movie_concurrent_fetcher).to receive(:fetch).with(episode_section[:movies]).and_return('e1' => stream_detail)
+
+      result_episode = enricher.enrich_sections([episode_section], media_type: 'show').first[:movies].first
+      expect(result_episode).to include(
+        subtitles: 'English (SRT)',
+        audio_tracks: 'English (AAC, 6ch, 640 kbps)',
+        audio_language: 'English',
+        audio_bitrate: 640,
+        video_bitrate: 3200
+      )
     end
   end
 end

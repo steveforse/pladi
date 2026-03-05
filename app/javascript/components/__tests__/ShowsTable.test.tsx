@@ -246,7 +246,7 @@ describe('ShowsTable', () => {
             {
               id: 'e1',
               title: 'Good News About Hell',
-              original_title: 'Severance',
+              show_title: 'Severance',
               episode_number: 'S01E01',
               year: 2022,
               season_count: 1,

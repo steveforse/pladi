@@ -19,6 +19,11 @@ export const ENRICHMENT_FIELDS: (keyof Movie)[] = [
   'producers',
   'collections',
   'labels',
+  'subtitles',
+  'audio_tracks',
+  'audio_language',
+  'audio_bitrate',
+  'video_bitrate',
 ]
 
 export const SHOW_ENRICHMENT_FIELDS: (keyof Movie)[] = [
@@ -38,6 +43,11 @@ export const SHOW_ENRICHMENT_FIELDS: (keyof Movie)[] = [
   'producers',
   'collections',
   'labels',
+  'subtitles',
+  'audio_tracks',
+  'audio_language',
+  'audio_bitrate',
+  'video_bitrate',
 ]
 
 const VERSION = 1

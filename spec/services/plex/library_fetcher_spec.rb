@@ -46,6 +46,7 @@ RSpec.describe Plex::LibraryFetcher do
                   'videoFrameRate' => '24p',
                   'audioCodec' => 'aac',
                   'audioChannels' => 6,
+                  'videoBitrate' => 5600,
                   'bitrate' => 9000,
                   'duration' => 7_200_000,
                   'Part' => [{ 'file' => '/movies/z.mkv', 'size' => 1000 }]
@@ -97,7 +98,7 @@ RSpec.describe Plex::LibraryFetcher do
     end
 
     it 'maps part and media attributes' do
-      expect(movies.last).to include(file_path: '/movies/z.mkv', video_codec: 'h264', audio_channels: 6)
+      expect(movies.last).to include(file_path: '/movies/z.mkv', video_codec: 'h264', audio_channels: 6, video_bitrate: 5600)
     end
 
     it 'uses section id and timestamp when reading cache' do
@@ -147,10 +148,19 @@ RSpec.describe Plex::LibraryFetcher do
             {
               'ratingKey' => '401',
               'title' => 'Pilot',
+              'titleSort' => 'Pilot Sort',
               'grandparentTitle' => 'Show A',
               'parentIndex' => 1,
               'index' => 1,
               'updatedAt' => 300,
+              'Director' => [{ 'tag' => 'Aoife McArdle' }],
+              'Writer' => [{ 'tag' => 'Dan Erickson' }],
+              'Rating' => [
+                { 'image' => 'imdb://image.rating', 'value' => 8.4 },
+                { 'image' => 'rottentomatoes://rating', 'type' => 'critic', 'value' => 9.0 },
+                { 'image' => 'rottentomatoes://rating', 'type' => 'audience', 'value' => 8.7 },
+                { 'image' => 'themoviedb://rating', 'value' => 8.2 }
+              ],
               'Media' => [
                 {
                   'container' => 'mkv',
@@ -181,12 +191,19 @@ RSpec.describe Plex::LibraryFetcher do
       expect(episodes.first[:movies].first).to include(
         id: '401',
         title: 'Pilot',
-        original_title: 'Show A',
+        show_title: 'Show A',
+        sort_title: 'Pilot Sort',
         episode_number: 'S01E01',
         file_path: '/tv/show_a/s01e01.mkv',
         container: 'mkv',
         video_codec: 'h264',
         audio_codec: 'aac',
+        imdb_rating: 8.4,
+        rt_critics_rating: 9.0,
+        rt_audience_rating: 8.7,
+        tmdb_rating: 8.2,
+        directors: 'Aoife McArdle',
+        writers: 'Dan Erickson',
         subtitles: 'English',
         audio_tracks: '1',
         audio_language: 'English'

@@ -4,8 +4,8 @@ export const SHOW_FILTER_FIELD_GROUPS: FilterGroup[] = [
   {
     label: 'General',
     fields: [
-      { id: 'episode_count', label: 'Episodes', type: 'numeric' },
       { id: 'id', label: 'ID', type: 'string' },
+      { id: 'episode_count', label: 'Episodes', type: 'numeric' },
       { id: 'updated_at', label: 'Last Updated', type: 'date' },
       { id: 'original_title', label: 'Original Title', type: 'string' },
       { id: 'originally_available', label: 'Originally Available', type: 'date' },
@@ -17,16 +17,28 @@ export const SHOW_FILTER_FIELD_GROUPS: FilterGroup[] = [
     ],
   },
   {
-    label: 'Metadata',
+    label: 'Ratings',
+    fields: [
+      { id: 'content_rating', label: 'Content Rating', type: 'string' },
+      { id: 'imdb_rating', label: 'IMDb Rating', type: 'numeric' },
+      { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
+      { id: 'rt_critics_rating', label: 'RT Critics Rating', type: 'numeric' },
+      { id: 'tmdb_rating', label: 'TMDb Rating', type: 'numeric' },
+    ],
+  },
+  {
+    label: 'Details',
     fields: [
       { id: 'collections', label: 'Collections', type: 'string' },
-      { id: 'content_rating', label: 'Content Rating', type: 'string' },
       { id: 'country', label: 'Country', type: 'string' },
+      { id: 'directors', label: 'Directors', type: 'string' },
       { id: 'genres', label: 'Genres', type: 'string' },
       { id: 'labels', label: 'Labels', type: 'string' },
+      { id: 'producers', label: 'Producers', type: 'string' },
       { id: 'studio', label: 'Studio', type: 'string' },
       { id: 'summary', label: 'Summary', type: 'string' },
       { id: 'tagline', label: 'Tagline', type: 'string' },
+      { id: 'writers', label: 'Writers', type: 'string' },
     ],
   },
   {
@@ -42,14 +54,33 @@ export const EPISODE_FILTER_FIELD_GROUPS: FilterGroup[] = [
   {
     label: 'General',
     fields: [
+      { id: 'id', label: 'ID', type: 'string' },
       { id: 'duration', label: 'Duration', type: 'numeric', unit: 'min' },
       { id: 'episode_count', label: 'Episode', type: 'numeric' },
       { id: 'title', label: 'Episode Title', type: 'string' },
-      { id: 'id', label: 'ID', type: 'string' },
       { id: 'updated_at', label: 'Last Updated', type: 'date' },
+      { id: 'originally_available', label: 'Originally Available', type: 'date' },
       { id: 'season_count', label: 'Season', type: 'numeric' },
-      { id: 'original_title', label: 'Show Title', type: 'string' },
+      { id: 'show_title', label: 'Show Title', type: 'string' },
+      { id: 'sort_title', label: 'Sort Title', type: 'string' },
       { id: 'year', label: 'Year', type: 'numeric' },
+    ],
+  },
+  {
+    label: 'Ratings',
+    fields: [
+      { id: 'content_rating', label: 'Content Rating', type: 'string' },
+      { id: 'imdb_rating', label: 'IMDb Rating', type: 'numeric' },
+      { id: 'rt_audience_rating', label: 'RT Audience Rating', type: 'numeric' },
+      { id: 'rt_critics_rating', label: 'RT Critics Rating', type: 'numeric' },
+      { id: 'tmdb_rating', label: 'TMDb Rating', type: 'numeric' },
+    ],
+  },
+  {
+    label: 'Details',
+    fields: [
+      { id: 'summary', label: 'Summary', type: 'string' },
+      { id: 'tagline', label: 'Tagline', type: 'string' },
     ],
   },
   {
@@ -73,6 +104,13 @@ export const EPISODE_FILTER_FIELD_GROUPS: FilterGroup[] = [
       { id: 'audio_language', label: 'Audio Language', type: 'string' },
       { id: 'audio_tracks', label: 'Audio Tracks', type: 'string' },
       { id: 'subtitles', label: 'Subtitles', type: 'string' },
+    ],
+  },
+  {
+    label: 'Credits',
+    fields: [
+      { id: 'directors', label: 'Directors', type: 'string' },
+      { id: 'writers', label: 'Writers', type: 'string' },
     ],
   },
   {

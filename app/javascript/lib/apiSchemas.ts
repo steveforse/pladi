@@ -25,6 +25,7 @@ export const MovieListItemSchema = z.object({
   id: z.string(),
   title: z.string(),
   original_title: z.string().nullable(),
+  show_title: z.string().nullable().optional(),
   episode_number: z.string().nullable().optional(),
   year: z.number().nullable(),
   file_path: z.string().nullable(),

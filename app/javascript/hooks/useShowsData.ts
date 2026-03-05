@@ -25,6 +25,10 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
   const loadRequestIdRef = useRef(0)
   const activeLoadAbortRef = useRef<AbortController | null>(null)
 
+  function rowIdentity(row: Section['movies'][number]) {
+    return `${row.id}|${row.file_path ?? ''}`
+  }
+
   async function loadShows(serverId: number) {
     const requestId = loadRequestIdRef.current + 1
     loadRequestIdRef.current = requestId
@@ -77,11 +81,6 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
         if (!isStale()) setRefreshing(false)
       }
 
-      if (viewMode !== 'shows') {
-        if (!isStale()) setSyncing(false)
-        return
-      }
-
       setSyncing(true)
       try {
         const enrichRes = await api.get<EnrichResponse>('/api/shows/enrich', {
@@ -92,16 +91,16 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
         })
         if (isStale()) return
         if (enrichRes.ok && enrichRes.data?.sections) {
-          saveShowEnrichmentCache(serverId, enrichRes.data.sections as Section[])
+          if (viewMode === 'shows') saveShowEnrichmentCache(serverId, enrichRes.data.sections as Section[])
           setSections((prev) => {
             const prevById = new Map<string, Section['movies'][number]>()
             for (const section of prev) {
-              for (const show of section.movies) prevById.set(show.id, show)
+              for (const show of section.movies) prevById.set(rowIdentity(show), show)
             }
             return (enrichRes.data.sections as Section[]).map((section) => ({
               ...section,
               movies: section.movies.map((show) => {
-                const existing = prevById.get(show.id)
+                const existing = prevById.get(rowIdentity(show))
                 if (!existing) return show
                 const changed = SHOW_ENRICHMENT_FIELDS.some((f) => show[f] !== existing[f])
                 return changed ? show : existing
@@ -171,7 +170,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
   async function updateShow(showId: string, patch: Record<string, unknown>) {
     if (!selectedServerId) throw new Error('No server selected')
 
-    const tagFields = ['genres', 'writers', 'producers', 'collections', 'labels', 'country']
+    const tagFields = ['genres', 'directors', 'writers', 'producers', 'collections', 'labels', 'country']
     const apiPatch: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(patch)) {
       if (tagFields.includes(key)) {

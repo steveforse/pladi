@@ -61,6 +61,7 @@ module Plex
           id: item['ratingKey'],
           title: item['title'],
           original_title: item['originalTitle'],
+          show_title: nil,
           episode_number: nil,
           year: item['year'],
           file_path: nil,
@@ -109,7 +110,8 @@ module Plex
       {
         id: item['ratingKey'],
         title: item['title'],
-        original_title: item['grandparentTitle'],
+        original_title: nil,
+        show_title: item['grandparentTitle'],
         episode_number: episode_code(item),
         year: item['year'] || item['parentYear'],
         file_path: part['file'],
@@ -122,6 +124,7 @@ module Plex
         frame_rate: media['videoFrameRate'],
         audio_codec: media['audioCodec'],
         audio_channels: media['audioChannels'],
+        video_bitrate: media['videoBitrate'],
         overall_bitrate: media['bitrate'],
         size: part['size'],
         duration: media['duration'],
@@ -137,14 +140,19 @@ module Plex
         art: item['art'] || item['grandparentArt'],
         summary: item['summary'],
         content_rating: item['contentRating'],
-        genres: nil,
+        collections: join_tags(item['Collection']),
+        country: join_tags(item['Country']),
+        directors: join_tags(item['Director']),
+        genres: join_tags(item['Genre']),
+        labels: join_tags(item['Label']),
+        writers: join_tags(item['Writer']),
         subtitles: stream_info[:subtitles],
         audio_tracks: stream_info[:audio_tracks],
         audio_language: stream_info[:audio_language],
         audio_bitrate: stream_info[:audio_bitrate],
         video_bitrate: media['videoBitrate'],
         plex_url: plex_url
-      }
+      }.merge(ratings_for(item))
     end
 
     def episode_code(item)
@@ -167,12 +175,39 @@ module Plex
       }
     end
 
+    def ratings_for(item)
+      ratings = item['Rating'] || []
+      {
+        imdb_rating: rating_for(ratings, prefix: 'imdb://'),
+        rt_critics_rating: rating_for(ratings, prefix: 'rottentomatoes://', type: 'critic'),
+        rt_audience_rating: rating_for(ratings, prefix: 'rottentomatoes://', type: 'audience'),
+        tmdb_rating: rating_for(ratings, prefix: 'themoviedb://')
+      }
+    end
+
+    def rating_for(ratings, prefix:, type: nil)
+      ratings.find do |rating|
+        next false unless rating['image'].to_s.start_with?(prefix)
+        next true if type.nil?
+
+        rating['type'] == type
+      end&.dig('value')
+    end
+
+    def join_tags(entries)
+      return nil if entries.blank?
+
+      tags = entries.map { |entry| entry['tag'] }.compact_blank.uniq
+      tags.any? ? tags.join(', ') : nil
+    end
+
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def build_movie_hash(item, media, part, plex_url)
       {
         id: item['ratingKey'],
         title: item['title'],
         original_title: item['originalTitle'],
+        show_title: nil,
         episode_number: nil,
         year: item['year'],
         file_path: part['file'],
@@ -185,6 +220,7 @@ module Plex
         frame_rate: media['videoFrameRate'],
         audio_codec: media['audioCodec'],
         audio_channels: media['audioChannels'],
+        video_bitrate: media['videoBitrate'],
         overall_bitrate: media['bitrate'],
         size: part['size'],
         duration: media['duration'],

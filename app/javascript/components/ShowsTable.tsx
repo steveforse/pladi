@@ -11,6 +11,7 @@ import { usePagination } from '@/hooks/usePagination'
 import { matchesFilterWithFields } from '@/lib/filters'
 import { EPISODE_FILTER_FIELDS, EPISODE_FILTER_FIELD_GROUPS, SHOW_FILTER_FIELDS, SHOW_FILTER_FIELD_GROUPS } from '@/lib/showFilters'
 import { EPISODE_COLUMN_GROUPS, SHOW_COLUMN_GROUPS } from '@/lib/showColumns'
+import { fileIsInSubfolder, pathContainsYear, pathYearMatchesMetadata, titleMatchesFilename, titleMatchesPath } from '@/lib/pathMatching'
 import { useShowsData } from '@/hooks/useShowsData'
 import type { ShowsViewMode } from '@/hooks/useShowsData'
 import { formatBitrate, formatDate, formatDuration, formatFrameRate, formatISODate, formatResolution, formatSize } from '@/lib/formatters'
@@ -38,6 +39,7 @@ const EPISODE_DEFAULT_VISIBLE_COLUMNS: ColumnId[] = [
   'id',
   'season_count',
   'episode_count',
+  'sort_title',
   'container',
   'video_codec',
   'video_resolution',
@@ -61,6 +63,10 @@ const SHOW_DEFAULT_COL_ORDER: AllColumnId[] = [
   'originally_available',
   'updated_at',
   'content_rating',
+  'imdb_rating',
+  'rt_audience_rating',
+  'rt_critics_rating',
+  'tmdb_rating',
   'studio',
   'genres',
   'summary',
@@ -68,34 +74,48 @@ const SHOW_DEFAULT_COL_ORDER: AllColumnId[] = [
   'collections',
   'labels',
   'country',
+  'directors',
+  'producers',
+  'writers',
   'poster',
   'background',
 ]
 
 const EPISODE_DEFAULT_COL_ORDER: AllColumnId[] = [
   'id',
-  'original_title',
+  'show_title',
   'title',
-  'duration',
-  'episode_count',
-  'updated_at',
+  'sort_title',
   'season_count',
+  'episode_count',
   'year',
-  'aspect_ratio',
-  'frame_rate',
-  'height',
-  'video_bitrate',
+  'originally_available',
+  'updated_at',
+  'duration',
+  'content_rating',
+  'imdb_rating',
+  'rt_audience_rating',
+  'rt_critics_rating',
+  'tmdb_rating',
+  'directors',
+  'writers',
+  'summary',
+  'tagline',
   'video_codec',
-  'video_resolution',
+  'video_bitrate',
+  'frame_rate',
   'width',
-  'audio_bitrate',
+  'height',
+  'aspect_ratio',
+  'video_resolution',
   'audio_codec',
+  'audio_bitrate',
   'audio_channels',
   'audio_language',
   'audio_tracks',
   'subtitles',
-  'container',
   'file_path',
+  'container',
   'overall_bitrate',
   'size',
   'poster',
@@ -106,6 +126,7 @@ const SHOW_TABLE_COLUMNS: Array<{ id: AllColumnId; label: string; sortKey?: Sort
   { id: 'id', label: 'ID', sortKey: 'id' },
   { id: 'title', label: 'Title', sortKey: 'title' },
   { id: 'original_title', label: 'Original Title', sortKey: 'original_title' },
+  { id: 'show_title', label: 'Show Title', sortKey: 'show_title' },
   { id: 'year', label: 'Year', sortKey: 'year' },
   { id: 'season_count', label: 'Seasons', sortKey: 'season_count' },
   { id: 'episode_count', label: 'Episodes', sortKey: 'episode_count' },
@@ -117,10 +138,17 @@ const SHOW_TABLE_COLUMNS: Array<{ id: AllColumnId; label: string; sortKey?: Sort
   { id: 'genres', label: 'Genres', sortKey: 'genres' },
   { id: 'summary', label: 'Summary', sortKey: 'summary' },
   { id: 'content_rating', label: 'Content Rating', sortKey: 'content_rating' },
+  { id: 'imdb_rating', label: 'IMDb Rating', sortKey: 'imdb_rating' },
+  { id: 'rt_audience_rating', label: 'RT Audience Rating', sortKey: 'rt_audience_rating' },
+  { id: 'rt_critics_rating', label: 'RT Critics Rating', sortKey: 'rt_critics_rating' },
+  { id: 'tmdb_rating', label: 'TMDb Rating', sortKey: 'tmdb_rating' },
   { id: 'tagline', label: 'Tagline', sortKey: 'tagline' },
   { id: 'collections', label: 'Collections', sortKey: 'collections' },
   { id: 'labels', label: 'Labels', sortKey: 'labels' },
   { id: 'country', label: 'Country', sortKey: 'country' },
+  { id: 'directors', label: 'Directors', sortKey: 'directors' },
+  { id: 'producers', label: 'Producers', sortKey: 'producers' },
+  { id: 'writers', label: 'Writers', sortKey: 'writers' },
   { id: 'file_path', label: 'File Path', sortKey: 'file_path' },
   { id: 'container', label: 'Container', sortKey: 'container' },
   { id: 'video_codec', label: 'Video Codec', sortKey: 'video_codec' },
@@ -130,6 +158,8 @@ const SHOW_TABLE_COLUMNS: Array<{ id: AllColumnId; label: string; sortKey?: Sort
   { id: 'height', label: 'Height', sortKey: 'height' },
   { id: 'aspect_ratio', label: 'Aspect Ratio', sortKey: 'aspect_ratio' },
   { id: 'frame_rate', label: 'Frame Rate', sortKey: 'frame_rate' },
+  { id: 'audio_channels', label: 'Audio Channels', sortKey: 'audio_channels' },
+  { id: 'audio_codec', label: 'Audio Codec', sortKey: 'audio_codec' },
   { id: 'audio_bitrate', label: 'Audio Bitrate', sortKey: 'audio_bitrate' },
   { id: 'audio_tracks', label: 'Audio Tracks', sortKey: 'audio_tracks' },
   { id: 'audio_language', label: 'Audio Language', sortKey: 'audio_language' },
@@ -149,7 +179,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 
 function isAlwaysVisibleColumn(viewMode: ShowsViewMode, id: AllColumnId): boolean {
   if (id === 'title') return true
-  return viewMode === 'episodes' && id === 'original_title'
+  return viewMode === 'episodes' && id === 'show_title'
 }
 
 function loadSortFromStorage(): { sortKey: SortKey; sortDir: SortDir } {
@@ -216,6 +246,12 @@ export default function ShowsTable({
 
   const [unwatchedOnly, setUnwatchedOnly] = useState(false)
   const [partiallyWatchedOnly, setPartiallyWatchedOnly] = useState(false)
+  const [multiOnly, setMultiOnly] = useState(false)
+  const [unmatchedOnly, setUnmatchedOnly] = useState(false)
+  const [filenameMismatch, setFilenameMismatch] = useState(false)
+  const [noYearInPath, setNoYearInPath] = useState(false)
+  const [yearPathMismatch, setYearPathMismatch] = useState(false)
+  const [notInSubfolder, setNotInSubfolder] = useState(false)
 
   const [filtersOpen, setFiltersOpen] = useState(() => {
     try {
@@ -265,9 +301,13 @@ export default function ShowsTable({
   })
 
   const nextId = useRef(filters.length > 0 ? Math.max(...filters.map((f) => f.id)) + 1 : 1)
+  useEffect(() => {
+    const validFields = new Set((viewMode === 'episodes' ? EPISODE_FILTER_FIELDS : SHOW_FILTER_FIELDS).map((f) => f.id))
+    setFilters((prev) => prev.filter((f) => validFields.has(f.field)))
+  }, [viewMode])
 
   const activeFilterCount =
-    [unwatchedOnly, partiallyWatchedOnly].filter(Boolean).length +
+    [unwatchedOnly, partiallyWatchedOnly, multiOnly, unmatchedOnly, filenameMismatch, noYearInPath, yearPathMismatch, notInSubfolder].filter(Boolean).length +
     filters.length
 
   function addFilter() {
@@ -289,6 +329,12 @@ export default function ShowsTable({
     setFilters([])
     setUnwatchedOnly(false)
     setPartiallyWatchedOnly(false)
+    setMultiOnly(false)
+    setUnmatchedOnly(false)
+    setFilenameMismatch(false)
+    setNoYearInPath(false)
+    setYearPathMismatch(false)
+    setNotInSubfolder(false)
   }
 
   function handleSort(key: SortKey) {
@@ -332,6 +378,12 @@ export default function ShowsTable({
     setFilters([])
     setUnwatchedOnly(false)
     setPartiallyWatchedOnly(false)
+    setMultiOnly(false)
+    setUnmatchedOnly(false)
+    setFilenameMismatch(false)
+    setNoYearInPath(false)
+    setYearPathMismatch(false)
+    setNotInSubfolder(false)
     setVisibleCols(new Set(nextMode === 'episodes' ? EPISODE_DEFAULT_VISIBLE_COLUMNS : DEFAULT_VISIBLE_COLUMNS))
     setColOrder([...(nextMode === 'episodes' ? EPISODE_DEFAULT_COL_ORDER : SHOW_DEFAULT_COL_ORDER)])
   }
@@ -386,10 +438,27 @@ export default function ShowsTable({
       return true
     })
 
+    const quickEpisodesFiltered = viewMode === 'episodes'
+      ? (() => {
+          let rows = quickFiltered
+          if (multiOnly) {
+            const counts = new Map<string, number>()
+            for (const row of rows) counts.set(row.id, (counts.get(row.id) ?? 0) + 1)
+            rows = rows.filter((row) => (counts.get(row.id) ?? 0) > 1)
+          }
+          if (unmatchedOnly) rows = rows.filter((row) => !titleMatchesPath(row))
+          if (filenameMismatch) rows = rows.filter((row) => !titleMatchesFilename(row))
+          if (noYearInPath) rows = rows.filter((row) => !pathContainsYear(row))
+          if (yearPathMismatch) rows = rows.filter((row) => !pathYearMatchesMetadata(row))
+          if (notInSubfolder) rows = rows.filter((row) => !fileIsInSubfolder(row))
+          return rows
+        })()
+      : quickFiltered
+
     const fieldDefs = viewMode === 'episodes' ? EPISODE_FILTER_FIELDS : SHOW_FILTER_FIELDS
     const advancedFiltered = filters.length > 0
-      ? quickFiltered.filter((show) => filters.every((f) => matchesFilterWithFields(fieldDefs, show, f)))
-      : quickFiltered
+      ? quickEpisodesFiltered.filter((show) => filters.every((f) => matchesFilterWithFields(fieldDefs, show, f)))
+      : quickEpisodesFiltered
 
     return sortMovies(advancedFiltered, sortKey, sortDir)
   }, [
@@ -401,6 +470,12 @@ export default function ShowsTable({
     filters,
     unwatchedOnly,
     partiallyWatchedOnly,
+    multiOnly,
+    unmatchedOnly,
+    filenameMismatch,
+    noYearInPath,
+    yearPathMismatch,
+    notInSubfolder,
   ])
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
@@ -633,6 +708,46 @@ export default function ShowsTable({
                   </div>
                 </div>
               )}
+              {viewMode === 'episodes' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</p>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Title</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={unmatchedOnly} onChange={(e) => setUnmatchedOnly(e.target.checked)} />
+                        Mismatches file path
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={filenameMismatch} onChange={(e) => setFilenameMismatch(e.target.checked)} />
+                        Mismatches filename
+                      </label>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Year</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={noYearInPath} onChange={(e) => setNoYearInPath(e.target.checked)} />
+                        Missing from file path
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={yearPathMismatch} onChange={(e) => setYearPathMismatch(e.target.checked)} />
+                        File path mismatches metadata
+                      </label>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">File</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={multiOnly} onChange={(e) => setMultiOnly(e.target.checked)} />
+                        Multiple files only
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={notInSubfolder} onChange={(e) => setNotInSubfolder(e.target.checked)} />
+                        Not in show subfolder
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Advanced filters</p>
@@ -683,7 +798,7 @@ export default function ShowsTable({
                     if (!col) return null
                     const label = viewMode === 'episodes' && id === 'title'
                       ? 'Episode Title'
-                      : viewMode === 'episodes' && id === 'original_title'
+                      : viewMode === 'episodes' && id === 'show_title'
                         ? 'Show Title'
                         : viewMode === 'episodes' && id === 'season_count'
                           ? 'Season'
@@ -753,6 +868,8 @@ export default function ShowsTable({
                         )
                       case 'original_title':
                         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.original_title ?? '—'}</td>
+                      case 'show_title':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.show_title ?? '—'}</td>
                       case 'year':
                         return viewMode === 'shows'
                           ? (
@@ -859,6 +976,14 @@ export default function ShowsTable({
                               />
                             )
                           : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.content_rating ?? '—'}</td>
+                      case 'imdb_rating':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.imdb_rating != null ? show.imdb_rating.toFixed(1) : '—'}</td>
+                      case 'rt_audience_rating':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.rt_audience_rating != null ? show.rt_audience_rating.toFixed(1) : '—'}</td>
+                      case 'rt_critics_rating':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.rt_critics_rating != null ? show.rt_critics_rating.toFixed(1) : '—'}</td>
+                      case 'tmdb_rating':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.tmdb_rating != null ? show.tmdb_rating.toFixed(1) : '—'}</td>
                       case 'tagline':
                         return viewMode === 'shows'
                           ? (
@@ -915,6 +1040,45 @@ export default function ShowsTable({
                               />
                             )
                           : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.country ?? '—'}</td>
+                      case 'directors':
+                        return viewMode === 'shows'
+                          ? (
+                              <EditableCell
+                                key={id}
+                                value={show.directors ? show.directors.split(', ').filter(Boolean) : []}
+                                fieldType="tags"
+                                onSave={async (v) => updateShow(show.id, { directors: (v as string[]).join(', ') || null })}
+                                renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.directors ?? '—'}</span>}
+                                className="px-4 py-2"
+                              />
+                            )
+                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.directors ?? '—'}</td>
+                      case 'producers':
+                        return viewMode === 'shows'
+                          ? (
+                              <EditableCell
+                                key={id}
+                                value={show.producers ? show.producers.split(', ').filter(Boolean) : []}
+                                fieldType="tags"
+                                onSave={async (v) => updateShow(show.id, { producers: (v as string[]).join(', ') || null })}
+                                renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.producers ?? '—'}</span>}
+                                className="px-4 py-2"
+                              />
+                            )
+                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.producers ?? '—'}</td>
+                      case 'writers':
+                        return viewMode === 'shows'
+                          ? (
+                              <EditableCell
+                                key={id}
+                                value={show.writers ? show.writers.split(', ').filter(Boolean) : []}
+                                fieldType="tags"
+                                onSave={async (v) => updateShow(show.id, { writers: (v as string[]).join(', ') || null })}
+                                renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.writers ?? '—'}</span>}
+                                className="px-4 py-2"
+                              />
+                            )
+                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.writers ?? '—'}</td>
                       case 'file_path':
                         return <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs break-all">{show.file_path ?? '—'}</td>
                       case 'container':

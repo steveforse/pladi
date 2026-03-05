@@ -55,7 +55,7 @@ module Plex
       key = @cache.key('section', media_type, section[:id], section[:updated_at], 'enriched', @cache.enrich_version)
       @cache.fetch(key) do
         movies = section[:movies]
-        details = concurrent_fetcher_for(media_type).fetch(movies)
+        details = concurrent_fetcher_for(media_type, movies).fetch(movies)
 
         section.merge(
           movies: movies.map do |m|
@@ -65,8 +65,12 @@ module Plex
       end
     end
 
-    def concurrent_fetcher_for(media_type)
-      media_type == 'show' ? @concurrent_show_detail_fetcher : @concurrent_movie_detail_fetcher
+    def concurrent_fetcher_for(media_type, movies)
+      # Show rows (no file path) use show metadata parser; episode rows (with file path)
+      # need per-file stream parsing from the movie detail parser pipeline.
+      return @concurrent_show_detail_fetcher if media_type == 'show' && movies.all? { |m| m[:file_path].blank? }
+
+      @concurrent_movie_detail_fetcher
     end
 
     def merge_detail(movie, detail, file_path:)
@@ -82,7 +86,7 @@ module Plex
         audio_language: detail[:audio_language_by_file]&.dig(file_path),
         audio_bitrate: detail[:audio_bitrate_by_file]&.dig(file_path),
         video_bitrate: detail[:video_bitrate_by_file]&.dig(file_path)
-      }
+      }.compact
     end
   end
 end
