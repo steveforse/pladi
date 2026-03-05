@@ -152,6 +152,46 @@ describe('useMoviesData', () => {
     })
   })
 
+  it('keeps distinct file rows for multi-file movies after enrichment merge', async () => {
+    const movieA = { ...movie('m1', 'Alpha'), file_path: '/movies/Alpha/alpha-cut-a.mkv', video_codec: 'h264' }
+    const movieB = { ...movie('m1', 'Alpha'), file_path: '/movies/Alpha/alpha-cut-b.mkv', video_codec: 'hevc' }
+    const baseSections = [{ title: 'Movies', movies: [movieA, movieB] }]
+    const enrichedSections = [{ title: 'Movies', movies: [{ ...movieA, summary: null }, { ...movieB, summary: null }] }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/movies') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/movies/refresh') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/movies/enrich') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            sections: enrichedSections,
+            cached_poster_ids: [],
+            uncached_poster_movies: [],
+            cached_background_ids: [],
+            uncached_background_movies: [],
+          },
+        }
+      }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useMoviesData(false))
+
+    await waitFor(() => expect(result.current.syncing).toBe(false))
+
+    const rows = result.current.sections[0].movies
+    expect(rows).toHaveLength(2)
+    expect(rows[0].file_path).toBe('/movies/Alpha/alpha-cut-a.mkv')
+    expect(rows[1].file_path).toBe('/movies/Alpha/alpha-cut-b.mkv')
+    expect(rows[0].video_codec).toBe('h264')
+    expect(rows[1].video_codec).toBe('hevc')
+  })
+
   it('restores saved server + library and handles non-ok refresh/enrich gracefully', async () => {
     localStorage.setItem('pladi_selected_server_id', '2')
     localStorage.setItem('pladi_selected_library', 'TV')

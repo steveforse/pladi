@@ -82,7 +82,7 @@ export function MovieRow({
   const col = (id: ColumnId) => visibleCols.has(id)
 
   return (
-    <tr key={`${movie.id}|${movie.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
+    <tr className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
       <td className="px-2 py-1 w-8">
         <input type="checkbox" checked={selected} onChange={() => onToggle(movie.id)} />
       </td>

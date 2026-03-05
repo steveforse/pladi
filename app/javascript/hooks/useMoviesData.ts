@@ -138,14 +138,15 @@ export function useMoviesData(downloadImages: boolean) {
           if (isStale()) return
           saveEnrichmentCache(serverId, enrichData.sections)
           setSections((prev) => {
-            const prevById = new Map<string, Movie>()
+            const rowKey = (movie: Pick<Movie, 'id' | 'file_path'>) => `${movie.id}|${movie.file_path ?? ''}`
+            const prevByRow = new Map<string, Movie>()
             for (const section of prev) {
-              for (const movie of section.movies) prevById.set(movie.id, movie)
+              for (const movie of section.movies) prevByRow.set(rowKey(movie), movie)
             }
             return (enrichData.sections as Section[]).map((section) => ({
               ...section,
               movies: section.movies.map((movie: Movie) => {
-                const existing = prevById.get(movie.id)
+                const existing = prevByRow.get(rowKey(movie))
                 if (!existing) return movie
                 const changed = ENRICHMENT_FIELDS.some((f) => movie[f] !== existing[f])
                 return changed ? movie : existing
