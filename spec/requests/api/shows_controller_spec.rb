@@ -22,12 +22,32 @@ RSpec.describe Api::ShowsController do
 
     context 'when server exists' do
       before do
-        allow(service).to receive(:sections).with(media_type: 'show').and_return([{ title: 'TV Shows', movies: [{ id: '1' }] }])
+        allow(service).to receive(:sections).with(media_type: 'show').and_return(
+          [{
+            title: 'TV Shows',
+            movies: [{
+              id: '1',
+              season_count: 2,
+              episode_count: 20,
+              viewed_episode_count: 8
+            }]
+          }]
+        )
         get '/api/shows', params: { server_id: server.id }, as: :json
       end
 
       it 'returns serialized sections payload' do
-        expect(json_body).to eq([{ 'title' => 'TV Shows', 'movies' => [{ 'id' => '1' }] }])
+        expect(json_body).to eq(
+          [{
+            'title' => 'TV Shows',
+            'movies' => [{
+              'id' => '1',
+              'season_count' => 2,
+              'episode_count' => 20,
+              'viewed_episode_count' => 8
+            }]
+          }]
+        )
       end
     end
   end
@@ -82,7 +102,15 @@ RSpec.describe Api::ShowsController do
   describe 'GET /api/shows/enrich' do
     before do
       allow(service).to receive(:enriched_library).with(media_type: 'show').and_return(
-        sections: [{ title: 'TV Shows', movies: [{ id: '1' }] }],
+        sections: [{
+          title: 'TV Shows',
+          movies: [{
+            id: '1',
+            season_count: 2,
+            episode_count: 20,
+            viewed_episode_count: 8
+          }]
+        }],
         cached_poster_ids: ['1'],
         uncached_poster_movies: [{ id: '2', thumb: '/thumb' }],
         cached_background_ids: ['1'],
@@ -92,7 +120,17 @@ RSpec.describe Api::ShowsController do
     end
 
     it 'returns enriched payload with serialized sections and no image warming fields' do
-      expect(json_body).to eq('sections' => [{ 'title' => 'TV Shows', 'movies' => [{ 'id' => '1' }] }])
+      expect(json_body).to eq(
+        'sections' => [{
+          'title' => 'TV Shows',
+          'movies' => [{
+            'id' => '1',
+            'season_count' => 2,
+            'episode_count' => 20,
+            'viewed_episode_count' => 8
+          }]
+        }]
+      )
     end
   end
 

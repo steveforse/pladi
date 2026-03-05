@@ -510,6 +510,7 @@ export default function ShowsTable({
                         <div className="flex items-center gap-1">
                           <span
                             draggable
+                            aria-label={`Drag ${col.label} column`}
                             onDragStart={() => handleColDragStart(id)}
                             onDragEnd={handleColDragEnd}
                             onClick={(e) => e.stopPropagation()}

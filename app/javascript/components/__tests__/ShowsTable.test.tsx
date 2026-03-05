@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ShowsTable from '@/components/ShowsTable'
@@ -176,11 +176,33 @@ describe('ShowsTable', () => {
     setupHookMock()
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
-    expect(within(view.container).getByRole('columnheader', { name: /^Summary/ })).toBeInTheDocument()
+    expect(within(view.container).getByRole('columnheader', { name: /Summary/ })).toBeInTheDocument()
     await userEvent.click(within(view.container).getByRole('button', { name: /Toggle Columns/i }))
     expect(within(view.container).getByRole('checkbox', { name: 'Content Rating' })).toBeInTheDocument()
     await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Summary' }))
 
-    expect(within(view.container).queryByRole('columnheader', { name: /^Summary/ })).not.toBeInTheDocument()
+    expect(within(view.container).queryByRole('columnheader', { name: /Summary/ })).not.toBeInTheDocument()
+  })
+
+  it('reorders columns via drag and drop and persists order', async () => {
+    setupHookMock()
+    const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+
+    const idHeader = within(view.container).getByRole('columnheader', { name: /ID/ })
+    const yearDragHandle = within(view.container).getByLabelText('Drag Year column')
+
+    fireEvent.dragStart(yearDragHandle)
+    fireEvent.dragOver(idHeader)
+    fireEvent.drop(idHeader)
+    fireEvent.dragEnd(yearDragHandle)
+
+    let reorderedHeaders = within(view.container).getAllByRole('columnheader')
+    expect(reorderedHeaders[0]).toHaveTextContent('Year')
+
+    view.unmount()
+
+    const utils = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    reorderedHeaders = within(utils.container).getAllByRole('columnheader')
+    expect(reorderedHeaders[0]).toHaveTextContent('Year')
   })
 })
