@@ -1,12 +1,16 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
+import { FilterRow } from '@/components/movies/FilterRow'
 import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
 import { Paginator } from '@/components/movies/Paginator'
 import { usePagination } from '@/hooks/usePagination'
+import { matchesFilter } from '@/lib/filters'
 import { useShowsData } from '@/hooks/useShowsData'
 import { sortMovies } from '@/lib/sorting'
-import type { SortDir } from '@/lib/types'
+import type { ActiveFilter, SortDir } from '@/lib/types'
+
+const FILTERS_STORAGE_KEY = 'pladi.shows.filters'
 
 export default function ShowsTable({
   onMovies,
@@ -33,6 +37,34 @@ export default function ShowsTable({
   } = useShowsData()
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [query, setQuery] = useState('')
+  const [filters, setFilters] = useState<ActiveFilter[]>(() => {
+    try {
+      const raw = sessionStorage.getItem(FILTERS_STORAGE_KEY)
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  })
+  const nextId = useRef(filters.length > 0 ? Math.max(...filters.map((f) => f.id)) + 1 : 1)
+
+  function addFilter() {
+    setFilters((prev) => [
+      ...prev,
+      { id: nextId.current++, field: 'title', op: 'includes', value: '' },
+    ])
+  }
+
+  function updateFilter(id: number, updated: ActiveFilter) {
+    setFilters((prev) => prev.map((f) => (f.id === id ? updated : f)))
+  }
+
+  function removeFilter(id: number) {
+    setFilters((prev) => prev.filter((f) => f.id !== id))
+  }
+
+  function clearAllFilters() {
+    setFilters([])
+  }
 
   const filteredShows = useMemo(() => {
     const shows = selectedTitle === null
@@ -45,10 +77,22 @@ export default function ShowsTable({
           const searchable = [show.title, show.summary, show.studio, show.genres].filter(Boolean).join(' ').toLowerCase()
           return searchable.includes(normalized)
         })
-    return sortMovies(searched, 'title', sortDir)
-  }, [sections, selectedTitle, sortDir, query])
+    const advancedFiltered = filters.length > 0
+      ? searched.filter((show) => filters.every((f) => matchesFilter(show, f)))
+      : searched
+    return sortMovies(advancedFiltered, 'title', sortDir)
+  }, [sections, selectedTitle, sortDir, query, filters])
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
   const pagedShows = pageSize === 0 ? filteredShows : filteredShows.slice((page - 1) * pageSize, page * pageSize)
+  const activeFilterCount = filters.length
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters))
+    } catch {
+      // storage unavailable
+    }
+  }, [filters])
 
   if (loading) {
     return (
@@ -174,6 +218,30 @@ export default function ShowsTable({
               placeholder="Title, studio, genre..."
               className="border rounded px-3 py-1.5 text-sm bg-background w-56"
             />
+          </div>
+        </div>
+
+        <div className="border rounded-md p-3 space-y-2 w-fit">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Advanced filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+          </p>
+          {filters.map((f) => (
+            <FilterRow
+              key={f.id}
+              filter={f}
+              onChange={(updated) => updateFilter(f.id, updated)}
+              onRemove={() => removeFilter(f.id)}
+            />
+          ))}
+          <div className="flex items-center gap-2">
+            <button onClick={addFilter} className="btn px-3 py-1.5 text-sm">
+              + Add Filter
+            </button>
+            {activeFilterCount > 0 && (
+              <button onClick={clearAllFilters} className="btn px-3 py-1.5 text-sm text-destructive">
+                Clear all
+              </button>
+            )}
           </div>
         </div>
 

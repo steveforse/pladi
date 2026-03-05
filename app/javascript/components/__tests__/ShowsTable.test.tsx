@@ -89,4 +89,25 @@ describe('ShowsTable', () => {
     expect(within(view.container).queryByText('Severance')).not.toBeInTheDocument()
     expect(within(view.container).getByText('The Bear')).toBeInTheDocument()
   })
+
+  it('filters shows by advanced filter rows', async () => {
+    setupHookMock({
+      sections: [
+        {
+          title: 'TV Shows',
+          movies: [
+            { id: 's1', title: 'Severance', year: 2022, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null },
+            { id: 's2', title: 'The Bear', year: 2023, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', file_path: null },
+          ],
+        },
+      ],
+    })
+
+    const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    await userEvent.click(within(view.container).getByRole('button', { name: '+ Add Filter' }))
+    await userEvent.type(within(view.container).getByPlaceholderText('value'), 'bear')
+
+    expect(within(view.container).queryByText('Severance')).not.toBeInTheDocument()
+    expect(within(view.container).getByText('The Bear')).toBeInTheDocument()
+  })
 })
