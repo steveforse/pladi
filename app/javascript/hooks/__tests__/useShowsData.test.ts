@@ -218,4 +218,38 @@ describe('useShowsData', () => {
 
     expect(result.current.sections[0].movies[0].summary).toBe('Cached summary')
   })
+
+  it('does not let legacy cached count fields override live show counts', async () => {
+    const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
+    localStorage.setItem(
+      'pladi_show_enrichment_v1_1',
+      JSON.stringify({
+        s1: {
+          summary: 'Cached summary',
+          season_count: null,
+          episode_count: null,
+          viewed_episode_count: null,
+        },
+      })
+    )
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/refresh') return { ok: false, status: 500, data: null }
+      if (path === '/api/shows/enrich') return { ok: false, status: 500, data: null }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useShowsData())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    const loadedShow = result.current.sections[0].movies[0]
+    expect(loadedShow.summary).toBe('Cached summary')
+    expect(loadedShow.season_count).toBe(2)
+    expect(loadedShow.episode_count).toBe(20)
+    expect(loadedShow.viewed_episode_count).toBe(5)
+  })
 })
