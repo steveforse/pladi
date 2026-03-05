@@ -5,6 +5,7 @@ export function Paginator({
   totalPages,
   pageSize,
   total,
+  itemLabel = 'movies',
   onPage,
   onPageSize,
   leftSlot,
@@ -14,6 +15,7 @@ export function Paginator({
   totalPages: number
   pageSize: number
   total: number
+  itemLabel?: string
   onPage: (p: number) => void
   onPageSize: (n: number) => void
   leftSlot?: React.ReactNode
@@ -22,7 +24,7 @@ export function Paginator({
   return (
     <div className="flex items-center gap-4 flex-wrap">
       <p className="text-xs text-muted-foreground">
-        {total} movies
+        {total} {itemLabel}
         {pageSize > 0 && total > pageSize && (
           <> &mdash; page {page} of {totalPages}</>
         )}

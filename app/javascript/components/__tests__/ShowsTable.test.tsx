@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ShowsTable from '@/components/ShowsTable'
@@ -63,10 +63,30 @@ describe('ShowsTable', () => {
   it('renders shows list and allows switching back to movies', async () => {
     const onMovies = vi.fn()
     setupHookMock()
-    render(<ShowsTable onMovies={onMovies} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    const view = render(<ShowsTable onMovies={onMovies} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
     expect(screen.getByText('Severance')).toBeInTheDocument()
-    await userEvent.click(screen.getAllByRole('button', { name: 'Switch to Movies' }).at(-1)!)
+    await userEvent.click(within(view.container).getByRole('button', { name: 'Switch to Movies' }))
     expect(onMovies).toHaveBeenCalledTimes(1)
+  })
+
+  it('filters shows by search query', async () => {
+    setupHookMock({
+      sections: [
+        {
+          title: 'TV Shows',
+          movies: [
+            { id: 's1', title: 'Severance', year: 2022, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null },
+            { id: 's2', title: 'The Bear', year: 2023, studio: 'FX', genres: 'Comedy', summary: 'A chef returns home.', file_path: null },
+          ],
+        },
+      ],
+    })
+
+    const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
+    await userEvent.type(within(view.container).getByPlaceholderText('Title, studio, genre...'), 'bear')
+
+    expect(within(view.container).queryByText('Severance')).not.toBeInTheDocument()
+    expect(within(view.container).getByText('The Bear')).toBeInTheDocument()
   })
 })

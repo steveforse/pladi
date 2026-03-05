@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
+import { Paginator } from '@/components/movies/Paginator'
+import { usePagination } from '@/hooks/usePagination'
 import { useShowsData } from '@/hooks/useShowsData'
 import { sortMovies } from '@/lib/sorting'
 import type { SortDir } from '@/lib/types'
@@ -30,13 +32,23 @@ export default function ShowsTable({
     handleLibraryChange,
   } = useShowsData()
   const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [query, setQuery] = useState('')
 
-  const visibleShows = useMemo(() => {
+  const filteredShows = useMemo(() => {
     const shows = selectedTitle === null
       ? sections.flatMap((s) => s.movies)
       : (sections.find((s) => s.title === selectedTitle)?.movies ?? [])
-    return sortMovies(shows, 'title', sortDir)
-  }, [sections, selectedTitle, sortDir])
+    const normalized = query.trim().toLowerCase()
+    const searched = normalized.length === 0
+      ? shows
+      : shows.filter((show) => {
+          const searchable = [show.title, show.summary, show.studio, show.genres].filter(Boolean).join(' ').toLowerCase()
+          return searchable.includes(normalized)
+        })
+    return sortMovies(searched, 'title', sortDir)
+  }, [sections, selectedTitle, sortDir, query])
+  const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
+  const pagedShows = pageSize === 0 ? filteredShows : filteredShows.slice((page - 1) * pageSize, page * pageSize)
 
   if (loading) {
     return (
@@ -154,7 +166,26 @@ export default function ShowsTable({
               Title ({sortDir})
             </button>
           </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-muted-foreground">Search:</label>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Title, studio, genre..."
+              className="border rounded px-3 py-1.5 text-sm bg-background w-56"
+            />
+          </div>
         </div>
+
+        <Paginator
+          page={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          total={filteredShows.length}
+          itemLabel="shows"
+          onPage={setPage}
+          onPageSize={handlePageSize}
+        />
 
         <div className="rounded-md border overflow-auto">
           <table className="w-full text-sm">
@@ -168,7 +199,7 @@ export default function ShowsTable({
               </tr>
             </thead>
             <tbody>
-              {visibleShows.map((show) => (
+              {pagedShows.map((show) => (
                 <tr key={`${show.id}|${show.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
                   <td className="px-4 py-2 font-medium whitespace-nowrap">{show.title}</td>
                   <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</td>
@@ -179,7 +210,7 @@ export default function ShowsTable({
                   </td>
                 </tr>
               ))}
-              {visibleShows.length === 0 && (
+              {pagedShows.length === 0 && (
                 <tr>
                   <td className="px-4 py-6 text-muted-foreground text-sm" colSpan={5}>
                     No shows found in this selection.
