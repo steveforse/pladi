@@ -20,7 +20,13 @@ import { PosterModal } from '@/components/movies/PosterModal'
 import { ImageModal } from '@/components/movies/ImageModal'
 import { BulkEditModal } from '@/components/movies/BulkEditModal'
 
-export default function MoviesTable({ onLogout, onSettings, onHistory, downloadImages }: { onLogout: () => void; onSettings: () => void; onHistory: () => void; downloadImages: boolean }) {
+export default function MoviesTable({ onLogout, onSettings, onHistory, onShows, downloadImages }: {
+  onLogout: () => void
+  onSettings: () => void
+  onHistory: () => void
+  onShows: () => void
+  downloadImages: boolean
+}) {
   const {
     plexServers, selectedServerId, sections, selectedTitle,
     loading, refreshing, syncing, error, posterReady, backgroundReady,
@@ -189,10 +195,16 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, downloadI
         <HamburgerMenu onLogout={onLogout} onSettings={onSettings} onHistory={onHistory} />
       </div>
 
-      <div className="px-8 space-y-4">
+        <div className="px-8 space-y-4">
 
         {/* Server + Library selector */}
         <div className="flex items-center gap-4 flex-wrap">
+          <button
+            onClick={onShows}
+            className="btn px-3 py-1.5 text-sm"
+          >
+            TV Shows
+          </button>
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-muted-foreground">Server:</label>
             <select

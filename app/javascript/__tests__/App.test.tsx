@@ -8,11 +8,13 @@ vi.mock('@/components/MoviesTable', () => ({
   default: ({
     onSettings,
     onHistory,
+    onShows,
     onLogout,
     downloadImages,
   }: {
     onSettings: () => void
     onHistory: () => void
+    onShows: () => void
     onLogout: () => void
     downloadImages: boolean
   }) => (
@@ -21,7 +23,16 @@ vi.mock('@/components/MoviesTable', () => ({
       <div>download-images:{String(downloadImages)}</div>
       <button onClick={onSettings}>to-settings</button>
       <button onClick={onHistory}>to-history</button>
+      <button onClick={onShows}>to-shows</button>
       <button onClick={onLogout}>logout</button>
+    </div>
+  ),
+}))
+vi.mock('@/components/ShowsTable', () => ({
+  default: ({ onMovies }: { onMovies: () => void }) => (
+    <div>
+      <div>shows-page</div>
+      <button onClick={onMovies}>to-movies</button>
     </div>
   ),
 }))
@@ -136,6 +147,11 @@ describe('App auth bootstrap', () => {
     expect(backSpy).toHaveBeenCalledTimes(2)
 
     actPopstate({ page: 'movies' })
+    await userEvent.click(await screen.findByRole('button', { name: 'to-shows' }))
+    expect(await screen.findByText('shows-page')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'to-movies' }))
+    expect(await screen.findByText('movies-page')).toBeInTheDocument()
+
     await userEvent.click(await screen.findByRole('button', { name: 'logout' }))
     expect(await screen.findByText('login-page')).toBeInTheDocument()
     view.unmount()

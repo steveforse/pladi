@@ -228,7 +228,7 @@ describe('MoviesTable', () => {
 
   it('renders loading skeleton', () => {
     setupHookMocks({ moviesData: { loading: true } })
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={false} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
     const pulseRows = screen.getAllByRole('generic').filter((el) => el.className.includes('animate-pulse'))
     expect(pulseRows).toHaveLength(8)
     view.unmount()
@@ -237,7 +237,7 @@ describe('MoviesTable', () => {
   it('renders error state with settings action', async () => {
     const onSettings = vi.fn()
     setupHookMocks({ moviesData: { error: 'bad request' } })
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={onSettings} onHistory={() => {}} downloadImages={false} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={onSettings} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
 
     expect(screen.getByText('Failed to load movies: bad request')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Settings' }))
@@ -247,14 +247,14 @@ describe('MoviesTable', () => {
 
   it('renders welcome screen when no servers exist', () => {
     setupHookMocks({ moviesData: { plexServers: [] } })
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={false} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
     expect(screen.getByText('welcome-screen')).toBeInTheDocument()
     view.unmount()
   })
 
   it('renders main table state', () => {
     setupHookMocks()
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={false} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
     expect(screen.getAllByRole('button', { name: 'paginator-page' })).toHaveLength(2)
     expect(screen.getByText('header-row')).toBeInTheDocument()
     expect(screen.getByText('Alpha')).toBeInTheDocument()
@@ -264,7 +264,7 @@ describe('MoviesTable', () => {
   it('toggles filters panel and writes localStorage state', async () => {
     const setItemSpy = vi.spyOn(globalThis.localStorage, 'setItem')
     setupHookMocks()
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={false} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
 
     await userEvent.click(screen.getAllByRole('button', { name: /Filters/ })[0])
     expect(setItemSpy).toHaveBeenCalledWith('pladi_filters_open', 'true')
@@ -279,7 +279,7 @@ describe('MoviesTable', () => {
         backgroundReady: new Set(['m1']),
       },
     })
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={true} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={true} />)
 
     await userEvent.click(screen.getAllByRole('button', { name: 'paginator-page' })[0])
     await userEvent.click(screen.getAllByRole('button', { name: 'paginator-size' })[0])
@@ -295,7 +295,7 @@ describe('MoviesTable', () => {
 
   it('handles selection and bulk save flow', async () => {
     const { baseData } = setupHookMocks()
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={false} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
 
     await userEvent.click(screen.getByRole('button', { name: 'row-toggle' }))
     expect(screen.getByRole('button', { name: 'Bulk Edit (1)' })).toBeInTheDocument()
@@ -320,7 +320,7 @@ describe('MoviesTable', () => {
         filters: [{ id: 99, field: 'title', op: 'includes', value: 'alpha' }],
       },
     })
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={false} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
 
     const [serverSelect, librarySelect] = screen.getAllByRole('combobox')
     await userEvent.selectOptions(serverSelect, '1')
@@ -379,7 +379,7 @@ describe('MoviesTable', () => {
       },
     })
 
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={true} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={true} />)
 
     await userEvent.click(screen.getAllByRole('button', { name: 'row-toggle' })[0])
     await userEvent.click(screen.getByRole('button', { name: 'Bulk Edit (1)' }))
@@ -422,8 +422,8 @@ describe('MoviesTable', () => {
         warmBackgrounds,
       })
 
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={true} />)
-    view.rerender(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} downloadImages={true} />)
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={true} />)
+    view.rerender(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={true} />)
 
     expect(warmPosters).toHaveBeenCalledWith(['m1'])
     expect(warmBackgrounds).toHaveBeenCalledWith(['m1'])

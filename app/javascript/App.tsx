@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import MoviesTable from '@/components/MoviesTable'
+import ShowsTable from '@/components/ShowsTable'
 import LoginPage from '@/components/LoginPage'
 import SetupPage from '@/components/SetupPage'
 import SettingsPage from '@/components/SettingsPage'
@@ -9,7 +10,7 @@ import { MeResponseSchema, SetupResponseSchema } from '@/lib/apiSchemas'
 import type { z } from 'zod'
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'setup'
-type Page = 'movies' | 'settings' | 'history'
+type Page = 'movies' | 'shows' | 'settings' | 'history'
 type MeResponse = z.infer<typeof MeResponseSchema>
 type SetupResponse = z.infer<typeof SetupResponseSchema>
 
@@ -91,11 +92,22 @@ export default function App() {
   if (page === 'history')
     return <HistoryPage onBack={() => window.history.back()} />
 
+  if (page === 'shows')
+    return (
+      <ShowsTable
+        onMovies={() => navigateTo('movies')}
+        onLogout={() => setAuthState('unauthenticated')}
+        onSettings={() => navigateTo('settings')}
+        onHistory={() => navigateTo('history')}
+      />
+    )
+
   return (
     <MoviesTable
       onLogout={() => setAuthState('unauthenticated')}
       onSettings={() => navigateTo('settings')}
       onHistory={() => navigateTo('history')}
+      onShows={() => navigateTo('shows')}
       downloadImages={downloadImages}
     />
   )
