@@ -172,14 +172,23 @@ export default function ShowsTable({
   onSettings,
   onHistory,
   downloadImages = false,
+  initialViewMode,
+  routeServerId,
+  routeLibrary,
+  onRouteStateChange,
 }: {
   onMovies: () => void
   onLogout: () => void
   onSettings: () => void
   onHistory: () => void
   downloadImages?: boolean
+  initialViewMode?: ShowsViewMode
+  routeServerId?: number | null
+  routeLibrary?: string | null
+  onRouteStateChange?: (state: { serverId: number | null; library: string | null; mode: ShowsViewMode }) => void
 }) {
   const [viewMode, setViewMode] = useState<ShowsViewMode>(() => {
+    if (initialViewMode) return initialViewMode
     try {
       return localStorage.getItem(VIEW_MODE_STORAGE_KEY) === 'episodes' ? 'episodes' : 'shows'
     } catch {
@@ -437,6 +446,25 @@ export default function ShowsTable({
       // storage unavailable
     }
   }, [sortKey, sortDir])
+
+  useEffect(() => {
+    if (routeServerId == null || selectedServerId == null || routeServerId === selectedServerId) return
+    if (!plexServers.some((s) => s.id === routeServerId)) return
+    handleServerChange(routeServerId)
+  }, [routeServerId, selectedServerId, plexServers, handleServerChange])
+
+  useEffect(() => {
+    if (routeLibrary === undefined || selectedTitle === routeLibrary) return
+    if (routeLibrary === null) {
+      handleLibraryChange(null)
+      return
+    }
+    if (sections.some((s) => s.title === routeLibrary)) handleLibraryChange(routeLibrary)
+  }, [routeLibrary, selectedTitle, sections, handleLibraryChange])
+
+  useEffect(() => {
+    onRouteStateChange?.({ serverId: selectedServerId, library: selectedTitle, mode: viewMode })
+  }, [selectedServerId, selectedTitle, viewMode, onRouteStateChange])
 
   if (loading) {
     return (

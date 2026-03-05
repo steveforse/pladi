@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import MoviesTable from '@/components/MoviesTable'
 import ShowsTable from '@/components/ShowsTable'
 import LoginPage from '@/components/LoginPage'
@@ -8,9 +9,10 @@ import HistoryPage from '@/components/HistoryPage'
 import { api } from '@/lib/apiClient'
 import { MeResponseSchema, SetupResponseSchema } from '@/lib/apiSchemas'
 import type { z } from 'zod'
+import type { SettingsTab } from '@/components/SettingsPage'
+import type { ShowsViewMode } from '@/hooks/useShowsData'
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'setup'
-type Page = 'movies' | 'shows' | 'settings' | 'history'
 type MeResponse = z.infer<typeof MeResponseSchema>
 type SetupResponse = z.infer<typeof SetupResponseSchema>
 
@@ -23,23 +25,16 @@ function LoadingScreen() {
 }
 
 export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  )
+}
+
+function AppContent() {
   const [authState, setAuthState] = useState<AuthState>('loading')
-  const [page, setPage] = useState<Page>(() => (window.history.state?.page as Page) ?? 'movies')
   const [downloadImages, setDownloadImages] = useState(false)
-
-  useEffect(() => {
-    // Ensure the initial history entry has page state so popstate can restore it
-    const initialPage = (window.history.state?.page as Page) ?? 'movies'
-    window.history.replaceState({ page: initialPage }, '')
-  }, [])
-
-  useEffect(() => {
-    function handlePopState(e: PopStateEvent) {
-      setPage((e.state?.page as Page) ?? 'movies')
-    }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -74,11 +69,6 @@ export default function App() {
     return () => controller.abort()
   }, [])
 
-  function navigateTo(newPage: Page) {
-    window.history.pushState({ page: newPage }, '')
-    setPage(newPage)
-  }
-
   if (authState === 'loading') return <LoadingScreen />
   if (authState === 'setup')
     return <SetupPage onComplete={() => setAuthState('authenticated')} />
@@ -86,30 +76,151 @@ export default function App() {
   if (authState === 'unauthenticated')
     return <LoginPage onLogin={() => setAuthState('authenticated')} />
 
-  if (page === 'settings')
-    return <SettingsPage onBack={() => window.history.back()} downloadImages={downloadImages} onDownloadImagesChange={setDownloadImages} />
+  return (
+    <AuthenticatedRoutes
+      downloadImages={downloadImages}
+      onDownloadImagesChange={setDownloadImages}
+      onLogout={() => setAuthState('unauthenticated')}
+    />
+  )
+}
 
-  if (page === 'history')
-    return <HistoryPage onBack={() => window.history.back()} />
+function AuthenticatedRoutes({
+  downloadImages,
+  onDownloadImagesChange,
+  onLogout,
+}: {
+  downloadImages: boolean
+  onDownloadImagesChange: (value: boolean) => void
+  onLogout: () => void
+}) {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/movies" replace />} />
+      <Route path="/movies" element={<MoviesRoute downloadImages={downloadImages} onLogout={onLogout} />} />
+      <Route path="/shows" element={<ShowsRoute downloadImages={downloadImages} onLogout={onLogout} />} />
+      <Route path="/settings" element={<Navigate to="/settings/account" replace />} />
+      <Route path="/settings/:tab" element={<SettingsRoute downloadImages={downloadImages} onDownloadImagesChange={onDownloadImagesChange} />} />
+      <Route path="/history" element={<HistoryRoute />} />
+      <Route path="*" element={<Navigate to="/movies" replace />} />
+    </Routes>
+  )
+}
 
-  if (page === 'shows')
-    return (
-      <ShowsTable
-        onMovies={() => navigateTo('movies')}
-        onLogout={() => setAuthState('unauthenticated')}
-        onSettings={() => navigateTo('settings')}
-        onHistory={() => navigateTo('history')}
-        downloadImages={downloadImages}
-      />
-    )
+function MoviesRoute({
+  downloadImages,
+  onLogout,
+}: {
+  downloadImages: boolean
+  onLogout: () => void
+}) {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const routeServerIdRaw = Number(searchParams.get('server'))
+  const routeServerId = Number.isFinite(routeServerIdRaw) && routeServerIdRaw > 0 ? routeServerIdRaw : null
+  const routeLibrary = searchParams.has('library') ? searchParams.get('library') : undefined
+  const searchParamsKey = useMemo(() => searchParams.toString(), [searchParams])
+
+  const handleRouteStateChange = useCallback(({ serverId, library }: { serverId: number | null; library: string | null }) => {
+    const next = new URLSearchParams(searchParamsKey)
+    if (serverId) next.set('server', String(serverId))
+    else next.delete('server')
+    if (library) next.set('library', library)
+    else next.delete('library')
+    next.delete('type')
+    const nextKey = next.toString()
+    if (nextKey !== searchParamsKey) setSearchParams(next, { replace: true })
+  }, [searchParamsKey, setSearchParams])
 
   return (
     <MoviesTable
-      onLogout={() => setAuthState('unauthenticated')}
-      onSettings={() => navigateTo('settings')}
-      onHistory={() => navigateTo('history')}
-      onShows={() => navigateTo('shows')}
+      onLogout={onLogout}
+      onSettings={() => navigate('/settings/account')}
+      onHistory={() => navigate('/history')}
+      onShows={() => {
+        const next = new URLSearchParams(searchParams)
+        next.delete('type')
+        next.delete('mode')
+        navigate(`/shows?${next.toString()}`)
+      }}
       downloadImages={downloadImages}
+      routeServerId={routeServerId}
+      routeLibrary={routeLibrary}
+      onRouteStateChange={handleRouteStateChange}
     />
   )
+}
+
+function ShowsRoute({
+  downloadImages,
+  onLogout,
+}: {
+  downloadImages: boolean
+  onLogout: () => void
+}) {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const routeServerIdRaw = Number(searchParams.get('server'))
+  const routeServerId = Number.isFinite(routeServerIdRaw) && routeServerIdRaw > 0 ? routeServerIdRaw : null
+  const routeLibrary = searchParams.has('library') ? searchParams.get('library') : undefined
+  const routeMode = searchParams.get('mode') === 'episodes' ? 'episodes' : 'shows'
+  const searchParamsKey = useMemo(() => searchParams.toString(), [searchParams])
+
+  const handleRouteStateChange = useCallback(({ serverId, library, mode }: { serverId: number | null; library: string | null; mode: ShowsViewMode }) => {
+    const next = new URLSearchParams(searchParamsKey)
+    if (serverId) next.set('server', String(serverId))
+    else next.delete('server')
+    if (library) next.set('library', library)
+    else next.delete('library')
+    next.set('mode', mode)
+    next.delete('type')
+    const nextKey = next.toString()
+    if (nextKey !== searchParamsKey) setSearchParams(next, { replace: true })
+  }, [searchParamsKey, setSearchParams])
+
+  return (
+    <ShowsTable
+      key={`shows-${routeMode}`}
+      onMovies={() => {
+        const next = new URLSearchParams(searchParams)
+        next.delete('type')
+        next.delete('mode')
+        navigate(`/movies?${next.toString()}`)
+      }}
+      onLogout={onLogout}
+      onSettings={() => navigate('/settings/account')}
+      onHistory={() => navigate('/history')}
+      downloadImages={downloadImages}
+      initialViewMode={routeMode}
+      routeServerId={routeServerId}
+      routeLibrary={routeLibrary}
+      onRouteStateChange={handleRouteStateChange}
+    />
+  )
+}
+
+function SettingsRoute({
+  downloadImages,
+  onDownloadImagesChange,
+}: {
+  downloadImages: boolean
+  onDownloadImagesChange: (value: boolean) => void
+}) {
+  const navigate = useNavigate()
+  const { tab } = useParams()
+  const activeTab: SettingsTab = tab === 'preferences' || tab === 'servers' ? tab : 'account'
+  return (
+    <SettingsPage
+      onBack={() => navigate(-1)}
+      activeTab={activeTab}
+      onTabChange={(next) => navigate(`/settings/${next}`)}
+      downloadImages={downloadImages}
+      onDownloadImagesChange={onDownloadImagesChange}
+    />
+  )
+}
+
+function HistoryRoute() {
+  const navigate = useNavigate()
+  return <HistoryPage onBack={() => navigate(-1)} />
 }

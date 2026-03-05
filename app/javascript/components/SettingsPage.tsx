@@ -20,14 +20,16 @@ interface ErrorResponse {
 type MeResponse = z.infer<typeof MeResponseSchema>
 type LookupNameResponse = z.infer<typeof LookupNameResponseSchema>
 
-type Tab = 'account' | 'preferences' | 'servers'
+export type SettingsTab = 'account' | 'preferences' | 'servers'
 
-export default function SettingsPage({ onBack, downloadImages, onDownloadImagesChange }: {
+export default function SettingsPage({ onBack, downloadImages, onDownloadImagesChange, activeTab, onTabChange }: {
   onBack: () => void
   downloadImages: boolean
   onDownloadImagesChange: (value: boolean) => void
+  activeTab?: SettingsTab
+  onTabChange?: (tab: SettingsTab) => void
 }) {
-  const [tab, setTab] = useState<Tab>('account')
+  const [tab, setTab] = useState<SettingsTab>(activeTab ?? 'account')
   const [servers, setServers] = useState<PlexServer[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -57,6 +59,10 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
       if (res.ok && res.data) setEmail(res.data.email_address ?? '')
     }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (activeTab && activeTab !== tab) setTab(activeTab)
+  }, [activeTab, tab])
 
   function handleEmailChange(value: string) {
     setEmail(value)
@@ -211,7 +217,7 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
     }
   }
 
-  function tabClass(t: Tab) {
+  function tabClass(t: SettingsTab) {
     const active = tab === t
     return [
       'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
@@ -221,15 +227,20 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
     ].join(' ')
   }
 
+  function selectTab(next: SettingsTab) {
+    setTab(next)
+    onTabChange?.(next)
+  }
+
   return (
     <div>
       <PageHeader title="Settings" onBack={onBack} />
 
       {/* Tab bar */}
       <div className="flex justify-center">
-        <button className={tabClass('account')} onClick={() => setTab('account')}>Account</button>
-        <button className={tabClass('preferences')} onClick={() => setTab('preferences')}>Preferences</button>
-        <button className={tabClass('servers')} onClick={() => setTab('servers')}>Servers</button>
+        <button className={tabClass('account')} onClick={() => selectTab('account')}>Account</button>
+        <button className={tabClass('preferences')} onClick={() => selectTab('preferences')}>Preferences</button>
+        <button className={tabClass('servers')} onClick={() => selectTab('servers')}>Servers</button>
       </div>
 
       {/* Account tab */}

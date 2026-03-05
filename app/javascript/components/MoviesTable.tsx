@@ -20,12 +20,24 @@ import { PosterModal } from '@/components/movies/PosterModal'
 import { ImageModal } from '@/components/movies/ImageModal'
 import { BulkEditModal } from '@/components/movies/BulkEditModal'
 
-export default function MoviesTable({ onLogout, onSettings, onHistory, onShows, downloadImages }: {
+export default function MoviesTable({
+  onLogout,
+  onSettings,
+  onHistory,
+  onShows,
+  downloadImages,
+  routeServerId,
+  routeLibrary,
+  onRouteStateChange,
+}: {
   onLogout: () => void
   onSettings: () => void
   onHistory: () => void
   onShows: () => void
   downloadImages: boolean
+  routeServerId?: number | null
+  routeLibrary?: string | null
+  onRouteStateChange?: (state: { serverId: number | null; library: string | null }) => void
 }) {
   const {
     plexServers, selectedServerId, sections, selectedTitle,
@@ -133,6 +145,25 @@ export default function MoviesTable({ onLogout, onSettings, onHistory, onShows, 
     }
     wasSyncing.current = syncing
   }, [syncing, uncachedPosterMovies.length, uncachedBackgroundMovies.length])
+
+  useEffect(() => {
+    if (routeServerId == null || selectedServerId == null || routeServerId === selectedServerId) return
+    if (!plexServers.some((s) => s.id === routeServerId)) return
+    handleServerChange(routeServerId)
+  }, [routeServerId, selectedServerId, plexServers, handleServerChange])
+
+  useEffect(() => {
+    if (routeLibrary === undefined || selectedTitle === routeLibrary) return
+    if (routeLibrary === null) {
+      setSelectedTitle(null)
+      return
+    }
+    if (sections.some((s) => s.title === routeLibrary)) setSelectedTitle(routeLibrary)
+  }, [routeLibrary, selectedTitle, sections, setSelectedTitle])
+
+  useEffect(() => {
+    onRouteStateChange?.({ serverId: selectedServerId, library: selectedTitle })
+  }, [selectedServerId, selectedTitle, onRouteStateChange])
 
   if (loading) {
     return (

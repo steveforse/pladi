@@ -79,7 +79,7 @@ vi.mock('@/components/HistoryPage', () => ({
 
 describe('App auth bootstrap', () => {
   beforeEach(() => {
-    window.history.replaceState({ page: 'movies' }, '')
+    window.history.replaceState({}, '', '/movies')
   })
 
   afterEach(() => {
@@ -121,7 +121,6 @@ describe('App auth bootstrap', () => {
   })
 
   it('renders movies when authenticated and supports settings/history/logout callbacks', async () => {
-    const backSpy = vi.spyOn(window.history, 'back').mockImplementation(() => {})
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
       headers: new Headers({ 'content-type': 'application/json' }),
@@ -139,14 +138,13 @@ describe('App auth bootstrap', () => {
     expect(screen.getByText('settings-images:true')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'settings-back' }))
-    expect(backSpy).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('movies-page')).toBeInTheDocument()
 
-    actPopstate({ page: 'history' })
+    await userEvent.click(screen.getByRole('button', { name: 'to-history' }))
     expect(await screen.findByText('history-page')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'history-back' }))
-    expect(backSpy).toHaveBeenCalledTimes(2)
+    expect(await screen.findByText('movies-page')).toBeInTheDocument()
 
-    actPopstate({ page: 'movies' })
     await userEvent.click(await screen.findByRole('button', { name: 'to-shows' }))
     expect(await screen.findByText('shows-page')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'to-movies' }))
@@ -190,7 +188,3 @@ describe('App auth bootstrap', () => {
     }
   })
 })
-
-function actPopstate(state: unknown) {
-  window.dispatchEvent(new PopStateEvent('popstate', { state }))
-}
