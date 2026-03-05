@@ -120,11 +120,11 @@ describe('ShowsTable', () => {
 
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
-    await userEvent.click(within(view.container).getByRole('button', { name: /^Episodes/ }))
+    await userEvent.click(within(view.container).getByText('Episodes'))
     const rows = within(view.container).getAllByRole('row')
     expect(rows[1]).toHaveTextContent('Severance')
 
-    await userEvent.click(within(view.container).getByRole('button', { name: /^Episodes/ }))
+    await userEvent.click(within(view.container).getByText('Episodes'))
     const sortedDescRows = within(view.container).getAllByRole('row')
     expect(sortedDescRows[1]).toHaveTextContent('The Bear')
   })
@@ -176,10 +176,11 @@ describe('ShowsTable', () => {
     setupHookMock()
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
-    expect(within(view.container).getByRole('columnheader', { name: 'Summary' })).toBeInTheDocument()
+    expect(within(view.container).getByRole('columnheader', { name: /^Summary/ })).toBeInTheDocument()
     await userEvent.click(within(view.container).getByRole('button', { name: /Toggle Columns/i }))
+    expect(within(view.container).getByRole('checkbox', { name: 'Content Rating' })).toBeInTheDocument()
     await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Summary' }))
 
-    expect(within(view.container).queryByRole('columnheader', { name: 'Summary' })).not.toBeInTheDocument()
+    expect(within(view.container).queryByRole('columnheader', { name: /^Summary/ })).not.toBeInTheDocument()
   })
 })

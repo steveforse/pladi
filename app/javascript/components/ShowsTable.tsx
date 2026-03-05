@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronRight, GripVertical } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 import { EditableCell } from '@/components/movies/EditableCell'
 import { FilterRow } from '@/components/movies/FilterRow'
@@ -11,14 +11,16 @@ import { matchesFilterWithFields } from '@/lib/filters'
 import { SHOW_FILTER_FIELDS, SHOW_FILTER_FIELD_GROUPS } from '@/lib/showFilters'
 import { SHOW_COLUMN_GROUPS } from '@/lib/showColumns'
 import { useShowsData } from '@/hooks/useShowsData'
+import { formatDate, formatISODate } from '@/lib/formatters'
 import { sortMovies } from '@/lib/sorting'
-import type { ActiveFilter, ColumnId, SortDir, SortKey } from '@/lib/types'
+import type { ActiveFilter, AllColumnId, ColumnId, SortDir, SortKey } from '@/lib/types'
 
 const FILTERS_STORAGE_KEY = 'pladi.shows.filters'
 const COLUMNS_STORAGE_KEY = 'pladi.shows.columns'
 const FILTERS_OPEN_STORAGE_KEY = 'pladi.shows.filters_open'
 
 const DEFAULT_VISIBLE_COLUMNS: ColumnId[] = [
+  'id',
   'year',
   'season_count',
   'episode_count',
@@ -27,6 +29,57 @@ const DEFAULT_VISIBLE_COLUMNS: ColumnId[] = [
   'genres',
   'summary',
 ]
+
+const SHOW_DEFAULT_COL_ORDER: AllColumnId[] = [
+  'id',
+  'title',
+  'year',
+  'season_count',
+  'episode_count',
+  'viewed_episode_count',
+  'original_title',
+  'sort_title',
+  'originally_available',
+  'updated_at',
+  'content_rating',
+  'studio',
+  'genres',
+  'summary',
+  'tagline',
+  'collections',
+  'labels',
+  'country',
+  'poster',
+  'background',
+]
+
+const SHOW_TABLE_COLUMNS: Array<{ id: AllColumnId; label: string; sortKey?: SortKey }> = [
+  { id: 'id', label: 'ID', sortKey: 'id' },
+  { id: 'title', label: 'Title', sortKey: 'title' },
+  { id: 'original_title', label: 'Original Title', sortKey: 'original_title' },
+  { id: 'year', label: 'Year', sortKey: 'year' },
+  { id: 'season_count', label: 'Seasons', sortKey: 'season_count' },
+  { id: 'episode_count', label: 'Episodes', sortKey: 'episode_count' },
+  { id: 'viewed_episode_count', label: 'Watched', sortKey: 'viewed_episode_count' },
+  { id: 'sort_title', label: 'Sort Title', sortKey: 'sort_title' },
+  { id: 'originally_available', label: 'Originally Available', sortKey: 'originally_available' },
+  { id: 'updated_at', label: 'Last Updated', sortKey: 'updated_at' },
+  { id: 'studio', label: 'Studio', sortKey: 'studio' },
+  { id: 'genres', label: 'Genres', sortKey: 'genres' },
+  { id: 'summary', label: 'Summary', sortKey: 'summary' },
+  { id: 'content_rating', label: 'Content Rating', sortKey: 'content_rating' },
+  { id: 'tagline', label: 'Tagline', sortKey: 'tagline' },
+  { id: 'collections', label: 'Collections', sortKey: 'collections' },
+  { id: 'labels', label: 'Labels', sortKey: 'labels' },
+  { id: 'country', label: 'Country', sortKey: 'country' },
+  { id: 'poster', label: 'Poster' },
+  { id: 'background', label: 'Background' },
+]
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span className="ml-1 text-muted-foreground/40">↕</span>
+  return <span className="ml-1 text-primary">{dir === 'asc' ? '↑' : '↓'}</span>
+}
 
 export default function ShowsTable({
   onMovies,
@@ -73,12 +126,27 @@ export default function ShowsTable({
     try {
       const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
       if (!raw) return new Set(DEFAULT_VISIBLE_COLUMNS)
-      const parsed = JSON.parse(raw) as ColumnId[]
-      return new Set(parsed)
+      const parsed = JSON.parse(raw) as ColumnId[] | { visibleCols?: ColumnId[]; colOrder?: AllColumnId[] }
+      if (Array.isArray(parsed)) return new Set(parsed)
+      return new Set(parsed.visibleCols ?? DEFAULT_VISIBLE_COLUMNS)
     } catch {
       return new Set(DEFAULT_VISIBLE_COLUMNS)
     }
   })
+  const [colOrder, setColOrder] = useState<AllColumnId[]>(() => {
+    try {
+      const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
+      if (!raw) return [...SHOW_DEFAULT_COL_ORDER]
+      const parsed = JSON.parse(raw) as ColumnId[] | { visibleCols?: ColumnId[]; colOrder?: AllColumnId[] }
+      if (Array.isArray(parsed)) return [...SHOW_DEFAULT_COL_ORDER]
+      const stored = parsed.colOrder ?? []
+      return [...stored, ...SHOW_DEFAULT_COL_ORDER.filter((id) => !stored.includes(id))]
+    } catch {
+      return [...SHOW_DEFAULT_COL_ORDER]
+    }
+  })
+  const dragColRef = useRef<AllColumnId | null>(null)
+  const [dragOverCol, setDragOverCol] = useState<AllColumnId | null>(null)
 
   const [filters, setFilters] = useState<ActiveFilter[]>(() => {
     try {
@@ -150,6 +218,39 @@ export default function ShowsTable({
 
   function resetColumns() {
     setVisibleCols(new Set(DEFAULT_VISIBLE_COLUMNS))
+    setColOrder([...SHOW_DEFAULT_COL_ORDER])
+  }
+
+  function handleColDragStart(id: AllColumnId) {
+    dragColRef.current = id
+  }
+
+  function handleColDragOver(e: React.DragEvent, id: AllColumnId) {
+    e.preventDefault()
+    setDragOverCol(id)
+  }
+
+  function handleColDrop(targetId: AllColumnId) {
+    const src = dragColRef.current
+    if (!src || src === targetId) {
+      setDragOverCol(null)
+      return
+    }
+    setColOrder((prev) => {
+      const next = [...prev]
+      const from = next.indexOf(src)
+      const to = next.indexOf(targetId)
+      next.splice(from, 1)
+      next.splice(to, 0, src)
+      return next
+    })
+    dragColRef.current = null
+    setDragOverCol(null)
+  }
+
+  function handleColDragEnd() {
+    dragColRef.current = null
+    setDragOverCol(null)
   }
 
   const filteredShows = useMemo(() => {
@@ -202,11 +303,14 @@ export default function ShowsTable({
 
   useEffect(() => {
     try {
-      localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(Array.from(visibleCols)))
+      localStorage.setItem(
+        COLUMNS_STORAGE_KEY,
+        JSON.stringify({ visibleCols: Array.from(visibleCols), colOrder })
+      )
     } catch {
       // storage unavailable
     }
-  }, [visibleCols])
+  }, [visibleCols, colOrder])
 
   if (loading) {
     return (
@@ -406,100 +510,217 @@ export default function ShowsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="px-4 py-2 text-left font-medium">
-                  <button onClick={() => handleSort('title')} className="hover:underline">
-                    Title {sortKey === 'title' ? `(${sortDir})` : ''}
-                  </button>
-                </th>
-                {visibleCols.has('year') && (
-                  <th className="px-4 py-2 text-left font-medium">
-                    <button onClick={() => handleSort('year')} className="hover:underline">
-                      Year {sortKey === 'year' ? `(${sortDir})` : ''}
-                    </button>
-                  </th>
-                )}
-                {visibleCols.has('season_count') && (
-                  <th className="px-4 py-2 text-left font-medium">
-                    <button onClick={() => handleSort('season_count')} className="hover:underline">
-                      Seasons {sortKey === 'season_count' ? `(${sortDir})` : ''}
-                    </button>
-                  </th>
-                )}
-                {visibleCols.has('episode_count') && (
-                  <th className="px-4 py-2 text-left font-medium">
-                    <button onClick={() => handleSort('episode_count')} className="hover:underline">
-                      Episodes {sortKey === 'episode_count' ? `(${sortDir})` : ''}
-                    </button>
-                  </th>
-                )}
-                {visibleCols.has('viewed_episode_count') && (
-                  <th className="px-4 py-2 text-left font-medium">
-                    <button onClick={() => handleSort('viewed_episode_count')} className="hover:underline">
-                      Watched {sortKey === 'viewed_episode_count' ? `(${sortDir})` : ''}
-                    </button>
-                  </th>
-                )}
-                {visibleCols.has('studio') && <th className="px-4 py-2 text-left font-medium">Studio</th>}
-                {visibleCols.has('genres') && <th className="px-4 py-2 text-left font-medium">Genres</th>}
-                {visibleCols.has('summary') && <th className="px-4 py-2 text-left font-medium">Summary</th>}
+                {colOrder
+                  .filter((id) => id === 'title' || visibleCols.has(id as ColumnId))
+                  .map((id) => {
+                    const col = SHOW_TABLE_COLUMNS.find((c) => c.id === id)
+                    if (!col) return null
+                    const isOver = dragOverCol === id
+                    return (
+                      <th
+                        key={id}
+                        className={`px-4 py-3 text-left font-medium whitespace-nowrap ${isOver ? 'bg-primary/10' : 'hover:bg-muted/70'}`}
+                        onDragOver={(e) => handleColDragOver(e, id)}
+                        onDrop={() => handleColDrop(id)}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span
+                            draggable
+                            onDragStart={() => handleColDragStart(id)}
+                            onDragEnd={handleColDragEnd}
+                            onClick={(e) => e.stopPropagation()}
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground shrink-0"
+                          >
+                            <GripVertical size={14} />
+                          </span>
+                          {col.sortKey ? (
+                            <span className="cursor-pointer select-none" onClick={() => handleSort(col.sortKey as SortKey)}>
+                              {col.label}
+                              <SortIcon active={sortKey === col.sortKey} dir={sortDir} />
+                            </span>
+                          ) : (
+                            <span>{col.label}</span>
+                          )}
+                        </div>
+                      </th>
+                    )
+                  })}
               </tr>
             </thead>
             <tbody>
               {pagedShows.map((show) => (
                 <tr key={`${show.id}|${show.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
-                  <EditableCell
-                    value={show.title}
-                    fieldType="text"
-                    onSave={async (v) => updateShow(show.id, { title: v as string })}
-                    renderView={() => <span className="font-medium whitespace-nowrap">{show.title}</span>}
-                    className="px-4 py-2"
-                  />
-                  {visibleCols.has('year') && (
-                    <EditableCell
-                      value={show.year != null ? String(show.year) : null}
-                      fieldType="number"
-                      onSave={async (v) => {
-                        const year = (v as string) ? parseInt(v as string, 10) : null
-                        await updateShow(show.id, { year: Number.isFinite(year) ? year : null })
-                      }}
-                      renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</span>}
-                      className="px-4 py-2"
-                    />
-                  )}
-                  {visibleCols.has('season_count') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.season_count ?? '—'}</td>}
-                  {visibleCols.has('episode_count') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.episode_count ?? '—'}</td>}
-                  {visibleCols.has('viewed_episode_count') && <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.viewed_episode_count ?? '—'}</td>}
-                  {visibleCols.has('studio') && (
-                    <EditableCell
-                      value={show.studio}
-                      fieldType="text"
-                      onSave={async (v) => updateShow(show.id, { studio: (v as string) || null })}
-                      renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.studio ?? '—'}</span>}
-                      className="px-4 py-2"
-                    />
-                  )}
-                  {visibleCols.has('genres') && (
-                    <EditableCell
-                      value={show.genres ? show.genres.split(', ').filter(Boolean) : []}
-                      fieldType="tags"
-                      onSave={async (v) => updateShow(show.id, { genres: (v as string[]).join(', ') || null })}
-                      renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.genres ?? '—'}</span>}
-                      className="px-4 py-2"
-                    />
-                  )}
-                  {visibleCols.has('summary') && (
-                    <EditableCell
-                      value={show.summary}
-                      fieldType="text"
-                      onSave={async (v) => updateShow(show.id, { summary: (v as string) || null })}
-                      renderView={() => (
-                        <span className="text-muted-foreground text-xs">
-                          {show.summary ? show.summary.slice(0, 160) + (show.summary.length > 160 ? '…' : '') : '—'}
-                        </span>
-                      )}
-                      className="px-4 py-2"
-                    />
-                  )}
+                  {colOrder
+                    .filter((id) => id === 'title' || visibleCols.has(id as ColumnId))
+                    .map((id) => {
+                      switch (id) {
+                      case 'title':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.title}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { title: v as string })}
+                            renderView={() => <span className="font-medium whitespace-nowrap">{show.title}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'id':
+                        return (
+                          <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">
+                            {show.plex_url
+                              ? <a href={show.plex_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{show.id}</a>
+                              : show.id}
+                          </td>
+                        )
+                      case 'original_title':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.original_title ?? '—'}</td>
+                      case 'year':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.year != null ? String(show.year) : null}
+                            fieldType="number"
+                            onSave={async (v) => {
+                              const year = (v as string) ? parseInt(v as string, 10) : null
+                              await updateShow(show.id, { year: Number.isFinite(year) ? year : null })
+                            }}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'season_count':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.season_count ?? '—'}</td>
+                      case 'episode_count':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.episode_count ?? '—'}</td>
+                      case 'viewed_episode_count':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.viewed_episode_count ?? '—'}</td>
+                      case 'sort_title':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.sort_title}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { sort_title: (v as string) || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.sort_title ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'originally_available':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.originally_available}
+                            fieldType="date"
+                            onSave={async (v) => updateShow(show.id, { originally_available: (v as string) || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{formatISODate(show.originally_available)}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'updated_at':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(show.updated_at)}</td>
+                      case 'studio':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.studio}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { studio: (v as string) || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.studio ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'genres':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.genres ? show.genres.split(', ').filter(Boolean) : []}
+                            fieldType="tags"
+                            onSave={async (v) => updateShow(show.id, { genres: (v as string[]).join(', ') || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.genres ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'summary':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.summary}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { summary: (v as string) || null })}
+                            renderView={() => (
+                              <span className="text-muted-foreground text-xs">
+                                {show.summary ? show.summary.slice(0, 160) + (show.summary.length > 160 ? '…' : '') : '—'}
+                              </span>
+                            )}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'content_rating':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.content_rating}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { content_rating: (v as string) || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.content_rating ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'tagline':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.tagline}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { tagline: (v as string) || null })}
+                            renderView={() => (
+                              <span className="text-muted-foreground text-xs">
+                                {show.tagline ? show.tagline.slice(0, 120) + (show.tagline.length > 120 ? '…' : '') : '—'}
+                              </span>
+                            )}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'collections':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.collections ? show.collections.split(', ').filter(Boolean) : []}
+                            fieldType="tags"
+                            onSave={async (v) => updateShow(show.id, { collections: (v as string[]).join(', ') || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.collections ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'labels':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.labels ? show.labels.split(', ').filter(Boolean) : []}
+                            fieldType="tags"
+                            onSave={async (v) => updateShow(show.id, { labels: (v as string[]).join(', ') || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.labels ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'country':
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.country ? show.country.split(', ').filter(Boolean) : []}
+                            fieldType="tags"
+                            onSave={async (v) => updateShow(show.id, { country: (v as string[]).join(', ') || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.country ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
+                      case 'poster':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.thumb ? '✓' : '—'}</td>
+                      case 'background':
+                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.art ? '✓' : '—'}</td>
+                    }
+                  })}
                 </tr>
               ))}
               {pagedShows.length === 0 && (
