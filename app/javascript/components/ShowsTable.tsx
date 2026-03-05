@@ -9,7 +9,7 @@ import { matchesFilterWithFields } from '@/lib/filters'
 import { SHOW_FILTER_FIELDS, SHOW_FILTER_FIELD_GROUPS } from '@/lib/showFilters'
 import { useShowsData } from '@/hooks/useShowsData'
 import { sortMovies } from '@/lib/sorting'
-import type { ActiveFilter, SortDir } from '@/lib/types'
+import type { ActiveFilter, SortDir, SortKey } from '@/lib/types'
 
 const FILTERS_STORAGE_KEY = 'pladi.shows.filters'
 
@@ -36,6 +36,7 @@ export default function ShowsTable({
     handleServerChange,
     handleLibraryChange,
   } = useShowsData()
+  const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<ActiveFilter[]>(() => {
@@ -67,6 +68,14 @@ export default function ShowsTable({
     setFilters([])
   }
 
+  function handleSort(key: SortKey) {
+    if (key === sortKey) setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
   const filteredShows = useMemo(() => {
     const shows = selectedTitle === null
       ? sections.flatMap((s) => s.movies)
@@ -81,8 +90,8 @@ export default function ShowsTable({
     const advancedFiltered = filters.length > 0
       ? searched.filter((show) => filters.every((f) => matchesFilterWithFields(SHOW_FILTER_FIELDS, show, f)))
       : searched
-    return sortMovies(advancedFiltered, 'title', sortDir)
-  }, [sections, selectedTitle, sortDir, query, filters])
+    return sortMovies(advancedFiltered, sortKey, sortDir)
+  }, [sections, selectedTitle, sortKey, sortDir, query, filters])
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
   const pagedShows = pageSize === 0 ? filteredShows : filteredShows.slice((page - 1) * pageSize, page * pageSize)
   const activeFilterCount = filters.length
@@ -207,8 +216,8 @@ export default function ShowsTable({
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-muted-foreground">Sort:</label>
-            <button onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))} className="btn px-3 py-1.5 text-sm">
-              Title ({sortDir})
+            <button onClick={() => handleSort('title')} className="btn px-3 py-1.5 text-sm">
+              {sortKey === 'title' ? `Title (${sortDir})` : 'Title'}
             </button>
           </div>
           <div className="flex items-center gap-2">
@@ -262,11 +271,11 @@ export default function ShowsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="px-4 py-2 text-left font-medium">Title</th>
-                <th className="px-4 py-2 text-left font-medium">Year</th>
-                <th className="px-4 py-2 text-left font-medium">Seasons</th>
-                <th className="px-4 py-2 text-left font-medium">Episodes</th>
-                <th className="px-4 py-2 text-left font-medium">Watched</th>
+                <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('title')} className="hover:underline">Title</button></th>
+                <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('year')} className="hover:underline">Year</button></th>
+                <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('season_count')} className="hover:underline">Seasons</button></th>
+                <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('episode_count')} className="hover:underline">Episodes</button></th>
+                <th className="px-4 py-2 text-left font-medium"><button onClick={() => handleSort('viewed_episode_count')} className="hover:underline">Watched</button></th>
                 <th className="px-4 py-2 text-left font-medium">Studio</th>
                 <th className="px-4 py-2 text-left font-medium">Genres</th>
                 <th className="px-4 py-2 text-left font-medium">Summary</th>
