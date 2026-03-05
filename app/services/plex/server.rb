@@ -31,11 +31,15 @@ module Plex
       media = find_item(media_id, media_type: media_type)
       return nil unless media
 
-      @enricher.enrich_movie(media_id, media[:file_path])
+      if media_type == 'show'
+        @enricher.enrich_show(media_id)
+      else
+        @enricher.enrich_movie(media_id, media[:file_path])
+      end
     end
 
     def enriched_library(media_type: 'movie')
-      enriched_sections = @enricher.enrich_sections(sections(media_type: media_type))
+      enriched_sections = @enricher.enrich_sections(sections(media_type: media_type), media_type: media_type)
       cached_posters, uncached_posters = @image_store.partition_posters_by_cache(enriched_sections)
       cached_backgrounds, uncached_backgrounds = @image_store.partition_backgrounds_by_cache(enriched_sections)
 

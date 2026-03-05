@@ -77,6 +77,14 @@ RSpec.describe Plex::Server do
     it 'enriches and returns the movie detail' do
       expect(plex_server_service.detail_for('7')).to eq(summary: 'enriched')
     end
+
+    it 'enriches and returns show detail via show path' do
+      allow(cache_store).to receive(:key).with('sections', 'show').and_return('show-sections-key')
+      allow(cache_store).to receive(:fetch).with('show-sections-key').and_return([{ movies: [{ id: '7', file_path: nil }] }])
+      allow(enricher).to receive(:enrich_show).with('7').and_return(summary: 'show enriched')
+
+      expect(plex_server_service.detail_for('7', media_type: 'show')).to eq(summary: 'show enriched')
+    end
   end
 
   describe '#enriched_library' do
@@ -85,7 +93,7 @@ RSpec.describe Plex::Server do
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
-      allow(enricher).to receive(:enrich_sections).with(sections).and_return(sections)
+      allow(enricher).to receive(:enrich_sections).with(sections, media_type: 'movie').and_return(sections)
       allow(image_store).to receive(:partition_posters_by_cache).with(sections).and_return(
         [[{ id: '1' }], [{ id: '2' }]]
       )

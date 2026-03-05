@@ -35,12 +35,24 @@ RSpec.describe Api::ShowsController do
   describe 'GET /api/shows/:id' do
     context 'when show exists' do
       before do
-        allow(service).to receive(:detail_for).with('123', media_type: 'show').and_return(summary: 'Details')
+        allow(service).to receive(:detail_for).with('123', media_type: 'show').and_return(
+          summary: 'Details',
+          genres: 'Drama, Thriller',
+          season_count: 2,
+          episode_count: 20,
+          viewed_episode_count: 8
+        )
         get '/api/shows/123', params: { server_id: server.id }, as: :json
       end
 
       it 'returns show detail' do
-        expect(json_body).to eq('summary' => 'Details')
+        expect(json_body).to eq(
+          'summary' => 'Details',
+          'genres' => 'Drama, Thriller',
+          'season_count' => 2,
+          'episode_count' => 20,
+          'viewed_episode_count' => 8
+        )
       end
     end
 

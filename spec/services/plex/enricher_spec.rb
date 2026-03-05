@@ -7,16 +7,24 @@ RSpec.describe Plex::Enricher do
 
   let(:http_client) { instance_double(Plex::HttpClient) }
   let(:cache_store) { instance_double(Plex::CacheStore) }
-  let(:detail_fetcher) { instance_double(Plex::MovieDetailFetcher) }
-  let(:concurrent_fetcher) { instance_double(Plex::ConcurrentDetailFetcher) }
+  let(:movie_detail_fetcher) { instance_double(Plex::MovieDetailFetcher) }
+  let(:show_detail_fetcher) { instance_double(Plex::ShowDetailFetcher) }
+  let(:movie_concurrent_fetcher) { instance_double(Plex::ConcurrentDetailFetcher) }
+  let(:show_concurrent_fetcher) { instance_double(Plex::ConcurrentDetailFetcher) }
 
   before do
-    allow(Plex::MovieDetailFetcher).to receive(:new).with(http_client).and_return(detail_fetcher)
+    allow(Plex::MovieDetailFetcher).to receive(:new).with(http_client).and_return(movie_detail_fetcher)
+    allow(Plex::ShowDetailFetcher).to receive(:new).with(http_client).and_return(show_detail_fetcher)
     allow(Plex::ConcurrentDetailFetcher).to receive(:new).with(
       cache_store: cache_store,
-      detail_fetcher: detail_fetcher,
+      detail_fetcher: movie_detail_fetcher,
       thread_count: described_class::ENRICH_THREADS
-    ).and_return(concurrent_fetcher)
+    ).and_return(movie_concurrent_fetcher)
+    allow(Plex::ConcurrentDetailFetcher).to receive(:new).with(
+      cache_store: cache_store,
+      detail_fetcher: show_detail_fetcher,
+      thread_count: described_class::ENRICH_THREADS
+    ).and_return(show_concurrent_fetcher)
   end
 
   describe '#enrich_movie' do
@@ -24,7 +32,7 @@ RSpec.describe Plex::Enricher do
 
     context 'with full stream detail maps' do
       before do
-        allow(detail_fetcher).to receive(:fetch).with('123').and_return(
+        allow(movie_detail_fetcher).to receive(:fetch).with('123').and_return(
           summary: 'My summary',
           subtitles_by_file: { '/movies/a.mkv' => 'English (SRT)' },
           audio_by_file: { '/movies/a.mkv' => 'English (AAC, 6ch, 640 kbps)' },
@@ -45,7 +53,7 @@ RSpec.describe Plex::Enricher do
 
     context 'when stream detail maps are missing' do
       before do
-        allow(detail_fetcher).to receive(:fetch).with('123').and_return(summary: 'Only summary')
+        allow(movie_detail_fetcher).to receive(:fetch).with('123').and_return(summary: 'Only summary')
       end
 
       it 'returns nil for subtitles' do
@@ -72,14 +80,45 @@ RSpec.describe Plex::Enricher do
 
     before do
       allow(cache_store).to receive(:enrich_version).and_return(7)
-      allow(cache_store).to receive(:key).with('section', '10', 1234, 'enriched', 7).and_return('section-cache-key')
+      allow(cache_store).to receive(:key).with('section', 'movie', '10', 1234, 'enriched', 7).and_return('section-cache-key')
       allow(cache_store).to receive(:fetch).with('section-cache-key').and_yield
-      allow(concurrent_fetcher).to receive(:fetch).with(section[:movies]).and_return('m1' => detail)
+      allow(movie_concurrent_fetcher).to receive(:fetch).with(section[:movies]).and_return('m1' => detail)
     end
 
     it { expect(result_movie[:id]).to eq('m1') }
     it { expect(result_movie[:title]).to eq('Movie 1') }
     it { expect(result_movie[:summary]).to eq('Detailed summary') }
     it { expect(result_movie[:subtitles]).to eq('Thai (SRT)') }
+  end
+
+  describe '#enrich_show' do
+    it 'returns parsed show detail' do
+      allow(show_detail_fetcher).to receive(:fetch).with('s1').and_return(summary: 'Show summary')
+
+      expect(enricher.enrich_show('s1')).to eq(summary: 'Show summary')
+    end
+  end
+
+  describe '#enrich_sections for shows' do
+    let(:section) do
+      {
+        id: '12',
+        updated_at: 4321,
+        movies: [{ id: 's1', file_path: nil, title: 'Show 1' }]
+      }
+    end
+    let(:detail) { { summary: 'Show details', season_count: 3 } }
+
+    before do
+      allow(cache_store).to receive(:enrich_version).and_return(8)
+      allow(cache_store).to receive(:key).with('section', 'show', '12', 4321, 'enriched', 8).and_return('show-section-cache-key')
+      allow(cache_store).to receive(:fetch).with('show-section-cache-key').and_yield
+      allow(show_concurrent_fetcher).to receive(:fetch).with(section[:movies]).and_return('s1' => detail)
+    end
+
+    it 'uses the show detail fetcher pipeline' do
+      result_show = enricher.enrich_sections([section], media_type: 'show').first[:movies].first
+      expect(result_show).to include(id: 's1', summary: 'Show details', season_count: 3)
+    end
   end
 end
