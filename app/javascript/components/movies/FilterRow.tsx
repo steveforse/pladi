@@ -1,5 +1,5 @@
 import React from 'react'
-import type { ActiveFilter, FilterFieldId, FilterOp } from '@/lib/types'
+import type { ActiveFilter, FilterFieldDef, FilterFieldId, FilterGroup, FilterOp } from '@/lib/types'
 import { FILTER_FIELDS, STRING_OPS, NUMERIC_OPS, NULL_OPS, defaultOp } from '@/lib/filters'
 import { FieldPicker } from './FieldPicker'
 
@@ -7,17 +7,23 @@ export function FilterRow({
   filter,
   onChange,
   onRemove,
+  fieldDefs = FILTER_FIELDS,
+  fieldGroups,
 }: {
   filter: ActiveFilter
   onChange: (updated: ActiveFilter) => void
   onRemove: () => void
+  fieldDefs?: FilterFieldDef[]
+  fieldGroups?: FilterGroup[]
 }) {
-  const fieldDef = FILTER_FIELDS.find((f) => f.id === filter.field)!
+  const fieldDef = fieldDefs.find((f) => f.id === filter.field)
+  if (!fieldDef) return null
   const typeOps = fieldDef.type === 'string' ? STRING_OPS : NUMERIC_OPS
   const isNullOp = filter.op === 'present' || filter.op === 'missing'
 
   function handleFieldChange(newField: FilterFieldId) {
-    const newDef = FILTER_FIELDS.find((f) => f.id === newField)!
+    const newDef = fieldDefs.find((f) => f.id === newField)
+    if (!newDef) return
     let newOp: FilterOp
     if (newDef.nullOnly) newOp = 'present'
     else if (isNullOp) newOp = filter.op
@@ -27,7 +33,7 @@ export function FilterRow({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <FieldPicker value={filter.field} onChange={handleFieldChange} />
+      <FieldPicker value={filter.field} onChange={handleFieldChange} fieldDefs={fieldDefs} fieldGroups={fieldGroups} />
 
       <select
         value={filter.op}

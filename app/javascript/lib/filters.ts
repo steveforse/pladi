@@ -92,8 +92,9 @@ export function defaultOp(fieldType: 'numeric' | 'string' | 'date'): FilterOp {
   return fieldType === 'string' ? 'includes' : 'gte'
 }
 
-export function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
-  const fieldDef = FILTER_FIELDS.find((f) => f.id === filter.field)!
+export function matchesFilterWithFields(fieldDefs: FilterFieldDef[], movie: Movie, filter: ActiveFilter): boolean {
+  const fieldDef = fieldDefs.find((f) => f.id === filter.field)
+  if (!fieldDef) return true
 
   const raw = filter.field === 'poster' ? movie.thumb : filter.field === 'background' ? movie.art : movie[filter.field as keyof Movie]
 
@@ -160,4 +161,8 @@ export function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
     }
   }
   return true
+}
+
+export function matchesFilter(movie: Movie, filter: ActiveFilter): boolean {
+  return matchesFilterWithFields(FILTER_FIELDS, movie, filter)
 }

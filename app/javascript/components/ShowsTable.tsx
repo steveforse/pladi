@@ -5,7 +5,8 @@ import { FilterRow } from '@/components/movies/FilterRow'
 import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
 import { Paginator } from '@/components/movies/Paginator'
 import { usePagination } from '@/hooks/usePagination'
-import { matchesFilter } from '@/lib/filters'
+import { matchesFilterWithFields } from '@/lib/filters'
+import { SHOW_FILTER_FIELDS, SHOW_FILTER_FIELD_GROUPS } from '@/lib/showFilters'
 import { useShowsData } from '@/hooks/useShowsData'
 import { sortMovies } from '@/lib/sorting'
 import type { ActiveFilter, SortDir } from '@/lib/types'
@@ -78,7 +79,7 @@ export default function ShowsTable({
           return searchable.includes(normalized)
         })
     const advancedFiltered = filters.length > 0
-      ? searched.filter((show) => filters.every((f) => matchesFilter(show, f)))
+      ? searched.filter((show) => filters.every((f) => matchesFilterWithFields(SHOW_FILTER_FIELDS, show, f)))
       : searched
     return sortMovies(advancedFiltered, 'title', sortDir)
   }, [sections, selectedTitle, sortDir, query, filters])
@@ -231,6 +232,8 @@ export default function ShowsTable({
               filter={f}
               onChange={(updated) => updateFilter(f.id, updated)}
               onRemove={() => removeFilter(f.id)}
+              fieldDefs={SHOW_FILTER_FIELDS}
+              fieldGroups={SHOW_FILTER_FIELD_GROUPS}
             />
           ))}
           <div className="flex items-center gap-2">

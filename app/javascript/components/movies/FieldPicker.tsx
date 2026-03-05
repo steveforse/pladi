@@ -1,20 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react'
-import type { FilterFieldId } from '@/lib/types'
+import type { FilterFieldDef, FilterFieldId, FilterGroup } from '@/lib/types'
 import { FILTER_FIELD_GROUPS, FILTER_FIELDS } from '@/lib/filters'
 
 export function FieldPicker({
   value,
   onChange,
+  fieldGroups = FILTER_FIELD_GROUPS,
+  fieldDefs = FILTER_FIELDS,
 }: {
   value: FilterFieldId
   onChange: (field: FilterFieldId) => void
+  fieldGroups?: FilterGroup[]
+  fieldDefs?: FilterFieldDef[]
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const selectedLabel = FILTER_FIELDS.find((f) => f.id === value)?.label ?? value
+  const selectedLabel = fieldDefs.find((f) => f.id === value)?.label ?? value
 
   useEffect(() => {
     if (open) {
@@ -33,7 +37,7 @@ export function FieldPicker({
   }, [open])
 
   const lowerQuery = query.toLowerCase()
-  const filteredGroups = FILTER_FIELD_GROUPS.map((group) => ({
+  const filteredGroups = fieldGroups.map((group) => ({
     ...group,
     fields: group.fields.filter((f) => f.label.toLowerCase().includes(lowerQuery)),
   })).filter((group) => group.fields.length > 0)
