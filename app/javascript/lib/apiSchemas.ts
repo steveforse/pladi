@@ -125,8 +125,11 @@ export const AuditLogSchema = z.object({
   old_value: z.string().nullable(),
   new_value: z.string().nullable(),
   created_at: z.string(),
-  movie_id: z.string(),
-  movie_title: z.string(),
+  media_type: z.string(),
+  media_id: z.string(),
+  media_title: z.string(),
+  movie_id: z.string().optional(),
+  movie_title: z.string().optional(),
   section_title: z.string(),
   plex_server: z.object({
     id: z.number(),

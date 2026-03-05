@@ -6,6 +6,9 @@ FactoryBot.define do
     plex_server
     section_id { '1' }
     section_title { 'Movies' }
+    media_type { 'movie' }
+    media_id { '100' }
+    media_title { 'Example Movie' }
     movie_id { '100' }
     movie_title { 'Example Movie' }
     field_name { 'title' }

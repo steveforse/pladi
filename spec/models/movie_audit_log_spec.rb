@@ -32,7 +32,8 @@ RSpec.describe MovieAuditLog do
       described_class.record_changes(
         user: user,
         plex_server: plex_server,
-        movie_id: '99',
+        media_type: 'movie',
+        media_id: '99',
         fields: fields,
         before: before_snapshot,
         after: after_snapshot
@@ -58,6 +59,12 @@ RSpec.describe MovieAuditLog do
 
       it 'stores the scalar field name' do
         expect(described_class.last.field_name).to eq('title')
+      end
+
+      it 'stores media metadata' do
+        expect(described_class.last.media_type).to eq('movie')
+        expect(described_class.last.media_id).to eq('99')
+        expect(described_class.last.media_title).to eq('After Movie')
       end
     end
 

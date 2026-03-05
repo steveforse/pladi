@@ -13,6 +13,9 @@ RSpec.describe Api::HistoryController do
       field_name: 'summary',
       old_value: 'Old summary',
       new_value: 'New summary',
+      media_type: 'movie',
+      media_id: '42',
+      media_title: 'The Film',
       movie_id: '42',
       movie_title: 'The Film',
       section_title: 'Cinema'

@@ -59,7 +59,7 @@ export default function HistoryPage({ onBack }: { onBack: () => void }) {
                   <th className="px-3 py-2 font-medium whitespace-nowrap">Timestamp</th>
                   <th className="px-3 py-2 font-medium whitespace-nowrap">Server</th>
                   <th className="px-3 py-2 font-medium whitespace-nowrap">Section</th>
-                  <th className="px-3 py-2 font-medium whitespace-nowrap">Movie</th>
+                  <th className="px-3 py-2 font-medium whitespace-nowrap">Media</th>
                   <th className="px-3 py-2 font-medium whitespace-nowrap">Field</th>
                   <th className="px-3 py-2 font-medium whitespace-nowrap">Old Value</th>
                   <th className="px-3 py-2 font-medium whitespace-nowrap">New Value</th>
@@ -73,7 +73,10 @@ export default function HistoryPage({ onBack }: { onBack: () => void }) {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">{log.plex_server.name}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{log.section_title}</td>
-                    <td className="px-3 py-2 whitespace-nowrap font-medium">{log.movie_title}</td>
+                    <td className="px-3 py-2 whitespace-nowrap font-medium">
+                      {log.media_title}
+                      <span className="ml-2 text-xs text-muted-foreground">({log.media_type})</span>
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <FieldLabel name={log.field_name} />
                     </td>

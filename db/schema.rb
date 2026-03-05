@@ -10,11 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_02_205431) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_05_162000) do
   create_table "movie_audit_logs", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "field_name", null: false
     t.string "field_type", null: false
+    t.string "media_id", null: false
+    t.string "media_title", null: false
+    t.string "media_type", null: false
     t.string "movie_id", null: false
     t.string "movie_title", null: false
     t.text "new_value"
@@ -25,6 +28,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_205431) do
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.index ["created_at"], name: "index_movie_audit_logs_on_created_at"
+    t.index ["media_type", "media_id"], name: "index_movie_audit_logs_on_media_type_and_media_id"
     t.index ["movie_id", "field_name"], name: "index_movie_audit_logs_on_movie_id_and_field_name"
     t.index ["user_id"], name: "index_movie_audit_logs_on_user_id"
   end

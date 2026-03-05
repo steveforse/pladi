@@ -77,7 +77,8 @@ module Api
       MovieAuditLog.record_changes(
         user: Current.user,
         plex_server: @server,
-        movie_id: params[:id],
+        media_type: 'movie',
+        media_id: params[:id],
         fields: fields,
         before: result[:before],
         after: result[:after]

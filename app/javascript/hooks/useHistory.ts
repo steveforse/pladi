@@ -9,8 +9,9 @@ export interface AuditLog {
   old_value: string | null
   new_value: string | null
   created_at: string
-  movie_id: string
-  movie_title: string
+  media_type: string
+  media_id: string
+  media_title: string
   section_title: string
   plex_server: { id: number; name: string }
 }
