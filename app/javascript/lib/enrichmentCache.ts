@@ -21,10 +21,36 @@ export const ENRICHMENT_FIELDS: (keyof Movie)[] = [
   'labels',
 ]
 
+export const SHOW_ENRICHMENT_FIELDS: (keyof Movie)[] = [
+  'summary',
+  'content_rating',
+  'genres',
+  'writers',
+  'studio',
+  'tagline',
+  'imdb_rating',
+  'rt_critics_rating',
+  'rt_audience_rating',
+  'tmdb_rating',
+  'sort_title',
+  'originally_available',
+  'country',
+  'producers',
+  'collections',
+  'labels',
+  'season_count',
+  'episode_count',
+  'viewed_episode_count',
+]
+
 const VERSION = 1
 
 function cacheKey(serverId: number) {
   return `pladi_enrichment_v${VERSION}_${serverId}`
+}
+
+function showCacheKey(serverId: number) {
+  return `pladi_show_enrichment_v${VERSION}_${serverId}`
 }
 
 type EnrichmentData = Record<string, Partial<Movie>>
@@ -57,6 +83,41 @@ export function mergeEnrichmentCache(serverId: number, sections: Section[]): Sec
       movies: section.movies.map((movie) => {
         const cached = data[movie.id]
         return cached ? { ...movie, ...cached } : movie
+      }),
+    }))
+  } catch {
+    return sections
+  }
+}
+
+export function saveShowEnrichmentCache(serverId: number, sections: Section[]): void {
+  try {
+    const data: EnrichmentData = {}
+    for (const section of sections) {
+      for (const show of section.movies) {
+        const enriched: Partial<Movie> = {}
+        for (const field of SHOW_ENRICHMENT_FIELDS) {
+          enriched[field] = show[field] as never
+        }
+        data[show.id] = enriched
+      }
+    }
+    localStorage.setItem(showCacheKey(serverId), JSON.stringify(data))
+  } catch {
+    // localStorage quota exceeded or unavailable; silently ignore
+  }
+}
+
+export function mergeShowEnrichmentCache(serverId: number, sections: Section[]): Section[] {
+  try {
+    const raw = localStorage.getItem(showCacheKey(serverId))
+    if (!raw) return sections
+    const data: EnrichmentData = JSON.parse(raw)
+    return sections.map((section) => ({
+      ...section,
+      movies: section.movies.map((show) => {
+        const cached = data[show.id]
+        return cached ? { ...show, ...cached } : show
       }),
     }))
   } catch {

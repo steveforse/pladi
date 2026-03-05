@@ -170,4 +170,24 @@ describe('useShowsData', () => {
     expect(localStorage.getItem('pladi_selected_show_server_id')).toBe('2')
     expect(localStorage.getItem('pladi_selected_show_library')).toBe('TV Shows')
   })
+
+  it('applies cached show enrichment before enrich response', async () => {
+    const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
+    localStorage.setItem('pladi_show_enrichment_v1_1', JSON.stringify({ s1: { summary: 'Cached summary' } }))
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/refresh') return { ok: false, status: 500, data: null }
+      if (path === '/api/shows/enrich') return { ok: false, status: 500, data: null }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useShowsData())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.sections[0].movies[0].summary).toBe('Cached summary')
+  })
 })

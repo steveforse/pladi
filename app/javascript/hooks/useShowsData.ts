@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ApiError, api } from '@/lib/apiClient'
 import { EnrichResponseSchema, PlexServerInfoListSchema, SectionListSchema } from '@/lib/apiSchemas'
+import { SHOW_ENRICHMENT_FIELDS, mergeShowEnrichmentCache, saveShowEnrichmentCache } from '@/lib/enrichmentCache'
 import type { PlexServerInfo, Section } from '@/lib/types'
 import type { z } from 'zod'
 
@@ -45,7 +46,7 @@ export function useShowsData() {
       })
       const data = listRes.data ?? []
       if (isStale()) return
-      setSections(data)
+      setSections(mergeShowEnrichmentCache(serverId, data))
       if (data.length > 0) {
         const savedLibrary = localStorage.getItem(STORAGE_KEYS.library)
         const restored = savedLibrary && data.some((s) => s.title === savedLibrary) ? savedLibrary : data[0].title
@@ -64,7 +65,7 @@ export function useShowsData() {
         if (isStale()) return
         if (refreshRes.ok && refreshRes.data) {
           const fresh = refreshRes.data
-          setSections(fresh)
+          setSections(mergeShowEnrichmentCache(serverId, fresh))
           setSelectedTitle((prev) =>
             prev === null || fresh.some((s) => s.title === prev)
               ? prev
@@ -85,7 +86,22 @@ export function useShowsData() {
         })
         if (isStale()) return
         if (enrichRes.ok && enrichRes.data?.sections) {
-          setSections(enrichRes.data.sections as Section[])
+          saveShowEnrichmentCache(serverId, enrichRes.data.sections as Section[])
+          setSections((prev) => {
+            const prevById = new Map<string, Section['movies'][number]>()
+            for (const section of prev) {
+              for (const show of section.movies) prevById.set(show.id, show)
+            }
+            return (enrichRes.data.sections as Section[]).map((section) => ({
+              ...section,
+              movies: section.movies.map((show) => {
+                const existing = prevById.get(show.id)
+                if (!existing) return show
+                const changed = SHOW_ENRICHMENT_FIELDS.some((f) => show[f] !== existing[f])
+                return changed ? show : existing
+              }),
+            }))
+          })
         }
       } finally {
         if (!isStale()) setSyncing(false)

@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   mergeEnrichmentCache,
+  mergeShowEnrichmentCache,
   loadBackgroundReadyCache,
   loadPosterReadyCache,
   saveBackgroundReadyCache,
   saveEnrichmentCache,
+  saveShowEnrichmentCache,
   savePosterReadyCache,
   updateEnrichmentCacheMovie,
 } from '@/lib/enrichmentCache'
@@ -104,6 +106,26 @@ describe('enrichmentCache', () => {
 
     storage.setItem('pladi_enrichment_v1_1', '{not-json')
     expect(mergeEnrichmentCache(1, input)).toEqual(input)
+  })
+
+  it('saves and merges show enrichment fields for sections', () => {
+    const storage = createStorageMock()
+    vi.stubGlobal('localStorage', storage)
+
+    const input = sections()
+    input[0].movies[0].season_count = 2
+    input[0].movies[0].episode_count = 20
+    input[0].movies[0].viewed_episode_count = 5
+    saveShowEnrichmentCache(4, input)
+
+    const merged = mergeShowEnrichmentCache(4, [{
+      ...input[0],
+      movies: [{ ...input[0].movies[0], summary: null, episode_count: null, viewed_episode_count: null }],
+    }])
+
+    expect(merged[0].movies[0].summary).toBe('Summary')
+    expect(merged[0].movies[0].episode_count).toBe(20)
+    expect(merged[0].movies[0].viewed_episode_count).toBe(5)
   })
 
   it('saves and loads poster/background readiness sets', () => {
