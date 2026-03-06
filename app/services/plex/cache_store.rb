@@ -3,7 +3,7 @@
 module Plex
   class CacheStore
     CACHE_TTL = 30.days
-    CACHE_SCHEMA_VERSION = 2
+    CACHE_SCHEMA_VERSION = 3
 
     def initialize(server_id)
       @server_id = server_id

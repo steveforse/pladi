@@ -7,7 +7,7 @@ RSpec.describe Plex::CacheStore do
 
   describe '#key' do
     it 'builds a namespaced cache key' do
-      expect(cache_store.key('section', '1')).to eq('plex/server/10/v2/section/1')
+      expect(cache_store.key('section', '1')).to eq('plex/server/10/v3/section/1')
     end
   end
 
@@ -73,7 +73,7 @@ RSpec.describe Plex::CacheStore do
     end
 
     it 'writes incremented version back to cache' do
-      expect(Rails.cache).to have_received(:write).with('plex/server/10/v2/enrich_version', 3,
+      expect(Rails.cache).to have_received(:write).with('plex/server/10/v3/enrich_version', 3,
                                                         expires_in: Plex::CacheStore::CACHE_TTL)
     end
   end
@@ -86,14 +86,14 @@ RSpec.describe Plex::CacheStore do
 
     it 'uses section key with enrich version' do
       cache_store.cached_items_for('2', 100) { [] }
-      expect(Rails.cache).to have_received(:fetch).with('plex/server/10/v2/section/movie/shows/2/100/1',
+      expect(Rails.cache).to have_received(:fetch).with('plex/server/10/v3/section/movie/shows/2/100/1',
                                                         expires_in: Plex::CacheStore::CACHE_TTL)
     end
   end
 
   describe '#posters_cached' do
     before do
-      allow(Rails.cache).to receive(:read_multi).and_return('plex/server/10/v2/poster/2' => 'hit')
+      allow(Rails.cache).to receive(:read_multi).and_return('plex/server/10/v3/poster/2' => 'hit')
     end
 
     it 'returns only ids with cached posters' do
@@ -103,7 +103,7 @@ RSpec.describe Plex::CacheStore do
 
   describe '#backgrounds_cached' do
     before do
-      allow(Rails.cache).to receive(:read_multi).and_return('plex/server/10/v2/background/1' => 'hit')
+      allow(Rails.cache).to receive(:read_multi).and_return('plex/server/10/v3/background/1' => 'hit')
     end
 
     it 'returns only ids with cached backgrounds' do

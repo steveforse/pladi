@@ -2,6 +2,11 @@
 
 class SectionSerializer
   def self.serialize(sections)
-    sections.map { |section| section.slice(:title, :items) }
+    sections.map do |section|
+      {
+        title: section[:title],
+        items: Array(section[:items] || section[:movies])
+      }
+    end
   end
 end
