@@ -87,7 +87,7 @@ Pladi is intended to be self-hosted alongside your existing Plex setup. The easi
 ```bash
 docker build -t pladi .
 docker run -d -p 80:80 \
-  -e RAILS_MASTER_KEY=<value from config/master.key> \
+  -e SECRET_KEY_BASE=<generate-a-random-secret> \
   -v pladi_storage:/rails/storage \
   --name pladi pladi
 ```

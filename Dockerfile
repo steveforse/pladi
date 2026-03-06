@@ -3,7 +3,7 @@
 
 # This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
 # docker build -t pladi .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name pladi pladi
+# docker run -d -p 80:80 -e SECRET_KEY_BASE=<generate-a-random-secret> --name pladi pladi
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
@@ -57,7 +57,7 @@ RUN bundle exec bootsnap precompile -j 1 app/ lib/
 # Install JS dependencies for Vite asset compilation
 RUN npm ci --ignore-scripts
 
-# Precompiling assets for production without requiring secret RAILS_MASTER_KEY
+# Precompile assets without a real production secret during image build
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
 
