@@ -174,6 +174,24 @@ RSpec.describe Plex::Enricher do
         }
       end
     end
+
+    context 'when a section contains mixed media types' do
+      let(:section) do
+        {
+          id: '10',
+          updated_at: 1234,
+          items: [
+            { id: 'm1', media_type: 'movie', file_path: '/movies/m1.mkv', title: 'Movie 1' },
+            { id: 'e1', media_type: 'episode', file_path: '/tv/show/s01e01.mkv', title: 'Pilot' }
+          ]
+        }
+      end
+
+      it 'fails fast instead of silently treating the section as movies' do
+        expect { enricher.enrich_sections([section], scope: Plex::MediaScope.movies) }
+          .to raise_error(ArgumentError, 'Mixed media types in section: movie, episode')
+      end
+    end
   end
 
   describe '#enrich_sections for shows' do

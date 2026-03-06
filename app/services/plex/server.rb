@@ -44,8 +44,8 @@ module Plex
       payload
     end
 
-    def update_media(media_id, fields, scope: MediaScope.movies)
-      @media_updater.update(media_id, fields, media_type: scope.update_media_type)
+    def update_media(media_id, fields, scope: MediaScope.movies, file_path: nil)
+      @media_updater.update(media_id, fields, media_type: scope.update_media_type, file_path: file_path)
     end
 
     private

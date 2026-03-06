@@ -32,6 +32,31 @@ RSpec.describe Plex::MediaUpdater do
     it { expect(snapshot[:media_title]).to eq('Example') }
     it { expect(snapshot['summary']).to eq('Plot') }
     it { expect(snapshot['genres']).to eq(%w[Drama Sci-Fi]) }
+
+    context 'when multipart metadata is ambiguous' do
+      before do
+        allow(http_client).to receive(:get).with('/library/metadata/42').and_return(
+          'MediaContainer' => {
+            'Metadata' => [
+              {
+                'librarySectionID' => 1,
+                'librarySectionTitle' => 'Movies',
+                'title' => 'Example',
+                'Media' => [{ 'Part' => [{ 'file' => '/movies/a.mkv' }, { 'file' => '/movies/b.mkv' }] }]
+              }
+            ]
+          }
+        )
+      end
+
+      it 'does not guess a file_path when no row identity was provided' do
+        expect(snapshot[:file_path]).to be_nil
+      end
+
+      it 'keeps the requested file_path when it matches a Plex part' do
+        expect(updater.snapshot_for('42', file_path: '/movies/b.mkv')[:file_path]).to eq('/movies/b.mkv')
+      end
+    end
   end
 
   describe '#update' do

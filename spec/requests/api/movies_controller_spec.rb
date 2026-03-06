@@ -161,6 +161,13 @@ RSpec.describe Api::MoviesController do
             params: { server_id: server.id, file_path: '/movies/a.mkv', movie: movie_params },
             as: :json
     end
+    let(:expected_update_call) do
+      [
+        '123',
+        hash_including('title' => 'Updated Title'),
+        { scope: movie_scope, file_path: '/movies/a.mkv' }
+      ]
+    end
 
     it 'returns a structured error when Plex request fails' do
       allow(service).to receive(:update_media).and_raise(Plex::HttpClient::RequestError, 'Unable to reach Plex server')
@@ -177,19 +184,18 @@ RSpec.describe Api::MoviesController do
     context 'when update succeeds' do
       before do
         allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
-        allow(MediaAuditLog).to receive(:record_changes)
-      end
-
-      it 'returns no content on successful update' do
+        allow(MediaAuditLogRecorder).to receive(:record_changes)
         update_request
-
-        expect(response).to have_http_status(:no_content)
       end
+
+      it { expect(response).to have_http_status(:no_content) }
+
+      it { expect(service).to have_received(:update_media).with(*expected_update_call) }
 
       it 'records multipart row identity in the audit log' do
-        update_request
-
-        expect(MediaAuditLog).to have_received(:record_changes).with(hash_including(file_path: '/movies/a.mkv'))
+        expect(MediaAuditLogRecorder).to have_received(:record_changes).with(
+          hash_including(file_path: '/movies/a.mkv')
+        )
       end
     end
   end

@@ -228,9 +228,9 @@ RSpec.describe Plex::Server do
 
   describe 'delegated methods' do
     it 'delegates movie updates through a shared entrypoint' do
-      allow(media_updater).to receive(:update).with('10', { title: 'New' }, media_type: 'movie')
+      allow(media_updater).to receive(:update).with('10', { title: 'New' }, media_type: 'movie', file_path: nil)
       plex_server_service.update_media('10', { title: 'New' }, scope: movie_scope)
-      expect(media_updater).to have_received(:update).with('10', { title: 'New' }, media_type: 'movie')
+      expect(media_updater).to have_received(:update).with('10', { title: 'New' }, media_type: 'movie', file_path: nil)
     end
 
     it 'delegates poster_for' do
@@ -240,9 +240,10 @@ RSpec.describe Plex::Server do
 
     it 'delegates episode updates through a shared entrypoint' do
       episode_scope = Plex::MediaScope.shows('episodes')
-      allow(media_updater).to receive(:update).with('10', { title: 'New Episode' }, media_type: 'episode')
+      episode_update_args = { media_type: 'episode', file_path: nil }
+      allow(media_updater).to receive(:update).with('10', { title: 'New Episode' }, episode_update_args)
       plex_server_service.update_media('10', { title: 'New Episode' }, scope: episode_scope)
-      expect(media_updater).to have_received(:update).with('10', { title: 'New Episode' }, media_type: 'episode')
+      expect(media_updater).to have_received(:update).with('10', { title: 'New Episode' }, episode_update_args)
     end
 
     it 'delegates background_for' do

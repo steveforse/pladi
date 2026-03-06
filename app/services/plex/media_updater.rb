@@ -8,24 +8,23 @@ module Plex
       'episode' => '4'
     }.freeze
 
-    def initialize(http_client, cache_store)
+    def initialize(http_client, cache_store, metadata_fetcher: MediaMetadataFetcher.new(http_client))
       @http  = http_client
       @cache = cache_store
+      @metadata_fetcher = metadata_fetcher
     end
 
-    def update(media_id, fields, media_type:)
-      before = snapshot_for(media_id)
+    def update(media_id, fields, media_type:, file_path: nil)
+      before = snapshot_for(media_id, file_path: file_path)
       @http.put("/library/metadata/#{media_id}?#{build_update_query(fields, media_type: media_type)}")
       @cache.bump_enrich_version
-      after = snapshot_for(media_id)
+      after = snapshot_for(media_id, file_path: file_path)
 
       { before: before, after: after, unverified_fields: verify_fields(fields, after) }
     end
 
-    def snapshot_for(media_id)
-      item = @http.get("/library/metadata/#{media_id}")
-        .dig('MediaContainer', 'Metadata', 0) || {}
-      extract_snapshot(item)
+    def snapshot_for(media_id, file_path: nil)
+      extract_snapshot(@metadata_fetcher.fetch(media_id), file_path: file_path)
     end
 
     private
@@ -77,14 +76,26 @@ module Plex
       end
     end
 
-    def extract_snapshot(item)
+    def extract_snapshot(item, file_path:)
       {
         section_id: item['librarySectionID'].to_s,
         section_title: item['librarySectionTitle'].to_s,
         media_title: item['title'].to_s,
-        file_path: item.dig('Media', 0, 'Part', 0, 'file').presence
+        file_path: resolved_file_path(item, requested_file_path: file_path)
       }.merge(extract_scalar_fields(item))
         .merge(extract_tag_fields(item))
+    end
+
+    def resolved_file_path(item, requested_file_path:)
+      part_file_paths = Array(item['Media']).flat_map do |media|
+        Array(media['Part']).pluck('file')
+      end.compact_blank
+
+      return requested_file_path if requested_file_path.present? && part_file_paths.include?(requested_file_path)
+      return if requested_file_path.present?
+      return part_file_paths.first if part_file_paths.one?
+
+      nil
     end
 
     def extract_scalar_fields(item)

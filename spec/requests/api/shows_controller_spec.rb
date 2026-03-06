@@ -146,6 +146,13 @@ RSpec.describe Api::ShowsController do
             params: { server_id: server.id, file_path: '/tv/show/s01e01.mkv', show: show_params },
             as: :json
     end
+    let(:expected_update_call) do
+      [
+        '123',
+        hash_including('title' => 'Updated Show Title'),
+        { scope: shows_scope, file_path: '/tv/show/s01e01.mkv' }
+      ]
+    end
     let(:show_fields) do
       {
         original_title: 'Localized Title',
@@ -174,19 +181,16 @@ RSpec.describe Api::ShowsController do
     context 'when update succeeds' do
       before do
         allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
-        allow(MediaAuditLog).to receive(:record_changes)
+        allow(MediaAuditLogRecorder).to receive(:record_changes)
+        update_request
       end
 
-      it 'returns no content on successful update' do
-        update_request
+      it { expect(response).to have_http_status(:no_content) }
 
-        expect(response).to have_http_status(:no_content)
-      end
+      it { expect(service).to have_received(:update_media).with(*expected_update_call) }
 
-      it 'records multipart row identity in the audit log' do
-        update_request
-
-        expect(MediaAuditLog).to have_received(:record_changes).with(
+      it do
+        expect(MediaAuditLogRecorder).to have_received(:record_changes).with(
           hash_including(file_path: '/tv/show/s01e01.mkv')
         )
       end
@@ -195,14 +199,14 @@ RSpec.describe Api::ShowsController do
     context 'with permitted tag arrays' do
       before do
         allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
-        allow(MediaAuditLog).to receive(:record_changes)
+        allow(MediaAuditLogRecorder).to receive(:record_changes)
 
         patch '/api/shows/123', params: { server_id: server.id, show: show_fields }, as: :json
       end
 
       it 'passes permitted tag arrays through to update_media' do
         expect(service).to have_received(:update_media)
-          .with('123', hash_including(show_fields.transform_keys(&:to_s)), scope: shows_scope)
+          .with('123', hash_including(show_fields.transform_keys(&:to_s)), scope: shows_scope, file_path: nil)
       end
 
       it { expect(response).to have_http_status(:no_content) }
@@ -212,18 +216,18 @@ RSpec.describe Api::ShowsController do
       before do
         allow(service).to receive(:update_media).and_return(before: {}, after: { media_title: 'Pilot' },
                                                             unverified_fields: [])
-        allow(MediaAuditLog).to receive(:record_changes)
+        allow(MediaAuditLogRecorder).to receive(:record_changes)
 
         patch '/api/shows/123', params: { server_id: server.id, view_mode: 'episodes', show: show_params }, as: :json
       end
 
       it 'uses the episode update path' do
         expect(service).to have_received(:update_media)
-          .with('123', hash_including('title' => 'Updated Show Title'), scope: episodes_scope)
+          .with('123', hash_including('title' => 'Updated Show Title'), scope: episodes_scope, file_path: nil)
       end
 
       it 'records an episode audit log entry' do
-        expect(MediaAuditLog).to have_received(:record_changes).with(hash_including(media_type: 'episode'))
+        expect(MediaAuditLogRecorder).to have_received(:record_changes).with(hash_including(media_type: 'episode'))
       end
 
       it { expect(response).to have_http_status(:no_content) }

@@ -27,7 +27,7 @@ module Api
 
     def update
       fields = resource_params.to_h
-      result = service.update_media(params[:id], fields, scope: media_scope)
+      result = service.update_media(params[:id], fields, scope: media_scope, file_path: params[:file_path])
 
       raise Api::Errors::Unprocessable, 'Plex did not persist this update' if result[:unverified_fields].any?
 
@@ -50,7 +50,7 @@ module Api
     end
 
     def log_update(result, fields)
-      MediaAuditLog.record_changes(
+      MediaAuditLogRecorder.record_changes(
         user: Current.user,
         plex_server: @server,
         media_type: media_scope.update_media_type,

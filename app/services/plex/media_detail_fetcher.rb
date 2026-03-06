@@ -2,8 +2,8 @@
 
 module Plex
   class MediaDetailFetcher
-    def initialize(http_client, parser:)
-      @http_client = http_client
+    def initialize(http_client, parser:, metadata_fetcher: MediaMetadataFetcher.new(http_client))
+      @metadata_fetcher = metadata_fetcher
       @parser = parser
     end
 
@@ -14,7 +14,7 @@ module Plex
     end
 
     def metadata_for(media_id)
-      @http_client.get("/library/metadata/#{media_id}").dig('MediaContainer', 'Metadata', 0) || {}
+      @metadata_fetcher.fetch(media_id)
     end
   end
 end
