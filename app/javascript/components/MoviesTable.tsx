@@ -109,7 +109,7 @@ export default function MoviesTable({
   const { handleBulkSave } = useBulkTagEdit({
     rows: visibleMovies,
     selectedIds,
-    updateItem: async (id, patch) => updateMovie(id, patch),
+    updateItem: async (row, patch) => updateMovie(row, patch),
     onComplete: async (updatedIds) => {
       await refreshMovies(visibleMovies.filter((movie) => updatedIds.includes(movie.id)))
       clearSelection()

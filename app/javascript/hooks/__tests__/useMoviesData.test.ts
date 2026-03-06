@@ -259,13 +259,13 @@ describe('useMoviesData', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     await act(async () => {
-      await result.current.updateMovie('m1', { genres: 'Action, Drama' })
+      await result.current.updateMovie({ id: 'm1', file_path: '/movies/Alpha.mkv' }, { genres: 'Action, Drama' })
     })
 
     expect(mockedApi.patch).toHaveBeenCalledWith(
       '/api/movies/m1',
       { movie: expect.objectContaining({ genres: ['Action', 'Drama'] }) },
-      expect.objectContaining({ query: { server_id: 1 } })
+      expect.objectContaining({ query: { server_id: 1, file_path: '/movies/Alpha.mkv' } })
     )
     expect(mockedUpdateEnrichmentCacheMovie).toHaveBeenCalledWith(1, 'm1', { genres: 'Action, Drama' })
   })
@@ -445,13 +445,13 @@ describe('useMoviesData', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     await act(async () => {
-      await result.current.updateMovie('m1', { year: 2024, genres: '' })
+      await result.current.updateMovie({ id: 'm1', file_path: '/movies/Alpha.mkv' }, { year: 2024, genres: '' })
     })
 
     expect(mockedApi.patch).toHaveBeenCalledWith(
       '/api/movies/m1',
       { movie: expect.objectContaining({ year: 2024, genres: [] }) },
-      expect.objectContaining({ query: { server_id: 1 } })
+      expect.objectContaining({ query: { server_id: 1, file_path: '/movies/Alpha.mkv' } })
     )
   })
 

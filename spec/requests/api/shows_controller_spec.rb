@@ -141,6 +141,11 @@ RSpec.describe Api::ShowsController do
 
   describe 'PATCH /api/shows/:id' do
     let(:show_params) { { title: 'Updated Show Title' } }
+    let(:update_request) do
+      patch '/api/shows/123',
+            params: { server_id: server.id, file_path: '/tv/show/s01e01.mkv', show: show_params },
+            as: :json
+    end
     let(:show_fields) do
       {
         original_title: 'Localized Title',
@@ -166,11 +171,25 @@ RSpec.describe Api::ShowsController do
       expect(response).to have_api_error(status: :unprocessable_content, message: 'Plex did not persist this update')
     end
 
-    it 'returns no content on successful update' do
-      allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
-      allow(MediaAuditLog).to receive(:record_changes)
-      patch '/api/shows/123', params: { server_id: server.id, show: show_params }, as: :json
-      expect(response).to have_http_status(:no_content)
+    context 'when update succeeds' do
+      before do
+        allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
+        allow(MediaAuditLog).to receive(:record_changes)
+      end
+
+      it 'returns no content on successful update' do
+        update_request
+
+        expect(response).to have_http_status(:no_content)
+      end
+
+      it 'records multipart row identity in the audit log' do
+        update_request
+
+        expect(MediaAuditLog).to have_received(:record_changes).with(
+          hash_including(file_path: '/tv/show/s01e01.mkv')
+        )
+      end
     end
 
     context 'with permitted tag arrays' do

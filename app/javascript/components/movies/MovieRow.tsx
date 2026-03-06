@@ -2,6 +2,7 @@ import React from 'react'
 import type { Movie, AllColumnId, ColumnId } from '@/lib/types'
 import { formatSize, formatBitrate, formatDate, formatISODate, formatFrameRate, formatChannels, formatDuration, formatResolution } from '@/lib/formatters'
 import { EditableCell } from './EditableCell'
+import type { MediaRowIdentity } from '@/hooks/useMoviesData'
 
 function PosterCell({ movie, selectedServerId, posterReady, onOpenPoster }: {
   movie: Movie
@@ -75,11 +76,12 @@ export function MovieRow({
   backgroundReady: Set<string>
   selected: boolean
   onToggle: (id: string) => void
-  onUpdate: (id: string, patch: Partial<Movie>) => Promise<void>
+  onUpdate: (row: MediaRowIdentity, patch: Partial<Movie>) => Promise<void>
   onOpenPoster: (movieId: string) => void
   onOpenBackground: (movieId: string) => void
 }) {
   const col = (id: ColumnId) => visibleCols.has(id)
+  const rowIdentity = { id: movie.id, file_path: movie.file_path }
 
   return (
     <tr className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
@@ -93,7 +95,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.title}
               fieldType="text"
-              onSave={async (v) => onUpdate(movie.id, { title: v as string })}
+              onSave={async (v) => onUpdate(rowIdentity, { title: v as string })}
               renderView={() => <span className="font-medium whitespace-nowrap">{movie.title}</span>}
               className="px-4 py-2"
             />
@@ -102,7 +104,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.original_title}
               fieldType="text"
-              onSave={async (v) => onUpdate(movie.id, { original_title: (v as string) || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { original_title: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground whitespace-nowrap">{movie.original_title ?? '—'}</span>}
               className="px-4 py-2"
             />
@@ -113,7 +115,7 @@ export function MovieRow({
               fieldType="number"
               onSave={async (v) => {
                 const year = (v as string) ? parseInt(v as string, 10) : null
-                onUpdate(movie.id, { year: Number.isFinite(year) ? year : null })
+                onUpdate(rowIdentity, { year: Number.isFinite(year) ? year : null })
               }}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.year ?? '—'}</span>}
               className="px-4 py-2"
@@ -123,7 +125,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.content_rating}
               fieldType="text"
-              onSave={async (v) => onUpdate(movie.id, { content_rating: (v as string) || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { content_rating: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.content_rating ?? '—'}</span>}
               className="px-4 py-2"
             />
@@ -136,7 +138,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.genres ? movie.genres.split(', ').filter(Boolean) : []}
               fieldType="tags"
-              onSave={async (v) => onUpdate(movie.id, { genres: (v as string[]).join(', ') || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { genres: (v as string[]).join(', ') || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.genres || '—'}</span>}
               className="px-4 py-2"
             />
@@ -145,7 +147,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.directors ? movie.directors.split(', ').filter(Boolean) : []}
               fieldType="tags"
-              onSave={async (v) => onUpdate(movie.id, { directors: (v as string[]).join(', ') || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { directors: (v as string[]).join(', ') || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.directors || '—'}</span>}
               className="px-4 py-2"
             />
@@ -154,7 +156,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.summary}
               fieldType="text"
-              onSave={async (v) => onUpdate(movie.id, { summary: (v as string) || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { summary: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground text-xs" title={movie.summary ?? undefined}>{movie.summary ? movie.summary.slice(0, 120) + (movie.summary.length > 120 ? '…' : '') : '—'}</span>}
               className="px-4 py-2 max-w-xs"
             />
@@ -182,7 +184,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.sort_title}
               fieldType="text"
-              onSave={async (v) => onUpdate(movie.id, { sort_title: (v as string) || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { sort_title: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground whitespace-nowrap">{movie.sort_title ?? '—'}</span>}
               className="px-4 py-2"
             />
@@ -191,7 +193,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.edition}
               fieldType="text"
-              onSave={async (v) => onUpdate(movie.id, { edition: (v as string) || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { edition: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.edition ?? '—'}</span>}
               className="px-4 py-2"
             />
@@ -200,7 +202,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.originally_available}
               fieldType="date"
-              onSave={async (v) => onUpdate(movie.id, { originally_available: (v as string) || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { originally_available: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{formatISODate(movie.originally_available)}</span>}
               className="px-4 py-2"
             />
@@ -209,7 +211,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.studio}
               fieldType="text"
-              onSave={async (v) => onUpdate(movie.id, { studio: (v as string) || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { studio: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.studio ?? '—'}</span>}
               className="px-4 py-2"
             />
@@ -218,7 +220,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.tagline}
               fieldType="text"
-              onSave={async (v) => onUpdate(movie.id, { tagline: (v as string) || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { tagline: (v as string) || null })}
               renderView={() => <span className="text-muted-foreground text-xs" title={movie.tagline ?? undefined}>{movie.tagline ? movie.tagline.slice(0, 120) + (movie.tagline.length > 120 ? '…' : '') : '—'}</span>}
               className="px-4 py-2 max-w-xs"
             />
@@ -227,7 +229,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.country ? movie.country.split(', ').filter(Boolean) : []}
               fieldType="tags"
-              onSave={async (v) => onUpdate(movie.id, { country: (v as string[]).join(', ') || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { country: (v as string[]).join(', ') || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.country || '—'}</span>}
               className="px-4 py-2"
             />
@@ -236,7 +238,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.writers ? movie.writers.split(', ').filter(Boolean) : []}
               fieldType="tags"
-              onSave={async (v) => onUpdate(movie.id, { writers: (v as string[]).join(', ') || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { writers: (v as string[]).join(', ') || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.writers || '—'}</span>}
               className="px-4 py-2"
             />
@@ -245,7 +247,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.producers ? movie.producers.split(', ').filter(Boolean) : []}
               fieldType="tags"
-              onSave={async (v) => onUpdate(movie.id, { producers: (v as string[]).join(', ') || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { producers: (v as string[]).join(', ') || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.producers || '—'}</span>}
               className="px-4 py-2"
             />
@@ -254,7 +256,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.collections ? movie.collections.split(', ').filter(Boolean) : []}
               fieldType="tags"
-              onSave={async (v) => onUpdate(movie.id, { collections: (v as string[]).join(', ') || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { collections: (v as string[]).join(', ') || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.collections || '—'}</span>}
               className="px-4 py-2"
             />
@@ -263,7 +265,7 @@ export function MovieRow({
             <EditableCell key={id}
               value={movie.labels ? movie.labels.split(', ').filter(Boolean) : []}
               fieldType="tags"
-              onSave={async (v) => onUpdate(movie.id, { labels: (v as string[]).join(', ') || null })}
+              onSave={async (v) => onUpdate(rowIdentity, { labels: (v as string[]).join(', ') || null })}
               renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{movie.labels || '—'}</span>}
               className="px-4 py-2"
             />

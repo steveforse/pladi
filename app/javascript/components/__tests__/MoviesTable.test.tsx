@@ -303,14 +303,20 @@ describe('MoviesTable', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Bulk Edit (1)' }))
     await userEvent.click(screen.getByRole('button', { name: 'bulk-save' }))
 
-    await waitFor(() => expect(baseData.updateMovie).toHaveBeenCalledWith('m1', { genres: 'Drama' }))
-    await waitFor(() => expect(baseData.refreshMovies).toHaveBeenCalledWith(['m1']))
+    await waitFor(() => expect(baseData.updateMovie).toHaveBeenCalledWith(
+      { id: 'm1', file_path: '/x' },
+      { genres: 'Drama' }
+    ))
+    await waitFor(() => expect(baseData.refreshMovies).toHaveBeenCalledWith([
+      { id: 'm1', title: 'Alpha', file_path: '/x' },
+    ]))
     view.unmount()
   })
 
   it('wires server/library selectors, quick filters, advanced filters, and clear all', async () => {
     const { baseData, baseFilterState } = setupHookMocks({
       moviesData: {
+        plexServers: [{ id: 1, name: 'Main' }, { id: 2, name: 'Backup' }],
         sections: [
           { title: 'Movies', items: [{ id: 'm1', title: 'Alpha', file_path: '/x' }] },
           { title: 'Shows', items: [] },
@@ -324,8 +330,8 @@ describe('MoviesTable', () => {
     const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={onShows} downloadImages={false} />)
 
     const [serverSelect, libraryTypeSelect, librarySelect] = screen.getAllByRole('combobox')
-    await userEvent.selectOptions(serverSelect, '1')
-    expect(baseData.handleServerChange).toHaveBeenCalledWith(1)
+    await userEvent.selectOptions(serverSelect, '2')
+    expect(baseData.handleServerChange).toHaveBeenCalledWith(2)
 
     await userEvent.selectOptions(libraryTypeSelect, 'shows')
     expect(onShows).toHaveBeenCalledTimes(1)
@@ -388,7 +394,10 @@ describe('MoviesTable', () => {
     await userEvent.click(screen.getAllByRole('button', { name: 'row-toggle' })[0])
     await userEvent.click(screen.getByRole('button', { name: 'Bulk Edit (1)' }))
     await userEvent.click(screen.getByRole('button', { name: 'bulk-save-append' }))
-    await waitFor(() => expect(baseData.updateMovie).toHaveBeenCalledWith('m1', { genres: 'Drama' }))
+    await waitFor(() => expect(baseData.updateMovie).toHaveBeenCalledWith(
+      { id: 'm1', file_path: '/x' },
+      { genres: 'Drama' }
+    ))
 
     await userEvent.click(screen.getAllByRole('button', { name: 'open-poster' })[0])
     await userEvent.click(screen.getByRole('button', { name: 'poster-next' }))

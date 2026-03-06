@@ -53,10 +53,14 @@ RSpec.describe Plex::Enricher do
     ).and_return(show_concurrent_fetcher)
   end
 
-  describe '#enrich_movie' do
-    subject(:result) { enricher.enrich_movie('123', '/movies/a.mkv') }
+  describe '#enrich_detail' do
+    subject(:result) { enricher.enrich_detail('123', media_type: media_type, file_path: file_path) }
+
+    let(:file_path) { '/movies/a.mkv' }
 
     context 'with full stream detail maps' do
+      let(:media_type) { 'movie' }
+
       before do
         allow(movie_detail_fetcher).to receive(:fetch).with('123').and_return(
           summary: 'My summary',
@@ -78,12 +82,25 @@ RSpec.describe Plex::Enricher do
     end
 
     context 'when stream detail maps are missing' do
+      let(:media_type) { 'movie' }
+
       before do
         allow(movie_detail_fetcher).to receive(:fetch).with('123').and_return(summary: 'Only summary')
       end
 
       it 'returns nil for subtitles' do
         expect(result[:subtitles]).to be_nil
+      end
+    end
+
+    context 'when media type is show' do
+      let(:media_type) { 'show' }
+      let(:file_path) { nil }
+
+      it 'returns parsed show detail without stream merging' do
+        allow(show_detail_fetcher).to receive(:fetch).with('123').and_return(summary: 'Show summary')
+
+        expect(result).to eq(summary: 'Show summary')
       end
     end
   end
@@ -159,14 +176,6 @@ RSpec.describe Plex::Enricher do
     end
   end
 
-  describe '#enrich_show' do
-    it 'returns parsed show detail' do
-      allow(show_detail_fetcher).to receive(:fetch).with('s1').and_return(summary: 'Show summary')
-
-      expect(enricher.enrich_show('s1')).to eq(summary: 'Show summary')
-    end
-  end
-
   describe '#enrich_sections for shows' do
     let(:section) do
       {
@@ -230,8 +239,8 @@ RSpec.describe Plex::Enricher do
     end
   end
 
-  describe '#enrich_episode' do
-    subject(:result) { enricher.enrich_episode('e1', '/tv/show/s01e01.mkv') }
+  describe 'episode detail enrichment' do
+    subject(:result) { enricher.enrich_detail('e1', media_type: 'episode', file_path: '/tv/show/s01e01.mkv') }
 
     before do
       allow(episode_detail_fetcher).to receive(:fetch).with('e1').and_return(

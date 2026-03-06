@@ -12,6 +12,7 @@ export interface AuditLog {
   media_type: string
   media_id: string
   media_title: string
+  file_path?: string | null
   section_title: string
   plex_server: { id: number; name: string }
 }

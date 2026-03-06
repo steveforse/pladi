@@ -27,6 +27,7 @@ RSpec::Matchers.define :include_history_entry do |log:, server_name:|
       'media_type' => log.media_type,
       'media_id' => log.media_id,
       'media_title' => log.media_title,
+      'file_path' => log.file_path,
       'section_title' => log.section_title,
       'plex_server' => { 'id' => log.plex_server_id, 'name' => server_name }
     )

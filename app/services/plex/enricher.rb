@@ -2,6 +2,12 @@
 
 module Plex
   class Enricher
+    DETAIL_PARSERS = {
+      'movie' => MovieDetailParser,
+      'episode' => EpisodeDetailParser,
+      'show' => ShowDetailParser
+    }.freeze
+
     STREAM_DETAIL_KEYS = %i[
       subtitles_by_file
       audio_by_file
@@ -15,46 +21,23 @@ module Plex
     def initialize(http_client, cache_store)
       @cache = cache_store
       @metadata_fetcher = MediaMetadataFetcher.new(http_client)
-      @movie_detail_fetcher = MediaDetailFetcher.new(http_client, parser: MovieDetailParser.new)
-      @episode_detail_fetcher = MediaDetailFetcher.new(http_client, parser: EpisodeDetailParser.new)
-      @show_detail_fetcher = MediaDetailFetcher.new(http_client, parser: ShowDetailParser.new)
-      @concurrent_movie_detail_fetcher = build_concurrent_fetcher(cache_store, @movie_detail_fetcher)
-      @concurrent_episode_detail_fetcher = build_concurrent_fetcher(cache_store, @episode_detail_fetcher)
-      @concurrent_show_detail_fetcher = build_concurrent_fetcher(cache_store, @show_detail_fetcher)
+      @detail_fetchers = build_detail_fetchers(http_client)
+      @concurrent_fetchers = build_concurrent_fetchers(cache_store)
     end
 
     def enrich_sections(sections, scope: MediaScope.movies)
       sections.map { |section| enrich_section(section, scope:) }
     end
 
-    def enrich_movie(movie_id, file_path)
-      detail = fetch_movie_detail(movie_id)
-      merge_detail({}, detail, file_path: file_path)
-    end
-
-    def enrich_episode(episode_id, file_path)
-      detail = fetch_episode_detail(episode_id)
-      merge_detail({}, detail, file_path: file_path)
-    end
-
-    def enrich_show(show_id)
-      fetch_show_detail(show_id)
-    end
-
     def metadata_for(media_id)
       @metadata_fetcher.fetch(media_id)
     end
 
-    def fetch_movie_detail(movie_id)
-      @movie_detail_fetcher.fetch(movie_id)
-    end
+    def enrich_detail(media_id, media_type:, file_path: nil)
+      detail = fetch_detail(media_id, media_type:)
+      return detail if media_type == 'show'
 
-    def fetch_episode_detail(episode_id)
-      @episode_detail_fetcher.fetch(episode_id)
-    end
-
-    def fetch_show_detail(show_id)
-      @show_detail_fetcher.fetch(show_id)
+      merge_detail({}, detail, file_path: file_path)
     end
 
     private
@@ -70,6 +53,18 @@ module Plex
             merge_detail(item, details[item[:id]] || {}, file_path: item[:file_path])
           end
         )
+      end
+    end
+
+    def build_detail_fetchers(http_client)
+      DETAIL_PARSERS.to_h do |media_type, parser_class|
+        [media_type, MediaDetailFetcher.new(http_client, parser: parser_class.new)]
+      end
+    end
+
+    def build_concurrent_fetchers(cache_store)
+      @detail_fetchers.transform_values do |detail_fetcher|
+        build_concurrent_fetcher(cache_store, detail_fetcher)
       end
     end
 
@@ -93,10 +88,18 @@ module Plex
     end
 
     def concurrent_fetcher_for(items)
-      return @concurrent_show_detail_fetcher if items.all? { |item| item[:media_type] == 'show' }
-      return @concurrent_episode_detail_fetcher if items.all? { |item| item[:media_type] == 'episode' }
+      @concurrent_fetchers.fetch(section_media_type(items))
+    end
 
-      @concurrent_movie_detail_fetcher
+    def section_media_type(items)
+      media_types = items.pluck(:media_type).compact.uniq
+      return media_types.first if media_types.one?
+
+      'movie'
+    end
+
+    def fetch_detail(media_id, media_type:)
+      @detail_fetchers.fetch(media_type).fetch(media_id)
     end
 
     def merge_detail(item, detail, file_path:)

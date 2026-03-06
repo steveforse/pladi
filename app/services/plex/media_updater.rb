@@ -81,7 +81,8 @@ module Plex
       {
         section_id: item['librarySectionID'].to_s,
         section_title: item['librarySectionTitle'].to_s,
-        media_title: item['title'].to_s
+        media_title: item['title'].to_s,
+        file_path: item.dig('Media', 0, 'Part', 0, 'file').presence
       }.merge(extract_scalar_fields(item))
         .merge(extract_tag_fields(item))
     end

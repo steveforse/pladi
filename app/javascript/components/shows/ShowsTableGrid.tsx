@@ -6,7 +6,7 @@ import ShowRow from '@/components/shows/ShowRow'
 import { EPISODE_COLUMN_GROUPS, SHOW_COLUMN_GROUPS } from '@/lib/showColumns'
 import { getShowHeaderColumn, isAlwaysVisibleShowColumn } from '@/lib/mediaColumns'
 import type { AllColumnId, ColumnId, MediaPatch, Movie, SortDir, SortKey } from '@/lib/types'
-import type { ShowsViewMode } from '@/hooks/useShowsData'
+import type { ShowRowIdentity, ShowsViewMode } from '@/hooks/useShowsData'
 
 export default function ShowsTableGrid({
   viewMode,
@@ -75,7 +75,7 @@ export default function ShowsTableGrid({
   onResizeStart: (id: AllColumnId, event: React.MouseEvent, measuredWidth?: number) => void
   onOpenBulkEdit: () => void
   onClearSelection: () => void
-  onUpdateShow: (id: string, patch: MediaPatch) => Promise<void>
+  onUpdateShow: (row: ShowRowIdentity, patch: MediaPatch) => Promise<void>
   onOpenPoster: (id: string) => void
   onOpenBackground: (id: string) => void
 }) {

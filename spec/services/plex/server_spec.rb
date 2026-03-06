@@ -69,8 +69,9 @@ RSpec.describe Plex::Server do
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
-      allow(enricher).to receive(:enrich_movie).with('7', '/movies/7.mkv').and_return(summary: 'enriched')
-      allow(enricher).to receive(:enrich_episode)
+      allow(enricher).to receive(:enrich_detail)
+        .with('7', media_type: 'movie', file_path: '/movies/7.mkv')
+        .and_return(summary: 'enriched')
     end
 
     it 'returns nil when movie is not found' do
@@ -94,7 +95,9 @@ RSpec.describe Plex::Server do
             }
           ]
         )
-        allow(enricher).to receive(:enrich_movie).with('7', '/movies/7-b.mkv').and_return(summary: 'part b')
+        allow(enricher).to receive(:enrich_detail)
+          .with('7', media_type: 'movie', file_path: '/movies/7-b.mkv')
+          .and_return(summary: 'part b')
       end
 
       it 'uses file_path to disambiguate multipart media rows' do
@@ -102,13 +105,19 @@ RSpec.describe Plex::Server do
       end
     end
 
-    it 'enriches and returns show detail via show path' do
-      allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
-      allow(cache_store).to receive(:fetch).with('show-sections-key')
-        .and_return([{ items: [{ id: '7', media_type: 'show', file_path: nil }] }])
-      allow(enricher).to receive(:enrich_show).with('7').and_return(summary: 'show enriched')
+    context 'when the cached section row is a show' do
+      before do
+        allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
+        allow(cache_store).to receive(:fetch).with('show-sections-key')
+          .and_return([{ items: [{ id: '7', media_type: 'show', file_path: nil }] }])
+        allow(enricher).to receive(:enrich_detail)
+          .with('7', media_type: 'show', file_path: nil)
+          .and_return(summary: 'show enriched')
+      end
 
-      expect(plex_server_service.detail_for('7', scope: shows_scope)).to eq(summary: 'show enriched')
+      it 'enriches and returns show detail via show path' do
+        expect(plex_server_service.detail_for('7', scope: shows_scope)).to eq(summary: 'show enriched')
+      end
     end
 
     context 'when the cached section row is an episode' do
@@ -116,8 +125,8 @@ RSpec.describe Plex::Server do
         allow(cache_store).to receive(:key).with('sections', 'show', 'episodes').and_return('episode-sections-key')
         allow(cache_store).to receive(:fetch).with('episode-sections-key')
           .and_return([{ items: [{ id: '7', media_type: 'episode', file_path: '/tv/show/s01e01.mkv' }] }])
-        allow(enricher).to receive(:enrich_episode)
-          .with('7', '/tv/show/s01e01.mkv')
+        allow(enricher).to receive(:enrich_detail)
+          .with('7', media_type: 'episode', file_path: '/tv/show/s01e01.mkv')
           .and_return(summary: 'episode enriched')
       end
 
@@ -134,6 +143,10 @@ RSpec.describe Plex::Server do
       end
 
       it { expect(plex_server_service.detail_for('7')).to eq(summary: 'enriched') }
+
+      it 'returns nil when the requested file_path is not present on the direct metadata item' do
+        expect(plex_server_service.detail_for('7', file_path: '/movies/missing.mkv')).to be_nil
+      end
 
       context 'when the direct metadata belongs to another library type' do
         before do

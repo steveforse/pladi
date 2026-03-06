@@ -1,16 +1,13 @@
 # frozen_string_literal: true
 
 class MediaAuditLog < ApplicationRecord
-  self.table_name = 'movie_audit_logs'
-
   belongs_to :user
   belongs_to :plex_server
-  before_validation :sync_legacy_movie_columns
 
   scope :recent, -> { order(created_at: :desc) }
 
   # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
-  def self.record_changes(user:, plex_server:, media_id:, fields:, before:, after:, media_type: 'movie')
+  def self.record_changes(user:, plex_server:, media_id:, fields:, before:, after:, media_type: 'movie', file_path: nil)
     fields.each_key do |key|
       field = key.to_s
       type, old_val, new_val = extract_change(field, before, after)
@@ -20,6 +17,7 @@ class MediaAuditLog < ApplicationRecord
         user: user, plex_server: plex_server,
         section_id: after[:section_id], section_title: after[:section_title],
         media_type: media_type, media_id: media_id, media_title: media_title_from(after),
+        file_path: file_path.presence || after[:file_path].presence || before[:file_path].presence,
         field_name: field, field_type: type,
         old_value: old_val, new_value: new_val
       )
@@ -42,11 +40,4 @@ class MediaAuditLog < ApplicationRecord
     snapshot[:media_title]
   end
   private_class_method :media_title_from
-
-  private
-
-  def sync_legacy_movie_columns
-    self.movie_id = media_id if media_id.present?
-    self.movie_title = media_title if media_title.present?
-  end
 end

@@ -10,16 +10,15 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_05_162000) do
-  create_table "movie_audit_logs", force: :cascade do |t|
+ActiveRecord::Schema[8.1].define(version: 2026_03_06_123000) do
+  create_table "media_audit_logs", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "field_name", null: false
     t.string "field_type", null: false
+    t.string "file_path"
     t.string "media_id", null: false
     t.string "media_title", null: false
     t.string "media_type", null: false
-    t.string "movie_id", null: false
-    t.string "movie_title", null: false
     t.text "new_value"
     t.text "old_value"
     t.integer "plex_server_id", null: false
@@ -27,10 +26,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_05_162000) do
     t.string "section_title", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
-    t.index ["created_at"], name: "index_movie_audit_logs_on_created_at"
-    t.index ["media_type", "media_id"], name: "index_movie_audit_logs_on_media_type_and_media_id"
-    t.index ["movie_id", "field_name"], name: "index_movie_audit_logs_on_movie_id_and_field_name"
-    t.index ["user_id"], name: "index_movie_audit_logs_on_user_id"
+    t.index ["created_at"], name: "index_media_audit_logs_on_created_at"
+    t.index ["media_type", "media_id", "file_path"], name: "index_media_audit_logs_on_media_identity"
+    t.index ["media_type", "media_id"], name: "index_media_audit_logs_on_media_type_and_media_id"
+    t.index ["user_id"], name: "index_media_audit_logs_on_user_id"
   end
 
   create_table "plex_servers", force: :cascade do |t|
@@ -61,8 +60,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_05_162000) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
-  add_foreign_key "movie_audit_logs", "plex_servers"
-  add_foreign_key "movie_audit_logs", "users"
+  add_foreign_key "media_audit_logs", "plex_servers"
+  add_foreign_key "media_audit_logs", "users"
   add_foreign_key "plex_servers", "users"
   add_foreign_key "sessions", "users"
 end

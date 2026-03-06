@@ -3,7 +3,7 @@ import { EditableCell } from '@/components/movies/EditableCell'
 import { formatBitrate, formatDate, formatDuration, formatFrameRate, formatISODate, formatSize, formatResolution } from '@/lib/formatters'
 import { isAlwaysVisibleShowColumn } from '@/lib/mediaColumns'
 import type { AllColumnId, ColumnId, MediaPatch, Movie } from '@/lib/types'
-import type { ShowsViewMode } from '@/hooks/useShowsData'
+import type { ShowRowIdentity, ShowsViewMode } from '@/hooks/useShowsData'
 
 export default function ShowRow({
   show,
@@ -26,11 +26,12 @@ export default function ShowRow({
   downloadImages: boolean
   selectedServerId: number | null
   onToggleRow: (id: string) => void
-  onUpdateShow: (id: string, patch: MediaPatch) => Promise<void>
+  onUpdateShow: (row: ShowRowIdentity, patch: MediaPatch) => Promise<void>
   onOpenPoster: (id: string) => void
   onOpenBackground: (id: string) => void
 }) {
   const activeColumns = colOrder.filter((id) => isAlwaysVisibleShowColumn(viewMode, id) || visibleCols.has(id as ColumnId))
+  const rowIdentity = { id: show.id, file_path: show.file_path }
 
   return (
     <tr key={`${show.id}|${show.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
@@ -45,7 +46,7 @@ export default function ShowRow({
                 key={id}
                 value={show.title}
                 fieldType="text"
-                onSave={async (value) => onUpdateShow(show.id, { title: value as string })}
+                onSave={async (value) => onUpdateShow(rowIdentity, { title: value as string })}
                 renderView={() => <span className="font-medium whitespace-nowrap">{show.title}</span>}
                 className="px-4 py-2"
               />
@@ -64,7 +65,7 @@ export default function ShowRow({
                 key={id}
                 value={show.original_title}
                 fieldType="text"
-                onSave={async (value) => onUpdateShow(show.id, { original_title: (value as string) || null })}
+                onSave={async (value) => onUpdateShow(rowIdentity, { original_title: (value as string) || null })}
                 renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.original_title ?? '—'}</span>}
                 className="px-4 py-2"
               />
@@ -79,7 +80,7 @@ export default function ShowRow({
                 fieldType="number"
                 onSave={async (value) => {
                   const year = (value as string) ? parseInt(value as string, 10) : null
-                  await onUpdateShow(show.id, { year: Number.isFinite(year) ? year : null })
+                  await onUpdateShow(rowIdentity, { year: Number.isFinite(year) ? year : null })
                 }}
                 renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</span>}
                 className="px-4 py-2"
@@ -97,7 +98,7 @@ export default function ShowRow({
                 key={id}
                 value={show.sort_title}
                 fieldType="text"
-                onSave={async (value) => onUpdateShow(show.id, { sort_title: (value as string) || null })}
+                onSave={async (value) => onUpdateShow(rowIdentity, { sort_title: (value as string) || null })}
                 renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.sort_title ?? '—'}</span>}
                 className="px-4 py-2"
               />
@@ -108,7 +109,7 @@ export default function ShowRow({
                 key={id}
                 value={show.originally_available}
                 fieldType="date"
-                onSave={async (value) => onUpdateShow(show.id, { originally_available: (value as string) || null })}
+                onSave={async (value) => onUpdateShow(rowIdentity, { originally_available: (value as string) || null })}
                 renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{formatISODate(show.originally_available)}</span>}
                 className="px-4 py-2"
               />
@@ -122,7 +123,7 @@ export default function ShowRow({
                     key={id}
                     value={show.studio}
                     fieldType="text"
-                    onSave={async (value) => onUpdateShow(show.id, { studio: (value as string) || null })}
+                    onSave={async (value) => onUpdateShow(rowIdentity, { studio: (value as string) || null })}
                     renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.studio ?? '—'}</span>}
                     className="px-4 py-2"
                   />
@@ -135,7 +136,7 @@ export default function ShowRow({
                     key={id}
                     value={show.genres ? show.genres.split(', ').filter(Boolean) : []}
                     fieldType="tags"
-                    onSave={async (value) => onUpdateShow(show.id, { genres: (value as string[]).join(', ') || null })}
+                    onSave={async (value) => onUpdateShow(rowIdentity, { genres: (value as string[]).join(', ') || null })}
                     renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.genres ?? '—'}</span>}
                     className="px-4 py-2"
                   />
@@ -147,7 +148,7 @@ export default function ShowRow({
                 key={id}
                 value={show.summary}
                 fieldType="text"
-                onSave={async (value) => onUpdateShow(show.id, { summary: (value as string) || null })}
+                onSave={async (value) => onUpdateShow(rowIdentity, { summary: (value as string) || null })}
                 renderView={() => (
                   <span className="text-muted-foreground text-xs" title={show.summary ?? undefined}>
                     {show.summary ? show.summary.slice(0, 160) + (show.summary.length > 160 ? '…' : '') : '—'}
@@ -162,7 +163,7 @@ export default function ShowRow({
                 key={id}
                 value={show.content_rating}
                 fieldType="text"
-                onSave={async (value) => onUpdateShow(show.id, { content_rating: (value as string) || null })}
+                onSave={async (value) => onUpdateShow(rowIdentity, { content_rating: (value as string) || null })}
                 renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.content_rating ?? '—'}</span>}
                 className="px-4 py-2"
               />
@@ -181,7 +182,7 @@ export default function ShowRow({
                 key={id}
                 value={show.tagline}
                 fieldType="text"
-                onSave={async (value) => onUpdateShow(show.id, { tagline: (value as string) || null })}
+                onSave={async (value) => onUpdateShow(rowIdentity, { tagline: (value as string) || null })}
                 renderView={() => (
                   <span className="text-muted-foreground text-xs" title={show.tagline ?? undefined}>
                     {show.tagline ? show.tagline.slice(0, 120) + (show.tagline.length > 120 ? '…' : '') : '—'}
@@ -197,7 +198,7 @@ export default function ShowRow({
                     key={id}
                     value={show.collections ? show.collections.split(', ').filter(Boolean) : []}
                     fieldType="tags"
-                    onSave={async (value) => onUpdateShow(show.id, { collections: (value as string[]).join(', ') || null })}
+                    onSave={async (value) => onUpdateShow(rowIdentity, { collections: (value as string[]).join(', ') || null })}
                     renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.collections ?? '—'}</span>}
                     className="px-4 py-2"
                   />
@@ -210,7 +211,7 @@ export default function ShowRow({
                     key={id}
                     value={show.labels ? show.labels.split(', ').filter(Boolean) : []}
                     fieldType="tags"
-                    onSave={async (value) => onUpdateShow(show.id, { labels: (value as string[]).join(', ') || null })}
+                    onSave={async (value) => onUpdateShow(rowIdentity, { labels: (value as string[]).join(', ') || null })}
                     renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.labels ?? '—'}</span>}
                     className="px-4 py-2"
                   />
@@ -223,7 +224,7 @@ export default function ShowRow({
                     key={id}
                     value={show.country ? show.country.split(', ').filter(Boolean) : []}
                     fieldType="tags"
-                    onSave={async (value) => onUpdateShow(show.id, { country: (value as string[]).join(', ') || null })}
+                    onSave={async (value) => onUpdateShow(rowIdentity, { country: (value as string[]).join(', ') || null })}
                     renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.country ?? '—'}</span>}
                     className="px-4 py-2"
                   />
@@ -236,7 +237,7 @@ export default function ShowRow({
                     key={id}
                     value={show.directors ? show.directors.split(', ').filter(Boolean) : []}
                     fieldType="tags"
-                    onSave={async (value) => onUpdateShow(show.id, { directors: (value as string[]).join(', ') || null })}
+                    onSave={async (value) => onUpdateShow(rowIdentity, { directors: (value as string[]).join(', ') || null })}
                     renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.directors ?? '—'}</span>}
                     className="px-4 py-2"
                   />
@@ -249,7 +250,7 @@ export default function ShowRow({
                     key={id}
                     value={show.producers ? show.producers.split(', ').filter(Boolean) : []}
                     fieldType="tags"
-                    onSave={async (value) => onUpdateShow(show.id, { producers: (value as string[]).join(', ') || null })}
+                    onSave={async (value) => onUpdateShow(rowIdentity, { producers: (value as string[]).join(', ') || null })}
                     renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.producers ?? '—'}</span>}
                     className="px-4 py-2"
                   />
@@ -262,7 +263,7 @@ export default function ShowRow({
                     key={id}
                     value={show.writers ? show.writers.split(', ').filter(Boolean) : []}
                     fieldType="tags"
-                    onSave={async (value) => onUpdateShow(show.id, { writers: (value as string[]).join(', ') || null })}
+                    onSave={async (value) => onUpdateShow(rowIdentity, { writers: (value as string[]).join(', ') || null })}
                     renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.writers ?? '—'}</span>}
                     className="px-4 py-2"
                   />

@@ -44,7 +44,7 @@ describe('HistoryPage', () => {
     })
 
     render(<HistoryPage onBack={() => {}} />)
-    expect(screen.getByRole('cell', { name: 'Movie(movie)' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: 'Movie (movie)' })).toBeInTheDocument()
     expect(screen.getByText('Old')).toBeInTheDocument()
     expect(screen.getByText('New')).toBeInTheDocument()
   })

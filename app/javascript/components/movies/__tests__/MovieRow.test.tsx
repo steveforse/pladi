@@ -124,6 +124,10 @@ function renderRow({
   return { onToggle, onUpdate, onOpenPoster, onOpenBackground, view }
 }
 
+function rowIdentity(rowMovie: Movie) {
+  return { id: rowMovie.id, file_path: rowMovie.file_path }
+}
+
 describe('MovieRow', () => {
   it('renders id link, non-image poster/background indicators, and selection toggle', async () => {
     const rowMovie = movie()
@@ -186,8 +190,8 @@ describe('MovieRow', () => {
     await userEvent.click(screen.getByRole('button', { name: 'save-number' }))
     await userEvent.click(screen.getByRole('button', { name: 'save-tags' }))
 
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith('m1', { year: 1999 }))
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith('m1', { genres: 'Action, NewTag' }))
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { year: 1999 }))
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { genres: 'Action, NewTag' }))
 
     const images = screen.getAllByAltText('')
     await userEvent.click(images[0])
@@ -259,7 +263,7 @@ describe('MovieRow', () => {
     })
 
     await userEvent.click(screen.getAllByRole('button', { name: 'save-text' })[1])
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith('m1', { original_title: 'Edited' }))
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { original_title: 'Edited' }))
     view.unmount()
   })
 
@@ -354,30 +358,30 @@ describe('MovieRow', () => {
     for (const button of screen.getAllByRole('button', { name: 'save-text' })) {
       await userEvent.click(button)
     }
-    await userEvent.click(screen.getByRole('button', { name: 'save-number' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'save-number' })[0])
     await userEvent.click(screen.getByRole('button', { name: 'save-date' }))
     for (const button of screen.getAllByRole('button', { name: 'save-tags' })) {
       await userEvent.click(button)
     }
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(17))
-    expect(onUpdate).toHaveBeenCalledWith('m1', { title: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { original_title: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { year: 1999 })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { content_rating: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { genres: 'Action, NewTag' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { directors: 'Director One, NewTag' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { summary: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { sort_title: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { edition: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { originally_available: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { studio: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { tagline: 'Edited' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { country: 'US, NewTag' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { writers: 'Writer One, NewTag' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { producers: 'Producer One, NewTag' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { collections: 'Collection One, NewTag' })
-    expect(onUpdate).toHaveBeenCalledWith('m1', { labels: 'Label One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { title: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { original_title: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { year: 1999 })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { content_rating: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { genres: 'Action, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { directors: 'Director One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { summary: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { sort_title: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { edition: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { originally_available: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { studio: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { tagline: 'Edited' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { country: 'US, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { writers: 'Writer One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { producers: 'Producer One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { collections: 'Collection One, NewTag' })
+    expect(onUpdate).toHaveBeenCalledWith(rowIdentity(rowMovie), { labels: 'Label One, NewTag' })
     view.unmount()
   })
 })

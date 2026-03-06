@@ -30,10 +30,7 @@ module Plex
       item = find_item(media_id, scope:, file_path:) || direct_item_reference(media_id, scope:, file_path:)
       return nil unless item
 
-      return @enricher.enrich_show(media_id) if item[:media_type] == 'show'
-      return @enricher.enrich_episode(media_id, item[:file_path]) if item[:media_type] == 'episode'
-
-      @enricher.enrich_movie(media_id, item[:file_path])
+      @enricher.enrich_detail(media_id, media_type: item[:media_type], file_path: item[:file_path])
     end
 
     def enriched_library(scope: MediaScope.movies)
@@ -70,11 +67,25 @@ module Plex
       return nil if metadata.blank?
       return nil unless scope.accepts_media_type?(metadata['type'].to_s)
 
+      resolved_file_path = resolve_file_path(metadata, file_path)
+      return nil if file_path.present? && resolved_file_path.blank?
+
       {
         id: metadata['ratingKey'].to_s,
         media_type: metadata['type'].to_s,
-        file_path: file_path.presence || metadata.dig('Media', 0, 'Part', 0, 'file')
+        file_path: resolved_file_path
       }
+    end
+
+    def resolve_file_path(metadata, requested_file_path)
+      part_file_paths = Array(metadata['Media']).flat_map do |media|
+        Array(media['Part']).pluck('file')
+      end.compact_blank
+
+      return requested_file_path if requested_file_path.present? && part_file_paths.include?(requested_file_path)
+      return if requested_file_path.present?
+
+      part_file_paths.first
     end
 
     def image_cache_payload(sections)

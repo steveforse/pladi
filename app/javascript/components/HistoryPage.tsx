@@ -74,8 +74,11 @@ export default function HistoryPage({ onBack }: { onBack: () => void }) {
                     <td className="px-3 py-2 whitespace-nowrap">{log.plex_server.name}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{log.section_title}</td>
                     <td className="px-3 py-2 whitespace-nowrap font-medium">
-                      {log.media_title}
-                      <span className="ml-2 text-xs text-muted-foreground">({log.media_type})</span>
+                      <div>{log.media_title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        ({log.media_type})
+                        {log.file_path ? ` · ${log.file_path}` : ''}
+                      </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <FieldLabel name={log.field_name} />

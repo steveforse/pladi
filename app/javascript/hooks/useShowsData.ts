@@ -4,11 +4,12 @@ import { EnrichResponseSchema, SectionListSchema } from '@/lib/apiSchemas'
 import { SHOW_ENRICHMENT_FIELDS, mergeShowEnrichmentCache, saveShowEnrichmentCacheDelta } from '@/lib/enrichmentCache'
 import { mergeEnrichedRows, normalizeTagPatch, resolveInitialLibrary } from '@/hooks/libraryDataUtils'
 import { usePlexServerBootstrap } from '@/hooks/usePlexServerBootstrap'
-import type { MediaPatch, PlexServerInfo, Section } from '@/lib/types'
+import type { MediaPatch, Movie, PlexServerInfo, Section } from '@/lib/types'
 import type { z } from 'zod'
 
 type EnrichResponse = z.infer<typeof EnrichResponseSchema>
 export type ShowsViewMode = 'shows' | 'episodes'
+export type ShowRowIdentity = Pick<Movie, 'id' | 'file_path'>
 
 const STORAGE_KEYS = {
   serverId: 'pladi_selected_show_server_id',
@@ -143,21 +144,23 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
     setSelectedTitle(title)
   }
 
-  async function updateShow(showId: string, patch: MediaPatch) {
+  async function updateShow({ id, file_path: filePath }: ShowRowIdentity, patch: MediaPatch) {
     if (!selectedServerId) throw new Error('No server selected')
 
     const apiPatch = normalizeTagPatch(patch as Record<string, unknown>)
 
     await api.patch<unknown, { show: Record<string, unknown> }>(
-      `/api/shows/${showId}`,
+      `/api/shows/${id}`,
       { show: apiPatch },
-      { query: { server_id: selectedServerId, view_mode: viewMode }, csrf: true }
+      { query: { server_id: selectedServerId, view_mode: viewMode, file_path: filePath }, csrf: true }
     )
 
     setSections((prev) =>
       prev.map((section) => ({
         ...section,
-        items: section.items.map((s) => (s.id === showId ? { ...s, ...patch } : s)),
+        items: section.items.map((s) => (
+          s.id === id && s.file_path === filePath ? { ...s, ...patch } : s
+        )),
       }))
     )
   }

@@ -3,7 +3,7 @@
 class HistoryLogSerializer
   FIELDS = %i[
     id field_name field_type old_value new_value created_at
-    media_type media_id media_title
+    media_type media_id media_title file_path
     section_title
   ].freeze
 

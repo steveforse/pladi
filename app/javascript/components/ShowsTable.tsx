@@ -81,7 +81,7 @@ export default function ShowsTable({
   const { handleBulkSave } = useBulkTagEdit({
     rows: tableState.filteredShows,
     selectedIds,
-    updateItem: async (id, patch) => updateShow(id, patch),
+    updateItem: async (row, patch) => updateShow(row, patch),
     onComplete: () => {
       clearSelection()
       setBulkEditOpen(false)

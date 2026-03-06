@@ -10,7 +10,7 @@ import type { z } from 'zod'
 
 type PosterMovie = { id: string; thumb: string }
 type BackgroundMovie = { id: string; art: string }
-type MediaRowIdentity = Pick<Movie, 'id' | 'file_path'>
+export type MediaRowIdentity = Pick<Movie, 'id' | 'file_path'>
 type EnrichResponse = z.infer<typeof EnrichResponseSchema>
 
 const STORAGE_KEYS = {
@@ -225,23 +225,25 @@ export function useMoviesData(downloadImages: boolean) {
     loadMovies(server.id)
   }
 
-  async function updateMovie(movieId: string, patch: Partial<Movie>) {
+  async function updateMovie({ id, file_path: filePath }: MediaRowIdentity, patch: Partial<Movie>) {
     if (!selectedServerId) throw new Error('No server selected')
 
     const apiPatch = normalizeTagPatch(patch as Record<string, unknown>)
 
     await api.patch<unknown, { movie: Record<string, unknown> }>(
-      `/api/movies/${movieId}`,
+      `/api/movies/${id}`,
       { movie: apiPatch },
-      { query: { server_id: selectedServerId }, csrf: true }
+      { query: { server_id: selectedServerId, file_path: filePath }, csrf: true }
     )
     setSections((prev) =>
       prev.map((section) => ({
         ...section,
-        items: section.items.map((m) => (m.id === movieId ? { ...m, ...patch } : m)),
+        items: section.items.map((m) => (
+          m.id === id && m.file_path === filePath ? { ...m, ...patch } : m
+        )),
       }))
     )
-    if (selectedServerId) void updateEnrichmentCacheMovie(selectedServerId, movieId, patch)
+    if (selectedServerId) void updateEnrichmentCacheMovie(selectedServerId, id, patch)
   }
 
   async function refreshMovies(rows: MediaRowIdentity[]) {

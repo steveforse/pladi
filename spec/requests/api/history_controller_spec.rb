@@ -16,6 +16,7 @@ RSpec.describe Api::HistoryController do
       media_type: 'movie',
       media_id: '42',
       media_title: 'The Film',
+      file_path: '/movies/the-film.mkv',
       section_title: 'Cinema'
     )
   end

@@ -191,13 +191,13 @@ describe('useShowsData', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     await act(async () => {
-      await result.current.updateShow('s1', { genres: 'Drama, Mystery' })
+      await result.current.updateShow({ id: 's1', file_path: null }, { genres: 'Drama, Mystery' })
     })
 
     expect(mockedApi.patch).toHaveBeenCalledWith(
       '/api/shows/s1',
       { show: expect.objectContaining({ genres: ['Drama', 'Mystery'] }) },
-      expect.objectContaining({ query: { server_id: 1, view_mode: 'shows' } })
+      expect.objectContaining({ query: { server_id: 1, view_mode: 'shows', file_path: null } })
     )
   })
 

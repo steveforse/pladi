@@ -131,6 +131,7 @@ export const AuditLogSchema = z.object({
   media_type: z.string(),
   media_id: z.string(),
   media_title: z.string(),
+  file_path: z.string().nullable().optional(),
   section_title: z.string(),
   plex_server: z.object({
     id: z.number(),

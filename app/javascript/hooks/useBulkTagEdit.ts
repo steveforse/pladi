@@ -1,10 +1,13 @@
 import { useCallback } from 'react'
+import type { Movie } from '@/lib/types'
 import type { TagField, TagPatch } from '@/lib/types'
 
 type BulkTagValues = Partial<Record<TagField, string[]>>
 type BulkMode = 'append' | 'replace'
 
-export function useBulkTagEdit<T extends { id: string } & Record<string, unknown>>({
+type RowIdentity = Pick<Movie, 'id' | 'file_path'>
+
+export function useBulkTagEdit<T extends RowIdentity & Record<string, unknown>>({
   rows,
   selectedIds,
   updateItem,
@@ -12,7 +15,7 @@ export function useBulkTagEdit<T extends { id: string } & Record<string, unknown
 }: {
   rows: T[]
   selectedIds: Set<string>
-  updateItem: (id: string, patch: TagPatch) => Promise<void>
+  updateItem: (row: RowIdentity, patch: TagPatch) => Promise<void>
   onComplete?: (updatedIds: string[]) => Promise<void> | void
 }) {
   const handleBulkSave = useCallback(async (tagValues: BulkTagValues, mode: BulkMode) => {
@@ -32,7 +35,7 @@ export function useBulkTagEdit<T extends { id: string } & Record<string, unknown
           patch[field] = newTags.join(', ') || null
         }
       }
-      await updateItem(id, patch)
+      await updateItem({ id: row.id, file_path: row.file_path ?? null }, patch)
     }
 
     await onComplete?.(selectedIdList)
