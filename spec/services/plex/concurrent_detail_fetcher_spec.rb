@@ -8,7 +8,7 @@ RSpec.describe Plex::ConcurrentDetailFetcher do
   end
 
   let(:cache_store) { instance_double(Plex::CacheStore) }
-  let(:detail_fetcher) { instance_double(Plex::MovieDetailFetcher) }
+  let(:detail_fetcher) { instance_double(Plex::MediaDetailFetcher) }
   let(:items) do
     [
       { id: '1', updated_at: 10 },

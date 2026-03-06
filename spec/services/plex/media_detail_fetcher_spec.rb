@@ -2,14 +2,14 @@
 
 require 'rails_helper'
 
-RSpec.describe Plex::ShowDetailFetcher do
+RSpec.describe Plex::MediaDetailFetcher do
   subject(:fetcher) { described_class.new(http_client, parser: parser) }
 
   let(:http_client) { instance_double(Plex::HttpClient) }
-  let(:parser) { instance_double(Plex::ShowDetailParser) }
+  let(:parser) { instance_double(Plex::MovieDetailParser) }
 
   describe '#fetch' do
-    let(:item) { { 'title' => 'Show' } }
+    let(:item) { { 'title' => 'Media' } }
 
     before do
       allow(http_client).to receive(:get).with('/library/metadata/10').and_return(
@@ -36,10 +36,10 @@ RSpec.describe Plex::ShowDetailFetcher do
   describe '#metadata_for' do
     it 'returns the first metadata item' do
       allow(http_client).to receive(:get).with('/library/metadata/10').and_return(
-        'MediaContainer' => { 'Metadata' => [{ 'title' => 'Show' }] }
+        'MediaContainer' => { 'Metadata' => [{ 'title' => 'Media' }] }
       )
 
-      expect(fetcher.metadata_for('10')).to eq('title' => 'Show')
+      expect(fetcher.metadata_for('10')).to eq('title' => 'Media')
     end
   end
 end

@@ -111,7 +111,7 @@ export default function MoviesTable({
     selectedIds,
     updateItem: async (id, patch) => updateMovie(id, patch),
     onComplete: async (updatedIds) => {
-      await refreshMovies(updatedIds)
+      await refreshMovies(visibleMovies.filter((movie) => updatedIds.includes(movie.id)))
       clearSelection()
       setBulkEditOpen(false)
     },

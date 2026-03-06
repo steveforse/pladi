@@ -9,7 +9,7 @@ module Api
     end
 
     def show
-      media = service.detail_for(params[:id], scope: media_scope)
+      media = service.detail_for(params[:id], scope: media_scope, file_path: params[:file_path])
       raise Api::Errors::NotFound, "#{resource_name} not found" if media.nil?
 
       render json: media
@@ -85,6 +85,10 @@ module Api
 
     def resource_param_key
       raise NotImplementedError, "#{self.class} must define #resource_param_key"
+    end
+
+    def resource_name
+      media_scope.resource_name
     end
   end
 end

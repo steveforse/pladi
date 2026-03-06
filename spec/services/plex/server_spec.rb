@@ -82,6 +82,26 @@ RSpec.describe Plex::Server do
       expect(plex_server_service.detail_for('7')).to eq(summary: 'enriched')
     end
 
+    context 'when multipart rows share the same media id' do
+      before do
+        allow(cache_store).to receive(:fetch).with('sections-key').and_return(
+          [
+            {
+              items: [
+                { id: '7', media_type: 'movie', file_path: '/movies/7-a.mkv' },
+                { id: '7', media_type: 'movie', file_path: '/movies/7-b.mkv' }
+              ]
+            }
+          ]
+        )
+        allow(enricher).to receive(:enrich_movie).with('7', '/movies/7-b.mkv').and_return(summary: 'part b')
+      end
+
+      it 'uses file_path to disambiguate multipart media rows' do
+        expect(plex_server_service.detail_for('7', file_path: '/movies/7-b.mkv')).to eq(summary: 'part b')
+      end
+    end
+
     it 'enriches and returns show detail via show path' do
       allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
       allow(cache_store).to receive(:fetch).with('show-sections-key')

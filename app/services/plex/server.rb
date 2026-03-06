@@ -26,8 +26,8 @@ module Plex
       end
     end
 
-    def detail_for(media_id, scope: MediaScope.movies)
-      item = find_item(media_id, scope:) || direct_item_reference(media_id, scope:)
+    def detail_for(media_id, scope: MediaScope.movies, file_path: nil)
+      item = find_item(media_id, scope:, file_path:) || direct_item_reference(media_id, scope:, file_path:)
       return nil unless item
 
       return @enricher.enrich_show(media_id) if item[:media_type] == 'show'
@@ -59,13 +59,13 @@ module Plex
       end
     end
 
-    def find_item(media_id, scope:)
+    def find_item(media_id, scope:, file_path: nil)
       sections(scope:).flat_map { |section| section[:items] }.find do |item|
-        item[:id].to_s == media_id.to_s
+        item[:id].to_s == media_id.to_s && (file_path.blank? || item[:file_path].to_s == file_path.to_s)
       end
     end
 
-    def direct_item_reference(media_id, scope:)
+    def direct_item_reference(media_id, scope:, file_path: nil)
       metadata = enricher.metadata_for(media_id)
       return nil if metadata.blank?
       return nil unless scope.accepts_media_type?(metadata['type'].to_s)
@@ -73,7 +73,7 @@ module Plex
       {
         id: metadata['ratingKey'].to_s,
         media_type: metadata['type'].to_s,
-        file_path: metadata.dig('Media', 0, 'Part', 0, 'file')
+        file_path: file_path.presence || metadata.dig('Media', 0, 'Part', 0, 'file')
       }
     end
 

@@ -337,10 +337,13 @@ describe('useMoviesData', () => {
     )
   })
 
-  it('refreshes movie details and updates cache for successful detail fetches', async () => {
-    const baseSections = [{ title: 'Movies', items: [movie('m1', 'Alpha'), movie('m2', 'Beta')] }]
+  it('refreshes movie details per row and keeps multipart rows distinct', async () => {
+    const movieA = { ...movie('m1', 'Alpha'), file_path: '/movies/Alpha-a.mkv' }
+    const movieB = { ...movie('m1', 'Alpha'), file_path: '/movies/Alpha-b.mkv' }
+    const movieC = movie('m2', 'Beta')
+    const baseSections = [{ title: 'Movies', items: [movieA, movieB, movieC] }]
 
-    mockedApi.get.mockImplementation(async (path: string) => {
+    mockedApi.get.mockImplementation(async (path: string, options?: { query?: { file_path?: string } }) => {
       if (path === '/api/plex_servers') {
         return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
       }
@@ -359,7 +362,12 @@ describe('useMoviesData', () => {
           },
         }
       }
-      if (path === '/api/movies/m1') return { ok: true, status: 200, data: { summary: 'Updated summary' } }
+      if (path === '/api/movies/m1' && options?.query?.file_path === '/movies/Alpha-a.mkv') {
+        return { ok: true, status: 200, data: { summary: 'A summary' } }
+      }
+      if (path === '/api/movies/m1' && options?.query?.file_path === '/movies/Alpha-b.mkv') {
+        return { ok: true, status: 200, data: { summary: 'B summary' } }
+      }
       if (path === '/api/movies/m2') return { ok: false, status: 404, data: null }
       return { ok: false, status: 404, data: null }
     })
@@ -369,11 +377,18 @@ describe('useMoviesData', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     await act(async () => {
-      await result.current.refreshMovies(['m1', 'm2'])
+      await result.current.refreshMovies([
+        { id: 'm1', file_path: '/movies/Alpha-a.mkv' },
+        { id: 'm1', file_path: '/movies/Alpha-b.mkv' },
+        { id: 'm2', file_path: '/movies/Beta.mkv' },
+      ])
     })
 
-    expect(result.current.sections[0].items.find((m) => m.id === 'm1')?.summary).toBe('Updated summary')
-    expect(mockedUpdateEnrichmentCacheMovie).toHaveBeenCalledWith(1, 'm1', { summary: 'Updated summary' })
+    const rows = result.current.sections[0].items
+    expect(rows.find((m) => m.file_path === '/movies/Alpha-a.mkv')?.summary).toBe('A summary')
+    expect(rows.find((m) => m.file_path === '/movies/Alpha-b.mkv')?.summary).toBe('B summary')
+    expect(mockedUpdateEnrichmentCacheMovie).toHaveBeenCalledWith(1, 'm1', { summary: 'A summary' })
+    expect(mockedUpdateEnrichmentCacheMovie).toHaveBeenCalledWith(1, 'm1', { summary: 'B summary' })
     expect(mockedUpdateEnrichmentCacheMovie).not.toHaveBeenCalledWith(1, 'm2', expect.anything())
   })
 

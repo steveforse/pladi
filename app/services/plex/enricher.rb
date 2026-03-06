@@ -15,9 +15,9 @@ module Plex
     def initialize(http_client, cache_store)
       @cache = cache_store
       @metadata_fetcher = MediaMetadataFetcher.new(http_client)
-      @movie_detail_fetcher = MovieDetailFetcher.new(http_client)
-      @episode_detail_fetcher = EpisodeDetailFetcher.new(http_client)
-      @show_detail_fetcher = ShowDetailFetcher.new(http_client)
+      @movie_detail_fetcher = MediaDetailFetcher.new(http_client, parser: MovieDetailParser.new)
+      @episode_detail_fetcher = MediaDetailFetcher.new(http_client, parser: EpisodeDetailParser.new)
+      @show_detail_fetcher = MediaDetailFetcher.new(http_client, parser: ShowDetailParser.new)
       @concurrent_movie_detail_fetcher = build_concurrent_fetcher(cache_store, @movie_detail_fetcher)
       @concurrent_episode_detail_fetcher = build_concurrent_fetcher(cache_store, @episode_detail_fetcher)
       @concurrent_show_detail_fetcher = build_concurrent_fetcher(cache_store, @show_detail_fetcher)

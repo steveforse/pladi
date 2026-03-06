@@ -37,18 +37,28 @@ RSpec.describe Api::MoviesController do
   describe 'GET /api/movies/:id' do
     context 'when movie exists' do
       before do
-        allow(service).to receive(:detail_for).with('123', scope: movie_scope).and_return(summary: 'Details')
+        allow(service).to receive(:detail_for)
+          .with('123', scope: movie_scope, file_path: nil)
+          .and_return(summary: 'Details')
         get '/api/movies/123', params: { server_id: server.id }, as: :json
       end
 
       it 'returns movie detail' do
         expect(json_body).to eq('summary' => 'Details')
       end
+
+      it 'passes file_path when provided' do
+        allow(service).to receive(:detail_for).with('123', scope: movie_scope, file_path: '/movies/a.mkv')
+          .and_return(summary: 'Details')
+        get '/api/movies/123', params: { server_id: server.id, file_path: '/movies/a.mkv' }, as: :json
+
+        expect(response).to have_http_status(:ok)
+      end
     end
 
     context 'when movie does not exist' do
       before do
-        allow(service).to receive(:detail_for).with('123', scope: movie_scope).and_return(nil)
+        allow(service).to receive(:detail_for).with('123', scope: movie_scope, file_path: nil).and_return(nil)
         get '/api/movies/123', params: { server_id: server.id }, as: :json
       end
 

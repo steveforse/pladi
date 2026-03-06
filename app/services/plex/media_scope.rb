@@ -39,6 +39,13 @@ module Plex
       movie_library?
     end
 
+    def resource_name
+      return 'Episode' if episode_view?
+      return 'Show' if show_library?
+
+      'Movie'
+    end
+
     def accepts_media_type?(media_type)
       accepted_media_types.include?(media_type)
     end

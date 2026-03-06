@@ -58,7 +58,7 @@ RSpec.describe Api::ShowsController do
       end
 
       before do
-        allow(service).to receive(:detail_for).with('123', scope: shows_scope)
+        allow(service).to receive(:detail_for).with('123', scope: shows_scope, file_path: nil)
           .and_return(show_detail.deep_symbolize_keys)
         get '/api/shows/123', params: { server_id: server.id }, as: :json
       end
@@ -68,12 +68,23 @@ RSpec.describe Api::ShowsController do
 
     context 'when show does not exist' do
       before do
-        allow(service).to receive(:detail_for).with('123', scope: shows_scope).and_return(nil)
+        allow(service).to receive(:detail_for).with('123', scope: shows_scope, file_path: nil).and_return(nil)
         get '/api/shows/123', params: { server_id: server.id }, as: :json
       end
 
       it 'returns not found error' do
         expect(response).to have_api_error(status: :not_found, message: 'Show not found')
+      end
+    end
+
+    context 'when episode does not exist in episode mode' do
+      before do
+        allow(service).to receive(:detail_for).with('123', scope: episodes_scope, file_path: nil).and_return(nil)
+        get '/api/shows/123', params: { server_id: server.id, view_mode: 'episodes' }, as: :json
+      end
+
+      it 'returns an episode-specific not found error' do
+        expect(response).to have_api_error(status: :not_found, message: 'Episode not found')
       end
     end
   end

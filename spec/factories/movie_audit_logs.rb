@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 FactoryBot.define do
-  factory :media_audit_log, aliases: [:movie_audit_log] do
+  factory :media_audit_log do
     user
     plex_server
     section_id { '1' }

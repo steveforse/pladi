@@ -28,10 +28,6 @@ module Api
       Plex::MediaScope.movies
     end
 
-    def resource_name
-      'Movie'
-    end
-
     def prioritized_movies
       priority_ids = Array(params[:priority_ids]).map(&:to_s)
       movies = Array(params[:movies]).map { |m| m.permit(:id, :thumb, :art).to_h }

@@ -11,9 +11,5 @@ module Api
     def media_scope
       Plex::MediaScope.shows(params[:view_mode])
     end
-
-    def resource_name
-      'Show'
-    end
   end
 end

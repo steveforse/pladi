@@ -10,6 +10,7 @@ import type { z } from 'zod'
 
 type PosterMovie = { id: string; thumb: string }
 type BackgroundMovie = { id: string; art: string }
+type MediaRowIdentity = Pick<Movie, 'id' | 'file_path'>
 type EnrichResponse = z.infer<typeof EnrichResponseSchema>
 
 const STORAGE_KEYS = {
@@ -243,11 +244,11 @@ export function useMoviesData(downloadImages: boolean) {
     if (selectedServerId) void updateEnrichmentCacheMovie(selectedServerId, movieId, patch)
   }
 
-  async function refreshMovies(movieIds: string[]) {
+  async function refreshMovies(rows: MediaRowIdentity[]) {
     if (!selectedServerId) return
-    await Promise.all(movieIds.map(async (movieId) => {
-      const detailRes = await api.get<Partial<Movie>>(`/api/movies/${movieId}`, {
-        query: { server_id: selectedServerId },
+    await Promise.all(rows.map(async ({ id, file_path: filePath }) => {
+      const detailRes = await api.get<Partial<Movie>>(`/api/movies/${id}`, {
+        query: { server_id: selectedServerId, file_path: filePath },
         throwOnError: false,
         responseSchema: MovieDetailSchema,
       })
@@ -256,10 +257,10 @@ export function useMoviesData(downloadImages: boolean) {
       setSections((prev) =>
         prev.map((section) => ({
           ...section,
-          items: section.items.map((m) => (m.id === movieId ? { ...m, ...detail } : m)),
+          items: section.items.map((m) => (m.id === id && m.file_path === filePath ? { ...m, ...detail } : m)),
         }))
       )
-      void updateEnrichmentCacheMovie(selectedServerId, movieId, detail)
+      void updateEnrichmentCacheMovie(selectedServerId, id, detail)
     }))
   }
 

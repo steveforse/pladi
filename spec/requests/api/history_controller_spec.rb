@@ -7,7 +7,7 @@ RSpec.describe Api::HistoryController do
   let(:server) { create(:plex_server, user:, name: 'Main Server') }
   let!(:log) do
     create(
-      :movie_audit_log,
+      :media_audit_log,
       user:,
       plex_server: server,
       field_name: 'summary',

@@ -10,20 +10,32 @@ RSpec.describe Plex::Enricher do
   let(:support_doubles) do
     {
       metadata_fetcher: instance_double(Plex::MediaMetadataFetcher),
-      episode_detail_fetcher: instance_double(Plex::EpisodeDetailFetcher),
+      movie_detail_fetcher: instance_double(Plex::MediaDetailFetcher),
+      episode_detail_fetcher: instance_double(Plex::MediaDetailFetcher),
+      show_detail_fetcher: instance_double(Plex::MediaDetailFetcher),
       movie_concurrent_fetcher: instance_double(Plex::ConcurrentDetailFetcher),
       episode_concurrent_fetcher: instance_double(Plex::ConcurrentDetailFetcher),
-      show_concurrent_fetcher: instance_double(Plex::ConcurrentDetailFetcher)
+      show_concurrent_fetcher: instance_double(Plex::ConcurrentDetailFetcher),
+      movie_parser: instance_double(Plex::MovieDetailParser),
+      episode_parser: instance_double(Plex::EpisodeDetailParser),
+      show_parser: instance_double(Plex::ShowDetailParser)
     }
   end
-  let(:movie_detail_fetcher) { instance_double(Plex::MovieDetailFetcher) }
-  let(:show_detail_fetcher) { instance_double(Plex::ShowDetailFetcher) }
 
   before do
     allow(Plex::MediaMetadataFetcher).to receive(:new).with(http_client).and_return(metadata_fetcher)
-    allow(Plex::MovieDetailFetcher).to receive(:new).with(http_client).and_return(movie_detail_fetcher)
-    allow(Plex::EpisodeDetailFetcher).to receive(:new).with(http_client).and_return(episode_detail_fetcher)
-    allow(Plex::ShowDetailFetcher).to receive(:new).with(http_client).and_return(show_detail_fetcher)
+    allow(Plex::MovieDetailParser).to receive(:new).and_return(movie_parser)
+    allow(Plex::EpisodeDetailParser).to receive(:new).and_return(episode_parser)
+    allow(Plex::ShowDetailParser).to receive(:new).and_return(show_parser)
+    allow(Plex::MediaDetailFetcher).to receive(:new)
+      .with(http_client, parser: movie_parser)
+      .and_return(movie_detail_fetcher)
+    allow(Plex::MediaDetailFetcher).to receive(:new)
+      .with(http_client, parser: episode_parser)
+      .and_return(episode_detail_fetcher)
+    allow(Plex::MediaDetailFetcher).to receive(:new)
+      .with(http_client, parser: show_parser)
+      .and_return(show_detail_fetcher)
     allow(Plex::ConcurrentDetailFetcher).to receive(:new).with(
       cache_store: cache_store,
       detail_fetcher: movie_detail_fetcher,
@@ -76,25 +88,16 @@ RSpec.describe Plex::Enricher do
     end
   end
 
-  def metadata_fetcher
-    support_doubles[:metadata_fetcher]
-  end
-
-  def episode_detail_fetcher
-    support_doubles[:episode_detail_fetcher]
-  end
-
-  def movie_concurrent_fetcher
-    support_doubles[:movie_concurrent_fetcher]
-  end
-
-  def episode_concurrent_fetcher
-    support_doubles[:episode_concurrent_fetcher]
-  end
-
-  def show_concurrent_fetcher
-    support_doubles[:show_concurrent_fetcher]
-  end
+  def metadata_fetcher = support_doubles[:metadata_fetcher]
+  def movie_detail_fetcher = support_doubles[:movie_detail_fetcher]
+  def episode_detail_fetcher = support_doubles[:episode_detail_fetcher]
+  def show_detail_fetcher = support_doubles[:show_detail_fetcher]
+  def movie_concurrent_fetcher = support_doubles[:movie_concurrent_fetcher]
+  def episode_concurrent_fetcher = support_doubles[:episode_concurrent_fetcher]
+  def show_concurrent_fetcher = support_doubles[:show_concurrent_fetcher]
+  def movie_parser = support_doubles[:movie_parser]
+  def episode_parser = support_doubles[:episode_parser]
+  def show_parser = support_doubles[:show_parser]
 
   describe '#enrich_sections' do
     let(:section) do
