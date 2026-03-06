@@ -10,8 +10,8 @@
     <a href="https://nodejs.org/"><img alt="Node 22" src="https://img.shields.io/badge/Node-22-339933?logo=node.js&logoColor=white" /></a>
     <a href="https://github.com/steveforse/pladi/releases"><img alt="Release" src="https://img.shields.io/github/v/release/steveforse/pladi?display_name=tag" /></a>
   </p>
-  <p><strong>Plex Library API Data Inspector</strong></p>
-  <p>Find problems in your Plex movie library — bad matches, duplicates, unnecessary files, and more.</p>
+  <p><strong>Plex library inspector and metadata editor</strong></p>
+  <p>Built for self-hosters who run large Plex libraries and want faster ways to audit, clean up, and edit metadata.</p>
 </div>
 
 ---
@@ -21,17 +21,18 @@
 ---
 
 
-## What It Does
+## What Pladi Does
 
-Pladi connects to your Plex server and gives you a detailed, sortable view of your movie library with the information you need to spot problems:
+Pladi is built for people running Plex in homelabs, on boxes like Proxmox, Unraid, or other self-hosted setups. If you have a large movie or TV library and Plex Web is too slow or too limited for bulk inspection, Pladi gives you a faster way to audit and edit what is already in Plex.
 
-- **Bad matches** — see titles, years, and Plex links to quickly verify metadata
-- **Duplicate files** — identify movies with multiple video files
-- **Unnecessary copies** — spot redundant encodes by comparing resolution, codec, and bitrate side-by-side
-- **Quality overview** — audit your library's codecs, resolutions, and audio across all sections at a glance
-- **Enriched metadata** — genres, ratings, directors, and content ratings pulled directly from Plex
-- **Edit metadata** — fix titles, years, and tags directly from the browser; bulk-edit fields across multiple movies at once
-- **Change history** — every edit is logged so you can see exactly what changed
+- **Movies and TV in one app**: inspect movie libraries, show libraries, and episode-level TV views from the same interface
+- **Show mode and episode mode**: switch TV libraries between show-level metadata and episode/file-level metadata depending on what you need to audit
+- **Spot bad matches and duplicates**: compare titles, years, Plex links, file paths, codecs, resolutions, and bitrates side-by-side
+- **Review enriched metadata**: genres, content ratings, external ratings, directors, writers, studios, collections, labels, and more
+- **Edit Plex metadata directly**: update titles, summaries, original titles, years, and tag-style fields from the browser
+- **Bulk edit tags**: apply shared metadata changes across multiple selected rows at once
+- **Track every change**: media edits are written to an audit trail with before/after values and Plex server context
+- **Warm poster and background caches**: prefetch artwork for movie libraries so the UI stays responsive during large audits
 
 ## Requirements
 
@@ -39,14 +40,49 @@ Pladi connects to your Plex server and gives you a detailed, sortable view of yo
 - Your **Plex auth token** — find it by signing in to Plex Web, opening any media item, clicking ··· → Get Info → View XML, and copying the `X-Plex-Token` value from the URL ([full instructions](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/))
 - Ruby 4.0.1, Node 22, and SQLite3 installed on the host
 
+## Who It Is For
+
+- Plex users with medium or large libraries
+- Self-hosters who want better audit and cleanup workflows than Plex Web provides
+- People managing mixed movie and TV collections with uneven metadata quality
+
+If you just want to browse Plex, this is probably not for you. Pladi is most useful when you are actively maintaining a library.
+
 ## Getting Started
 
-1. **Sign up** at the login page and add your Plex server URL and auth token in Settings.
-2. Your library loads automatically. Use **Refresh** to pull the latest data from Plex.
+1. Start Pladi and create the first account in the setup flow.
+2. Add your Plex server URL and auth token in Settings.
+3. Open Movies or TV Shows, then pick a Plex server and library.
+4. Use **Refresh** to pull the latest section list from Plex and **Enrich** to load deeper metadata.
+
+## Main Features
+
+### Library inspection
+
+- Sort, search, and filter large libraries without leaving the page
+- Compare file-level technical metadata such as codec, resolution, bitrate, duration, and audio details
+- Open the matching Plex item directly from each row
+
+### TV-specific workflows
+
+- **Shows mode** for show-level metadata like season count, episode count, watched counts, and overview data
+- **Episodes mode** for episode-level rows with file paths, per-file stream details, and episode-specific editing
+
+### Editing and history
+
+- Inline edits for supported fields
+- Bulk tag editing for multi-row cleanup
+- Persistent edit history with media type, media title, field name, old value, and new value
+
+### Caching and performance
+
+- Section and enrichment caching on the Rails side
+- IndexedDB-backed enrichment cache on the frontend for large libraries
+- Configurable Plex enrichment concurrency with `PLEX_ENRICH_THREADS`
 
 ## Self-Hosting
 
-Pladi is a standard Rails 8 app. The easiest path is Docker:
+Pladi is intended to be self-hosted alongside your existing Plex setup. The easiest path is Docker:
 
 ```bash
 docker build -t pladi .
@@ -67,19 +103,29 @@ bundle install
 npm install
 bundle exec rails db:migrate
 
-# Run both servers
+# Run the app
+bin/dev
+```
+
+If you prefer to run the processes separately:
+
+```bash
 bundle exec rails server   # API on port 3000
 bundle exec vite dev       # Frontend HMR on port 3036
 ```
 
-Run backend tests: `bundle exec rspec`
+Useful commands:
 
-Run frontend tests: `npm test`
+- Backend tests: `bundle exec rspec`
+- Frontend tests: `npm test`
+- Frontend coverage: `npm run test:coverage`
+- Ruby lint: `bin/rubocop`
+- Security scan: `bin/brakeman`
 
-Run frontend tests with coverage: `npm run test:coverage`
+## Contributing
 
-Run static analyzers: `bin/rubocop` and `bin/brakeman`
+Bug reports, feature requests, and pull requests are welcome. The project is primarily aimed at self-hosted Plex users, so the README is optimized for operators first, but contributions are appreciated.
 
 ## Stack
 
-Rails 8.1 · React 19 · TypeScript · Tailwind CSS v4 · SQLite3 · Solid Cache/Queue
+Rails 8.1 · React 19 · TypeScript · Vite · Tailwind CSS v4 · SQLite3 · Action Cable · Solid Cache/Queue
