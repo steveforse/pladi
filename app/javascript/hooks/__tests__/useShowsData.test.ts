@@ -86,8 +86,8 @@ describe('useShowsData', () => {
   })
 
   it('loads initial server and sections on mount', async () => {
-    const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
-    const enrichedSections = [{ title: 'TV Shows', movies: [{ ...show('s1', 'Severance'), summary: 'Refined details' }] }]
+    const baseSections = [{ title: 'TV Shows', items: [show('s1', 'Severance')] }]
+    const enrichedSections = [{ title: 'TV Shows', items: [{ ...show('s1', 'Severance'), summary: 'Refined details' }] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -104,7 +104,7 @@ describe('useShowsData', () => {
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
       expect(result.current.selectedServerId).toBe(1)
-      expect(result.current.sections[0].movies[0].summary).toBe('Refined details')
+      expect(result.current.sections[0].items[0].summary).toBe('Refined details')
     })
   })
 
@@ -112,7 +112,7 @@ describe('useShowsData', () => {
     localStorage.setItem('pladi_selected_show_server_id', '2')
     localStorage.setItem('pladi_selected_show_library_shows', 'Anime')
 
-    const sections = [{ title: 'Anime', movies: [show('s1', 'Frieren')] }, { title: 'TV Shows', movies: [] }]
+    const sections = [{ title: 'Anime', items: [show('s1', 'Frieren')] }, { title: 'TV Shows', items: [] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -139,8 +139,8 @@ describe('useShowsData', () => {
   })
 
   it('handles explicit server and library changes', async () => {
-    const sectionsA = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
-    const sectionsB = [{ title: 'Anime', movies: [show('s2', 'Dandadan')] }]
+    const sectionsA = [{ title: 'TV Shows', items: [show('s1', 'Severance')] }]
+    const sectionsB = [{ title: 'Anime', items: [show('s2', 'Dandadan')] }]
 
     mockedApi.get.mockImplementation(async (path: string, options?: { query?: Record<string, unknown> }) => {
       if (path === '/api/plex_servers') {
@@ -174,7 +174,7 @@ describe('useShowsData', () => {
   })
 
   it('converts tag patches to arrays when updating show', async () => {
-    const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
+    const baseSections = [{ title: 'TV Shows', items: [show('s1', 'Severance')] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -202,7 +202,7 @@ describe('useShowsData', () => {
   })
 
   it('applies cached show enrichment before enrich response', async () => {
-    const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
+    const baseSections = [{ title: 'TV Shows', items: [show('s1', 'Severance')] }]
     localStorage.setItem('pladi_show_enrichment_v1_shows_1', JSON.stringify({ s1: { summary: 'Cached summary' } }))
 
     mockedApi.get.mockImplementation(async (path: string) => {
@@ -218,11 +218,11 @@ describe('useShowsData', () => {
     const { result } = renderHook(() => useShowsData())
     await waitFor(() => expect(result.current.loading).toBe(false))
 
-    expect(result.current.sections[0].movies[0].summary).toBe('Cached summary')
+    expect(result.current.sections[0].items[0].summary).toBe('Cached summary')
   })
 
   it('does not let legacy cached count fields override live show counts', async () => {
-    const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
+    const baseSections = [{ title: 'TV Shows', items: [show('s1', 'Severance')] }]
     localStorage.setItem(
       'pladi_show_enrichment_v1_shows_1',
       JSON.stringify({
@@ -248,7 +248,7 @@ describe('useShowsData', () => {
     const { result } = renderHook(() => useShowsData())
     await waitFor(() => expect(result.current.loading).toBe(false))
 
-    const loadedShow = result.current.sections[0].movies[0]
+    const loadedShow = result.current.sections[0].items[0]
     expect(loadedShow.summary).toBe('Cached summary')
     expect(loadedShow.season_count).toBe(2)
     expect(loadedShow.episode_count).toBe(20)
@@ -256,7 +256,7 @@ describe('useShowsData', () => {
   })
 
   it('applies cached episode enrichment before enrich response', async () => {
-    const baseSections = [{ title: 'TV Shows', movies: [{ ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01' }] }]
+    const baseSections = [{ title: 'TV Shows', items: [{ ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01' }] }]
     localStorage.setItem('pladi_show_enrichment_v1_episodes_1', JSON.stringify({
       'e1|': { audio_language: 'English', subtitles: 'English, Spanish', video_bitrate: 4500 },
     }))
@@ -274,7 +274,7 @@ describe('useShowsData', () => {
     const { result } = renderHook(() => useShowsData('episodes'))
     await waitFor(() => expect(result.current.loading).toBe(false))
 
-    const cachedEpisode = result.current.sections[0].movies[0]
+    const cachedEpisode = result.current.sections[0].items[0]
     expect(cachedEpisode.audio_language).toBe('English')
     expect(cachedEpisode.subtitles).toBe('English, Spanish')
     expect(cachedEpisode.video_bitrate).toBe(4500)
@@ -283,7 +283,7 @@ describe('useShowsData', () => {
   it('hydrates distinct cached enrichment for episode rows with the same id but different files', async () => {
     const baseSections = [{
       title: 'TV Shows',
-      movies: [
+      items: [
         { ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01', file_path: '/tv/Show/ep-a.mkv' },
         { ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01', file_path: '/tv/Show/ep-b.mkv' },
       ],
@@ -306,12 +306,12 @@ describe('useShowsData', () => {
     const { result } = renderHook(() => useShowsData('episodes'))
     await waitFor(() => expect(result.current.loading).toBe(false))
 
-    expect(result.current.sections[0].movies[0].subtitles).toBe('English')
-    expect(result.current.sections[0].movies[1].subtitles).toBe('Spanish')
+    expect(result.current.sections[0].items[0].subtitles).toBe('English')
+    expect(result.current.sections[0].items[1].subtitles).toBe('Spanish')
   })
 
   it('loads episode mode sections and runs enrich', async () => {
-    const baseSections = [{ title: 'TV Shows', movies: [{ ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01' }] }]
+    const baseSections = [{ title: 'TV Shows', items: [{ ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01' }] }]
     const observedViewModes: string[] = []
 
     mockedApi.get.mockImplementation(async (path: string, options?: { query?: Record<string, unknown> }) => {
@@ -333,7 +333,7 @@ describe('useShowsData', () => {
     const { result } = renderHook(() => useShowsData('episodes'))
     await waitFor(() => expect(result.current.loading).toBe(false))
 
-    expect(result.current.sections[0].movies[0].id).toBe('e1')
+    expect(result.current.sections[0].items[0].id).toBe('e1')
     expect(observedViewModes).toEqual(['episodes', 'episodes'])
     expect(mockedApi.get).toHaveBeenCalledWith(
       '/api/shows/enrich',
@@ -344,7 +344,7 @@ describe('useShowsData', () => {
   it('hydrates episode enrich values on a fresh mount before enrich reruns', async () => {
     const baseSections = [{
       title: 'TV Shows',
-      movies: [{
+      items: [{
         ...show('41014', 'Pilot'),
         show_title: 'Show A',
         episode_number: 'S01E01',
@@ -355,8 +355,8 @@ describe('useShowsData', () => {
     }]
     const enrichedSections = [{
       title: 'TV Shows',
-      movies: [{
-        ...baseSections[0].movies[0],
+      items: [{
+        ...baseSections[0].items[0],
         writers: 'Stacie Lipp, Michael G. Moye, Ron Leavitt, Larry Jacobson',
         subtitles: 'English',
       }],
@@ -375,8 +375,8 @@ describe('useShowsData', () => {
     const { result: firstResult, unmount } = renderHook(() => useShowsData('episodes'))
     await waitFor(() => {
       expect(firstResult.current.loading).toBe(false)
-      expect(firstResult.current.sections[0].movies[0].writers).toContain('Ron Leavitt')
-      expect(firstResult.current.sections[0].movies[0].subtitles).toBe('English')
+      expect(firstResult.current.sections[0].items[0].writers).toContain('Ron Leavitt')
+      expect(firstResult.current.sections[0].items[0].subtitles).toBe('English')
     })
     unmount()
 
@@ -393,7 +393,7 @@ describe('useShowsData', () => {
     const { result: secondResult } = renderHook(() => useShowsData('episodes'))
     await waitFor(() => expect(secondResult.current.loading).toBe(false))
 
-    expect(secondResult.current.sections[0].movies[0].writers).toContain('Ron Leavitt')
-    expect(secondResult.current.sections[0].movies[0].subtitles).toBe('English')
+    expect(secondResult.current.sections[0].items[0].writers).toContain('Ron Leavitt')
+    expect(secondResult.current.sections[0].items[0].subtitles).toBe('English')
   })
 })

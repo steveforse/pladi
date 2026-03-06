@@ -67,7 +67,7 @@ RSpec.describe Plex::Enricher do
       {
         id: '10',
         updated_at: 1234,
-        movies: [{ id: 'm1', media_type: 'movie', file_path: '/movies/m1.mkv', title: 'Movie 1' }]
+        items: [{ id: 'm1', media_type: 'movie', file_path: '/movies/m1.mkv', title: 'Movie 1' }]
       }
     end
     let(:detail) do
@@ -76,14 +76,14 @@ RSpec.describe Plex::Enricher do
         subtitles_by_file: { '/movies/m1.mkv' => 'Thai (SRT)' }
       }
     end
-    let(:result_movie) { enricher.enrich_sections([section], scope: Plex::MediaScope.movies).first[:movies].first }
+    let(:result_movie) { enricher.enrich_sections([section], scope: Plex::MediaScope.movies).first[:items].first }
 
     before do
       allow(cache_store).to receive(:enrich_version).and_return(7)
       allow(cache_store).to receive(:key).with('section', 'movie', 'shows', '10', 1234, 'enriched',
                                                7).and_return('section-cache-key')
       allow(cache_store).to receive(:fetch).with('section-cache-key').and_yield
-      allow(movie_concurrent_fetcher).to receive(:fetch).with(section[:movies]).and_return('m1' => detail)
+      allow(movie_concurrent_fetcher).to receive(:fetch).with(section[:items]).and_return('m1' => detail)
     end
 
     it { expect(result_movie[:id]).to eq('m1') }
@@ -96,17 +96,17 @@ RSpec.describe Plex::Enricher do
         section_with_existing_bitrate = {
           id: '10',
           updated_at: 1234,
-          movies: [
+          items: [
             { id: 'm1', media_type: 'movie', file_path: '/movies/m1.mkv', title: 'Movie 1', video_bitrate: 2_400 }
           ]
         }
         allow(movie_concurrent_fetcher).to receive(:fetch)
-          .with(section_with_existing_bitrate[:movies])
+          .with(section_with_existing_bitrate[:items])
           .and_return('m1' => { summary: 'Detailed summary' })
       end
 
       it 'preserves existing stream-derived values' do
-        result = enricher.enrich_sections([section_with_existing_bitrate], scope: Plex::MediaScope.movies).first[:movies].first
+        result = enricher.enrich_sections([section_with_existing_bitrate], scope: Plex::MediaScope.movies).first[:items].first
         expect(result[:video_bitrate]).to eq(2_400)
       end
 
@@ -114,7 +114,7 @@ RSpec.describe Plex::Enricher do
         {
           id: '10',
           updated_at: 1234,
-          movies: [
+          items: [
             { id: 'm1', media_type: 'movie', file_path: '/movies/m1.mkv', title: 'Movie 1', video_bitrate: 2_400 }
           ]
         }
@@ -135,7 +135,7 @@ RSpec.describe Plex::Enricher do
       {
         id: '12',
         updated_at: 4321,
-        movies: [{ id: 's1', media_type: 'show', file_path: nil, title: 'Show 1' }]
+        items: [{ id: 's1', media_type: 'show', file_path: nil, title: 'Show 1' }]
       }
     end
     let(:detail) { { summary: 'Show details', season_count: 3 } }
@@ -145,11 +145,11 @@ RSpec.describe Plex::Enricher do
       allow(cache_store).to receive(:key).with('section', 'show', 'shows', '12', 4321, 'enriched',
                                                8).and_return('show-section-cache-key')
       allow(cache_store).to receive(:fetch).with('show-section-cache-key').and_yield
-      allow(show_concurrent_fetcher).to receive(:fetch).with(section[:movies]).and_return('s1' => detail)
+      allow(show_concurrent_fetcher).to receive(:fetch).with(section[:items]).and_return('s1' => detail)
     end
 
     it 'uses the show detail fetcher pipeline' do
-      result_show = enricher.enrich_sections([section], scope: Plex::MediaScope.shows('shows')).first[:movies].first
+      result_show = enricher.enrich_sections([section], scope: Plex::MediaScope.shows('shows')).first[:items].first
       expect(result_show).to include(id: 's1', summary: 'Show details', season_count: 3)
     end
 
@@ -159,7 +159,7 @@ RSpec.describe Plex::Enricher do
                                                  8).and_return('episode-section-cache-key')
         allow(cache_store).to receive(:fetch).with('episode-section-cache-key').and_yield
         allow(movie_concurrent_fetcher).to receive(:fetch)
-          .with(episode_section[:movies])
+          .with(episode_section[:items])
           .and_return('e1' => stream_detail)
       end
 
@@ -173,7 +173,7 @@ RSpec.describe Plex::Enricher do
         {
           id: '13',
           updated_at: 5331,
-          movies: [{ id: 'e1', media_type: 'episode', file_path: '/tv/show/s01e01.mkv', title: 'Pilot' }]
+          items: [{ id: 'e1', media_type: 'episode', file_path: '/tv/show/s01e01.mkv', title: 'Pilot' }]
         }
       end
 
@@ -188,7 +188,7 @@ RSpec.describe Plex::Enricher do
       end
 
       def result_episode
-        enricher.enrich_sections([episode_section], scope: Plex::MediaScope.shows('shows')).first[:movies].first
+        enricher.enrich_sections([episode_section], scope: Plex::MediaScope.shows('shows')).first[:items].first
       end
     end
   end

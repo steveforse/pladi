@@ -188,7 +188,7 @@ function diffCachedFields(current: Movie, previous: Movie | undefined, fields: (
 function previousRowsByKey(sections?: Section[]) {
   const previousByRow = new Map<string, Movie>()
   for (const section of sections ?? []) {
-    for (const row of section.movies) previousByRow.set(rowCacheKey(row), row)
+    for (const row of section.items) previousByRow.set(rowCacheKey(row), row)
   }
   return previousByRow
 }
@@ -230,7 +230,7 @@ export function saveEnrichmentCache(serverId: number, sections: Section[]): void
 export async function saveEnrichmentCacheDelta(serverId: number, sections: Section[], previousSections?: Section[]): Promise<void> {
   const previousByRow = previousRowsByKey(previousSections)
   const indexedDbEntries = sections.flatMap((section) =>
-    section.movies.flatMap((movie) => {
+    section.items.flatMap((movie) => {
       const rowKey = rowCacheKey(movie)
       const enriched = diffCachedFields(movie, previousByRow.get(rowKey), ENRICHMENT_FIELDS)
       return Object.keys(enriched).length > 0
@@ -250,7 +250,7 @@ export async function saveEnrichmentCacheDelta(serverId: number, sections: Secti
     const raw = localStorage.getItem(storageKey)
     const data: EnrichmentData = raw ? JSON.parse(raw) as EnrichmentData : {}
     for (const section of sections) {
-      for (const movie of section.movies) {
+      for (const movie of section.items) {
         const rowKey = rowCacheKey(movie)
         const enriched = diffCachedFields(movie, previousByRow.get(rowKey), ENRICHMENT_FIELDS)
         if (Object.keys(enriched).length === 0) continue
@@ -271,7 +271,7 @@ export async function mergeEnrichmentCache(serverId: number, sections: Section[]
   if (indexedDbRecords) {
     return sections.map((section) => ({
       ...section,
-      movies: section.movies.map((movie) => {
+      items: section.items.map((movie) => {
         const cached = indexedDbRecords.get(section.title)?.[rowCacheKey(movie)]
         return mergeCachedFields(movie, cached, ENRICHMENT_FIELDS)
       }),
@@ -284,7 +284,7 @@ export async function mergeEnrichmentCache(serverId: number, sections: Section[]
     const data: EnrichmentData = JSON.parse(raw)
     return sections.map((section) => ({
       ...section,
-      movies: section.movies.map((movie) => mergeCachedFields(movie, cachedRow(data, movie), ENRICHMENT_FIELDS)),
+      items: section.items.map((movie) => mergeCachedFields(movie, cachedRow(data, movie), ENRICHMENT_FIELDS)),
     }))
   } catch {
     return sections
@@ -306,7 +306,7 @@ export async function saveShowEnrichmentCacheDelta(
   const fields = showEnrichmentFields(viewMode)
   const previousByRow = previousRowsByKey(previousSections)
   const indexedDbEntries = sections.flatMap((section) =>
-    section.movies.flatMap((show) => {
+    section.items.flatMap((show) => {
       const rowKey = rowCacheKey(show)
       const enriched = diffCachedFields(show, previousByRow.get(rowKey), fields)
       return Object.keys(enriched).length > 0
@@ -328,7 +328,7 @@ export async function saveShowEnrichmentCacheDelta(
     const raw = localStorage.getItem(storageKey)
     const data: EnrichmentData = raw ? JSON.parse(raw) as EnrichmentData : {}
     for (const section of sections) {
-      for (const show of section.movies) {
+      for (const show of section.items) {
         const rowKey = rowCacheKey(show)
         const enriched = diffCachedFields(show, previousByRow.get(rowKey), fields)
         if (Object.keys(enriched).length === 0) continue
@@ -350,7 +350,7 @@ export async function mergeShowEnrichmentCache(serverId: number, sections: Secti
   if (indexedDbRecords) {
     return sections.map((section) => ({
       ...section,
-      movies: section.movies.map((show) => {
+      items: section.items.map((show) => {
         const cached = indexedDbRecords.get(section.title)?.[rowCacheKey(show)]
         return mergeCachedFields(show, cached, showEnrichmentFields(viewMode))
       }),
@@ -364,7 +364,7 @@ export async function mergeShowEnrichmentCache(serverId: number, sections: Secti
     const data: EnrichmentData = JSON.parse(raw)
     return sections.map((section) => ({
       ...section,
-      movies: section.movies.map((show) => {
+      items: section.items.map((show) => {
         const cached = cachedRow(data, show)
         return mergeCachedFields(show, cached, showEnrichmentFields(viewMode))
       }),

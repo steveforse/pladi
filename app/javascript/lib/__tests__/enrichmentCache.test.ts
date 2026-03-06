@@ -26,7 +26,7 @@ function createStorageMock() {
 function sections(): Section[] {
   return [{
     title: 'Movies',
-    movies: [{
+    items: [{
       id: 'm1',
       title: 'Alpha',
       original_title: null,
@@ -90,12 +90,12 @@ describe('enrichmentCache', () => {
 
     const merged = await mergeEnrichmentCache(7, [{
       ...input[0],
-      movies: [{ ...input[0].movies[0], summary: null, genres: null }],
+      items: [{ ...input[0].items[0], summary: null, genres: null }],
     }])
 
-    expect(merged[0].movies[0].summary).toBe('Summary')
-    expect(merged[0].movies[0].genres).toBe('Action')
-    expect(merged[0].movies[0].title).toBe('Alpha')
+    expect(merged[0].items[0].summary).toBe('Summary')
+    expect(merged[0].items[0].genres).toBe('Action')
+    expect(merged[0].items[0].title).toBe('Alpha')
   })
 
   it('keeps movie enrichment cache separate for rows with the same id but different file paths', async () => {
@@ -104,9 +104,9 @@ describe('enrichmentCache', () => {
 
     const input = [{
       ...sections()[0],
-      movies: [
-        { ...sections()[0].movies[0], id: 'm1', file_path: '/movies/Alpha-a.mkv', subtitles: 'English' },
-        { ...sections()[0].movies[0], id: 'm1', file_path: '/movies/Alpha-b.mkv', subtitles: 'French' },
+      items: [
+        { ...sections()[0].items[0], id: 'm1', file_path: '/movies/Alpha-a.mkv', subtitles: 'English' },
+        { ...sections()[0].items[0], id: 'm1', file_path: '/movies/Alpha-b.mkv', subtitles: 'French' },
       ],
     }]
 
@@ -114,14 +114,14 @@ describe('enrichmentCache', () => {
 
     const merged = await mergeEnrichmentCache(12, [{
       ...input[0],
-      movies: [
-        { ...input[0].movies[0], subtitles: null },
-        { ...input[0].movies[1], subtitles: null },
+      items: [
+        { ...input[0].items[0], subtitles: null },
+        { ...input[0].items[1], subtitles: null },
       ],
     }])
 
-    expect(merged[0].movies[0].subtitles).toBe('English')
-    expect(merged[0].movies[1].subtitles).toBe('French')
+    expect(merged[0].items[0].subtitles).toBe('English')
+    expect(merged[0].items[1].subtitles).toBe('French')
   })
 
   it('returns original sections when cache is missing or malformed', async () => {
@@ -140,19 +140,19 @@ describe('enrichmentCache', () => {
     vi.stubGlobal('localStorage', storage)
 
     const input = sections()
-    input[0].movies[0].season_count = 2
-    input[0].movies[0].episode_count = 20
-    input[0].movies[0].viewed_episode_count = 5
+    input[0].items[0].season_count = 2
+    input[0].items[0].episode_count = 20
+    input[0].items[0].viewed_episode_count = 5
     saveShowEnrichmentCache(4, input)
 
     const merged = await mergeShowEnrichmentCache(4, [{
       ...input[0],
-      movies: [{ ...input[0].movies[0], summary: null, episode_count: null, viewed_episode_count: null }],
+      items: [{ ...input[0].items[0], summary: null, episode_count: null, viewed_episode_count: null }],
     }])
 
-    expect(merged[0].movies[0].summary).toBe('Summary')
-    expect(merged[0].movies[0].episode_count).toBeNull()
-    expect(merged[0].movies[0].viewed_episode_count).toBeNull()
+    expect(merged[0].items[0].summary).toBe('Summary')
+    expect(merged[0].items[0].episode_count).toBeNull()
+    expect(merged[0].items[0].viewed_episode_count).toBeNull()
   })
 
   it('keeps show and episode enrichment caches separate', async () => {
@@ -163,20 +163,20 @@ describe('enrichmentCache', () => {
     saveShowEnrichmentCache(8, input, 'shows')
     saveShowEnrichmentCache(8, [{
       ...input[0],
-      movies: [{ ...input[0].movies[0], file_path: '/tv/Show/ep-a.mkv', writers: 'Episode Writer' }],
+      items: [{ ...input[0].items[0], file_path: '/tv/Show/ep-a.mkv', writers: 'Episode Writer' }],
     }], 'episodes')
 
     const showMerged = await mergeShowEnrichmentCache(8, [{
       ...input[0],
-      movies: [{ ...input[0].movies[0], summary: null }],
+      items: [{ ...input[0].items[0], summary: null }],
     }], 'shows')
     const episodeMerged = await mergeShowEnrichmentCache(8, [{
       ...input[0],
-      movies: [{ ...input[0].movies[0], file_path: '/tv/Show/ep-a.mkv', writers: null }],
+      items: [{ ...input[0].items[0], file_path: '/tv/Show/ep-a.mkv', writers: null }],
     }], 'episodes')
 
-    expect(showMerged[0].movies[0].summary).toBe('Summary')
-    expect(episodeMerged[0].movies[0].writers).toBe('Episode Writer')
+    expect(showMerged[0].items[0].summary).toBe('Summary')
+    expect(episodeMerged[0].items[0].writers).toBe('Episode Writer')
   })
 
   it('keeps episode enrichment cache separate for rows with the same id but different file paths', async () => {
@@ -185,9 +185,9 @@ describe('enrichmentCache', () => {
 
     const input = [{
       ...sections()[0],
-      movies: [
-        { ...sections()[0].movies[0], id: 'e1', file_path: '/tv/Show/ep-a.mkv', subtitles: 'English' },
-        { ...sections()[0].movies[0], id: 'e1', file_path: '/tv/Show/ep-b.mkv', subtitles: 'Spanish' },
+      items: [
+        { ...sections()[0].items[0], id: 'e1', file_path: '/tv/Show/ep-a.mkv', subtitles: 'English' },
+        { ...sections()[0].items[0], id: 'e1', file_path: '/tv/Show/ep-b.mkv', subtitles: 'Spanish' },
       ],
     }]
 
@@ -195,14 +195,14 @@ describe('enrichmentCache', () => {
 
     const merged = await mergeShowEnrichmentCache(14, [{
       ...input[0],
-      movies: [
-        { ...input[0].movies[0], subtitles: null },
-        { ...input[0].movies[1], subtitles: null },
+      items: [
+        { ...input[0].items[0], subtitles: null },
+        { ...input[0].items[1], subtitles: null },
       ],
     }], 'episodes')
 
-    expect(merged[0].movies[0].subtitles).toBe('English')
-    expect(merged[0].movies[1].subtitles).toBe('Spanish')
+    expect(merged[0].items[0].subtitles).toBe('English')
+    expect(merged[0].items[1].subtitles).toBe('Spanish')
   })
 
   it('stores sparse show enrichment payloads', async () => {
@@ -211,8 +211,8 @@ describe('enrichmentCache', () => {
 
     const input = [{
       ...sections()[0],
-      movies: [{
-        ...sections()[0].movies[0],
+      items: [{
+        ...sections()[0].items[0],
         id: 'e1',
         file_path: '/tv/Show/ep-a.mkv',
         writers: 'Writer One, Writer Two',
@@ -243,17 +243,17 @@ describe('enrichmentCache', () => {
     }))
 
     const input = sections()
-    input[0].movies[0].season_count = 2
-    input[0].movies[0].episode_count = 20
-    input[0].movies[0].viewed_episode_count = 5
-    input[0].movies[0].summary = 'Live summary'
+    input[0].items[0].season_count = 2
+    input[0].items[0].episode_count = 20
+    input[0].items[0].viewed_episode_count = 5
+    input[0].items[0].summary = 'Live summary'
 
     const merged = await mergeShowEnrichmentCache(11, input)
 
-    expect(merged[0].movies[0].summary).toBe('Cached summary')
-    expect(merged[0].movies[0].season_count).toBe(2)
-    expect(merged[0].movies[0].episode_count).toBe(20)
-    expect(merged[0].movies[0].viewed_episode_count).toBe(5)
+    expect(merged[0].items[0].summary).toBe('Cached summary')
+    expect(merged[0].items[0].season_count).toBe(2)
+    expect(merged[0].items[0].episode_count).toBe(20)
+    expect(merged[0].items[0].viewed_episode_count).toBe(5)
   })
 
   it('saves and loads poster/background readiness sets', () => {

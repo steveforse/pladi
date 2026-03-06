@@ -65,8 +65,8 @@ RSpec.describe Plex::ImageStore do
   describe '#partition_posters_by_cache' do
     let(:sections) do
       [
-        { movies: [{ id: '1', thumb: '/thumb-1' }, { id: '2', thumb: '/thumb-2' }] },
-        { movies: [{ id: '2', thumb: '/thumb-2' }, { id: '3' }] }
+        { items: [{ id: '1', thumb: '/thumb-1' }, { id: '2', thumb: '/thumb-2' }] },
+        { items: [{ id: '2', thumb: '/thumb-2' }, { id: '3' }] }
       ]
     end
 
@@ -84,8 +84,8 @@ RSpec.describe Plex::ImageStore do
   describe '#partition_backgrounds_by_cache' do
     let(:sections) do
       [
-        { movies: [{ id: '1', art: '/art-1' }, { id: '2', art: '/art-2' }] },
-        { movies: [{ id: '2', art: '/art-2' }, { id: '3' }] }
+        { items: [{ id: '1', art: '/art-1' }, { id: '2', art: '/art-2' }] },
+        { items: [{ id: '2', art: '/art-2' }, { id: '3' }] }
       ]
     end
 

@@ -7,11 +7,15 @@ module Plex
       @parser = parser
     end
 
-    def fetch(show_id)
-      item = @http_client.get("/library/metadata/#{show_id}").dig('MediaContainer', 'Metadata', 0) || {}
+    def fetch(media_id)
+      item = metadata_for(media_id)
       @parser.parse(item)
     rescue StandardError
       {}
+    end
+
+    def metadata_for(media_id)
+      @http_client.get("/library/metadata/#{media_id}").dig('MediaContainer', 'Metadata', 0) || {}
     end
   end
 end

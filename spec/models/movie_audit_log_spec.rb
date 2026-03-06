@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe MovieAuditLog do
+  it 'inherits the shared media audit log table mapping' do
+    expect(described_class.table_name).to eq('movie_audit_logs')
+  end
+
   describe '.record_changes' do
     let(:user) { create(:user) }
     let(:plex_server) { create(:plex_server, user:) }

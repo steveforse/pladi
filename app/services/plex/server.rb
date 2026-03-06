@@ -3,7 +3,6 @@
 module Plex
   class Server
     delegate :enrich_sections, to: :enricher
-    delegate :update_movie, :update_show, :update_episode, to: :media_updater
     delegate :poster_for, :background_for, to: :image_store
 
     def initialize(server)
@@ -28,12 +27,12 @@ module Plex
     end
 
     def detail_for(media_id, scope: MediaScope.movies)
-      media = find_item(media_id, scope:)
-      return nil unless media
+      item = find_item(media_id, scope:) || direct_item_reference(media_id)
+      return nil unless item
 
-      return @enricher.enrich_show(media_id) if media[:media_type] == 'show'
+      return @enricher.enrich_show(media_id) if item[:media_type] == 'show'
 
-      @enricher.enrich_movie(media_id, media[:file_path])
+      @enricher.enrich_movie(media_id, item[:file_path])
     end
 
     def enriched_library(scope: MediaScope.movies)
@@ -42,10 +41,13 @@ module Plex
         scope:
       )
 
-      {
-        sections: enriched_sections,
-        **image_cache_payload(enriched_sections)
-      }
+      payload = { sections: enriched_sections }
+      payload.merge!(image_cache_payload(enriched_sections)) if scope.include_image_cache?
+      payload
+    end
+
+    def update_media(media_id, fields, scope: MediaScope.movies)
+      @media_updater.update(media_id, fields, media_type: scope.update_media_type)
     end
 
     private
@@ -57,9 +59,20 @@ module Plex
     end
 
     def find_item(media_id, scope:)
-      sections(scope:).flat_map { |section| section[:movies] }.find do |item|
+      sections(scope:).flat_map { |section| section[:items] }.find do |item|
         item[:id].to_s == media_id.to_s
       end
+    end
+
+    def direct_item_reference(media_id)
+      metadata = enricher.metadata_for(media_id)
+      return nil if metadata.blank?
+
+      {
+        id: metadata['ratingKey'].to_s,
+        media_type: metadata['type'].to_s,
+        file_path: metadata.dig('Media', 0, 'Part', 0, 'file')
+      }
     end
 
     def image_cache_payload(sections)

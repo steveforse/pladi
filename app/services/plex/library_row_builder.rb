@@ -15,7 +15,7 @@ module Plex
 
     def build_show(item:, plex_url:)
       base_row(item: item, plex_url: plex_url)
-        .merge(LibraryRowFields::EMPTY_FILE_ROW)
+        .merge(MediaRowFields::EMPTY_FILE_ROW)
         .merge(show_overrides(item))
     end
 
@@ -32,16 +32,16 @@ module Plex
     private
 
     def base_row(item:, plex_url:)
-      map_fields(item, LibraryRowFields::BASE_FIELD_MAP).merge(plex_url: plex_url)
+      map_fields(item, MediaRowFields::ROW_FIELD_MAP).merge(plex_url: plex_url)
     end
 
     def file_row(media:, part:)
-      map_fields(media, LibraryRowFields::FILE_FIELD_MAP.except(:file_path, :size))
+      map_fields(media, MediaRowFields::FILE_FIELD_MAP.except(:file_path, :size))
         .merge(map_fields(part, file_part_field_map))
     end
 
     def tag_fields(item)
-      Plex::FieldMaps::TAG_METADATA_FIELDS.transform_values { |key| TagFormatter.join(item[key]) }
+      MediaTagFields.values_for(item)
     end
 
     def episode_code(item)
@@ -98,7 +98,7 @@ module Plex
     end
 
     def map_fields(source, field_map)
-      field_map.to_h { |name, key| [name, source[key]] }
+      MediaRowFields.extract(source, field_map)
     end
 
     def file_part_field_map

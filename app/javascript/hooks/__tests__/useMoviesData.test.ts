@@ -118,8 +118,8 @@ describe('useMoviesData', () => {
   })
 
   it('loads initial server and sections on mount', async () => {
-    const baseSections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
-    const enrichedSections = [{ title: 'Movies', movies: [{ ...movie('m1', 'Alpha'), summary: 'enriched' }] }]
+    const baseSections = [{ title: 'Movies', items: [movie('m1', 'Alpha')] }]
+    const enrichedSections = [{ title: 'Movies', items: [{ ...movie('m1', 'Alpha'), summary: 'enriched' }] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -149,15 +149,15 @@ describe('useMoviesData', () => {
       expect(result.current.loading).toBe(false)
       expect(result.current.selectedServerId).toBe(1)
       expect(result.current.sections).toHaveLength(1)
-      expect(result.current.sections[0].movies[0].summary).toBe('enriched')
+      expect(result.current.sections[0].items[0].summary).toBe('enriched')
     })
   })
 
   it('keeps distinct file rows for multi-file movies after enrichment merge', async () => {
     const movieA = { ...movie('m1', 'Alpha'), file_path: '/movies/Alpha/alpha-cut-a.mkv', video_codec: 'h264' }
     const movieB = { ...movie('m1', 'Alpha'), file_path: '/movies/Alpha/alpha-cut-b.mkv', video_codec: 'hevc' }
-    const baseSections = [{ title: 'Movies', movies: [movieA, movieB] }]
-    const enrichedSections = [{ title: 'Movies', movies: [{ ...movieA, summary: null }, { ...movieB, summary: null }] }]
+    const baseSections = [{ title: 'Movies', items: [movieA, movieB] }]
+    const enrichedSections = [{ title: 'Movies', items: [{ ...movieA, summary: null }, { ...movieB, summary: null }] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -185,7 +185,7 @@ describe('useMoviesData', () => {
 
     await waitFor(() => expect(result.current.syncing).toBe(false))
 
-    const rows = result.current.sections[0].movies
+    const rows = result.current.sections[0].items
     expect(rows).toHaveLength(2)
     expect(rows[0].file_path).toBe('/movies/Alpha/alpha-cut-a.mkv')
     expect(rows[1].file_path).toBe('/movies/Alpha/alpha-cut-b.mkv')
@@ -197,7 +197,7 @@ describe('useMoviesData', () => {
     localStorage.setItem('pladi_selected_server_id', '2')
     localStorage.setItem('pladi_selected_library', 'TV')
 
-    const tvSections = [{ title: 'TV', movies: [movie('m2', 'Beta')] }, { title: 'Movies', movies: [movie('m3', 'Gamma')] }]
+    const tvSections = [{ title: 'TV', items: [movie('m2', 'Beta')] }, { title: 'Movies', items: [movie('m3', 'Gamma')] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -229,7 +229,7 @@ describe('useMoviesData', () => {
   })
 
   it('converts tag string patches to arrays when updating movie', async () => {
-    const baseSections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+    const baseSections = [{ title: 'Movies', items: [movie('m1', 'Alpha')] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -271,7 +271,7 @@ describe('useMoviesData', () => {
   })
 
   it('hydrates image readiness from cache, subscribes to cable channels, and warms uncached media', async () => {
-    const baseSections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+    const baseSections = [{ title: 'Movies', items: [movie('m1', 'Alpha')] }]
 
     mockedLoadPosterReadyCache.mockReturnValue(new Set(['seed-poster']))
     mockedLoadBackgroundReadyCache.mockReturnValue(new Set(['seed-bg']))
@@ -338,7 +338,7 @@ describe('useMoviesData', () => {
   })
 
   it('refreshes movie details and updates cache for successful detail fetches', async () => {
-    const baseSections = [{ title: 'Movies', movies: [movie('m1', 'Alpha'), movie('m2', 'Beta')] }]
+    const baseSections = [{ title: 'Movies', items: [movie('m1', 'Alpha'), movie('m2', 'Beta')] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -372,7 +372,7 @@ describe('useMoviesData', () => {
       await result.current.refreshMovies(['m1', 'm2'])
     })
 
-    expect(result.current.sections[0].movies.find((m) => m.id === 'm1')?.summary).toBe('Updated summary')
+    expect(result.current.sections[0].items.find((m) => m.id === 'm1')?.summary).toBe('Updated summary')
     expect(mockedUpdateEnrichmentCacheMovie).toHaveBeenCalledWith(1, 'm1', { summary: 'Updated summary' })
     expect(mockedUpdateEnrichmentCacheMovie).not.toHaveBeenCalledWith(1, 'm2', expect.anything())
   })
@@ -401,7 +401,7 @@ describe('useMoviesData', () => {
   })
 
   it('maps non-tag patch fields directly and empty tag strings to empty arrays', async () => {
-    const baseSections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+    const baseSections = [{ title: 'Movies', items: [movie('m1', 'Alpha')] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -457,7 +457,7 @@ describe('useMoviesData', () => {
   })
 
   it('stores selected server id and loads movies when switching servers', async () => {
-    const sections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+    const sections = [{ title: 'Movies', items: [movie('m1', 'Alpha')] }]
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -472,7 +472,7 @@ describe('useMoviesData', () => {
       }
       if (path === '/api/movies' || path === '/api/movies/refresh') {
         const serverId = options?.query?.server_id
-        return { ok: true, status: 200, data: serverId === 2 ? [{ title: 'Movies 2', movies: [movie('m2', 'Beta')] }] : sections }
+        return { ok: true, status: 200, data: serverId === 2 ? [{ title: 'Movies 2', items: [movie('m2', 'Beta')] }] : sections }
       }
       if (path === '/api/movies/enrich') {
         return {
@@ -507,7 +507,7 @@ describe('useMoviesData', () => {
   })
 
   it('updates selected library state and only persists non-null titles', async () => {
-    const sections = [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }]
+    const sections = [{ title: 'Movies', items: [movie('m1', 'Alpha')] }]
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
         return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
@@ -560,14 +560,14 @@ describe('useMoviesData', () => {
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') return { ok: true, status: 200, data: [] }
       if (path === '/api/movies' || path === '/api/movies/refresh') {
-        return { ok: true, status: 200, data: [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }] }
+        return { ok: true, status: 200, data: [{ title: 'Movies', items: [movie('m1', 'Alpha')] }] }
       }
       if (path === '/api/movies/enrich') {
         return {
           ok: true,
           status: 200,
           data: {
-            sections: [{ title: 'Movies', movies: [movie('m1', 'Alpha')] }],
+            sections: [{ title: 'Movies', items: [movie('m1', 'Alpha')] }],
             cached_poster_ids: [],
             uncached_poster_movies: [],
             cached_background_ids: [],

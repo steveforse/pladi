@@ -237,7 +237,7 @@ export function useMoviesData(downloadImages: boolean) {
     setSections((prev) =>
       prev.map((section) => ({
         ...section,
-        movies: section.movies.map((m) => (m.id === movieId ? { ...m, ...patch } : m)),
+        items: section.items.map((m) => (m.id === movieId ? { ...m, ...patch } : m)),
       }))
     )
     if (selectedServerId) void updateEnrichmentCacheMovie(selectedServerId, movieId, patch)
@@ -256,7 +256,7 @@ export function useMoviesData(downloadImages: boolean) {
       setSections((prev) =>
         prev.map((section) => ({
           ...section,
-          movies: section.movies.map((m) => (m.id === movieId ? { ...m, ...detail } : m)),
+          items: section.items.map((m) => (m.id === movieId ? { ...m, ...detail } : m)),
         }))
       )
       void updateEnrichmentCacheMovie(selectedServerId, movieId, detail)

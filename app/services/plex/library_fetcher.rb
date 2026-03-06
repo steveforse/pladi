@@ -13,7 +13,7 @@ module Plex
         section_id = section['key']
         updated_at = section['updatedAt']
         { id: section_id, updated_at: updated_at,
-          title: section['title'], movies: cached_section_items(section_id, updated_at, scope) }
+          title: section['title'], items: cached_section_items(section_id, updated_at, scope) }
       end
     end
 
@@ -41,7 +41,7 @@ module Plex
     end
 
     def cached_section_items(section_id, updated_at, scope)
-      @cache.cached_movies_for(section_id, updated_at, media_type: scope.library_type, view_mode: scope.view_mode) do
+      @cache.cached_items_for(section_id, updated_at, media_type: scope.library_type, view_mode: scope.view_mode) do
         items_for_section(section_id, scope:)
           .sort_by { |item| item[:title].to_s.downcase }
       end

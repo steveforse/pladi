@@ -11,7 +11,7 @@ RSpec.describe Api::ShowsController do
   let(:serialized_show_section) do
     [{
       'title' => 'TV Shows',
-      'movies' => [{
+      'items' => [{
         'id' => '1',
         'season_count' => 2,
         'episode_count' => 20,
@@ -36,7 +36,7 @@ RSpec.describe Api::ShowsController do
     context 'when server exists' do
       before do
         allow(service).to receive(:sections).with(scope: shows_scope).and_return(
-          [{ title: 'TV Shows', movies: [{ id: '1', season_count: 2, episode_count: 20, viewed_episode_count: 8 }] }]
+          [{ title: 'TV Shows', items: [{ id: '1', season_count: 2, episode_count: 20, viewed_episode_count: 8 }] }]
         )
         get '/api/shows', params: { server_id: server.id }, as: :json
       end
@@ -82,13 +82,13 @@ RSpec.describe Api::ShowsController do
     before do
       allow(service).to receive(:sections).with(scope: shows_scope,
                                                 refresh: true).and_return([{
-                                                                            title: 'TV Shows', movies: []
+                                                                            title: 'TV Shows', items: []
                                                                           }])
       get '/api/shows/refresh', params: { server_id: server.id }, as: :json
     end
 
     it 'returns refreshed serialized sections' do
-      expect(json_body).to eq([{ 'title' => 'TV Shows', 'movies' => [] }])
+      expect(json_body).to eq([{ 'title' => 'TV Shows', 'items' => [] }])
     end
   end
 
@@ -103,17 +103,13 @@ RSpec.describe Api::ShowsController do
       allow(service).to receive(:enriched_library).with(scope: shows_scope).and_return(
         sections: [{
           title: 'TV Shows',
-          movies: [{
+          items: [{
             id: '1',
             season_count: 2,
             episode_count: 20,
             viewed_episode_count: 8
           }]
-        }],
-        cached_poster_ids: ['1'],
-        uncached_poster_movies: [{ id: '2', thumb: '/thumb' }],
-        cached_background_ids: ['1'],
-        uncached_background_movies: [{ id: '2', art: '/art' }]
+        }]
       )
       get '/api/shows/enrich', params: { server_id: server.id }, as: :json
     end
@@ -123,13 +119,13 @@ RSpec.describe Api::ShowsController do
 
   describe 'GET /api/shows with episode view_mode' do
     before do
-      allow(service).to receive(:sections).with(scope: episodes_scope).and_return([{ title: 'TV Shows', movies: [] }])
+      allow(service).to receive(:sections).with(scope: episodes_scope).and_return([{ title: 'TV Shows', items: [] }])
 
       get '/api/shows', params: { server_id: server.id, view_mode: 'episodes' }, as: :json
     end
 
     it { expect(response).to have_http_status(:ok) }
-    it { expect(json_body).to eq([{ 'title' => 'TV Shows', 'movies' => [] }]) }
+    it { expect(json_body).to eq([{ 'title' => 'TV Shows', 'items' => [] }]) }
   end
 
   describe 'PATCH /api/shows/:id' do
@@ -148,34 +144,35 @@ RSpec.describe Api::ShowsController do
     end
 
     it 'returns a structured error when Plex request fails' do
-      allow(service).to receive(:update_show).and_raise(Plex::HttpClient::RequestError, 'Unable to reach Plex server')
+      allow(service).to receive(:update_media).and_raise(Plex::HttpClient::RequestError, 'Unable to reach Plex server')
       patch '/api/shows/123', params: { server_id: server.id, show: show_params }, as: :json
       expect(response).to have_api_error(status: :unprocessable_content, message: 'Unable to reach Plex server')
     end
 
     it 'returns unprocessable when update is not persisted' do
-      allow(service).to receive(:update_show).and_return(before: {}, after: {}, unverified_fields: ['title'])
+      allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: ['title'])
       patch '/api/shows/123', params: { server_id: server.id, show: show_params }, as: :json
       expect(response).to have_api_error(status: :unprocessable_content, message: 'Plex did not persist this update')
     end
 
     it 'returns no content on successful update' do
-      allow(service).to receive(:update_show).and_return(before: {}, after: {}, unverified_fields: [])
-      allow(MovieAuditLog).to receive(:record_changes)
+      allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
+      allow(MediaAuditLog).to receive(:record_changes)
       patch '/api/shows/123', params: { server_id: server.id, show: show_params }, as: :json
       expect(response).to have_http_status(:no_content)
     end
 
     context 'with permitted tag arrays' do
       before do
-        allow(service).to receive(:update_show).and_return(before: {}, after: {}, unverified_fields: [])
-        allow(MovieAuditLog).to receive(:record_changes)
+        allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
+        allow(MediaAuditLog).to receive(:record_changes)
 
         patch '/api/shows/123', params: { server_id: server.id, show: show_fields }, as: :json
       end
 
-      it 'passes permitted tag arrays through to update_show' do
-        expect(service).to have_received(:update_show).with('123', hash_including(show_fields.transform_keys(&:to_s)))
+      it 'passes permitted tag arrays through to update_media' do
+        expect(service).to have_received(:update_media)
+          .with('123', hash_including(show_fields.transform_keys(&:to_s)), scope: shows_scope)
       end
 
       it { expect(response).to have_http_status(:no_content) }
@@ -183,19 +180,20 @@ RSpec.describe Api::ShowsController do
 
     context 'when updating episode rows' do
       before do
-        allow(service).to receive(:update_episode).and_return(before: {}, after: { media_title: 'Pilot' },
-                                                              unverified_fields: [])
-        allow(MovieAuditLog).to receive(:record_changes)
+        allow(service).to receive(:update_media).and_return(before: {}, after: { media_title: 'Pilot' },
+                                                            unverified_fields: [])
+        allow(MediaAuditLog).to receive(:record_changes)
 
         patch '/api/shows/123', params: { server_id: server.id, view_mode: 'episodes', show: show_params }, as: :json
       end
 
       it 'uses the episode update path' do
-        expect(service).to have_received(:update_episode).with('123', hash_including('title' => 'Updated Show Title'))
+        expect(service).to have_received(:update_media)
+          .with('123', hash_including('title' => 'Updated Show Title'), scope: episodes_scope)
       end
 
       it 'records an episode audit log entry' do
-        expect(MovieAuditLog).to have_received(:record_changes).with(hash_including(media_type: 'episode'))
+        expect(MediaAuditLog).to have_received(:record_changes).with(hash_including(media_type: 'episode'))
       end
 
       it { expect(response).to have_http_status(:no_content) }

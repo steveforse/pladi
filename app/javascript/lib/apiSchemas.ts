@@ -98,7 +98,7 @@ export const MovieDetailSchema = z.object({
 
 export const SectionSchema = z.object({
   title: z.string(),
-  movies: z.array(MovieListItemSchema),
+  items: z.array(MovieListItemSchema),
 })
 
 export const SectionListSchema = z.array(SectionSchema)

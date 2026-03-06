@@ -22,13 +22,12 @@ module Api
     def enrich
       payload = service.enriched_library(scope: media_scope)
       payload[:sections] = ::SectionSerializer.serialize(payload[:sections])
-      payload.except!(*hidden_enrichment_fields)
       render json: payload
     end
 
     def update
       fields = resource_params.to_h
-      result = service.public_send(media_scope.update_method_name, params[:id], fields)
+      result = service.update_media(params[:id], fields, scope: media_scope)
 
       raise Api::Errors::Unprocessable, 'Plex did not persist this update' if result[:unverified_fields].any?
 
@@ -46,12 +45,12 @@ module Api
 
     private
 
-    def hidden_enrichment_fields
-      []
+    def resource_params
+      params.expect(resource_param_key => Plex::MediaUpdateFields.permitted_params(extra_fields: resource_extra_fields))
     end
 
     def log_update(result, fields)
-      MovieAuditLog.record_changes(
+      MediaAuditLog.record_changes(
         user: Current.user,
         plex_server: @server,
         media_type: media_scope.update_media_type,
@@ -78,6 +77,14 @@ module Api
 
     def load_server
       load_current_server!(:server_id)
+    end
+
+    def resource_extra_fields
+      []
+    end
+
+    def resource_param_key
+      raise NotImplementedError, "#{self.class} must define #resource_param_key"
     end
   end
 end

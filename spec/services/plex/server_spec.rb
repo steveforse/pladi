@@ -64,7 +64,7 @@ RSpec.describe Plex::Server do
   end
 
   describe '#detail_for' do
-    let(:sections) { [{ movies: [{ id: '7', media_type: 'movie', file_path: '/movies/7.mkv' }] }] }
+    let(:sections) { [{ items: [{ id: '7', media_type: 'movie', file_path: '/movies/7.mkv' }] }] }
 
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
@@ -73,6 +73,7 @@ RSpec.describe Plex::Server do
     end
 
     it 'returns nil when movie is not found' do
+      allow(enricher).to receive(:metadata_for).with('9').and_return({})
       expect(plex_server_service.detail_for('9')).to be_nil
     end
 
@@ -83,15 +84,32 @@ RSpec.describe Plex::Server do
     it 'enriches and returns show detail via show path' do
       allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
       allow(cache_store).to receive(:fetch).with('show-sections-key')
-        .and_return([{ movies: [{ id: '7', media_type: 'show', file_path: nil }] }])
+        .and_return([{ items: [{ id: '7', media_type: 'show', file_path: nil }] }])
       allow(enricher).to receive(:enrich_show).with('7').and_return(summary: 'show enriched')
 
       expect(plex_server_service.detail_for('7', scope: shows_scope)).to eq(summary: 'show enriched')
     end
+
+    context 'when the cached section list misses the item' do
+      before do
+        allow(cache_store).to receive(:fetch).with('sections-key').and_return([{ items: [] }])
+        allow(enricher).to receive(:metadata_for).with('7').and_return(direct_movie_metadata)
+      end
+
+      it { expect(plex_server_service.detail_for('7')).to eq(summary: 'enriched') }
+
+      def direct_movie_metadata
+        {
+          'ratingKey' => '7',
+          'type' => 'movie',
+          'Media' => [{ 'Part' => [{ 'file' => '/movies/7.mkv' }] }]
+        }
+      end
+    end
   end
 
   describe '#enriched_library' do
-    let(:sections) { [{ movies: [{ id: '1' }, { id: '2' }] }] }
+    let(:sections) { [{ items: [{ id: '1' }, { id: '2' }] }] }
 
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
@@ -120,13 +138,21 @@ RSpec.describe Plex::Server do
     it 'returns uncached background movies' do
       expect(plex_server_service.enriched_library[:uncached_background_movies]).to eq([{ id: '1' }])
     end
+
+    it 'omits image cache payload for shows' do
+      allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
+      allow(cache_store).to receive(:fetch).with('show-sections-key').and_return(sections)
+      allow(enricher).to receive(:enrich_sections).with(sections, scope: shows_scope).and_return(sections)
+
+      expect(plex_server_service.enriched_library(scope: shows_scope)).to eq(sections: sections)
+    end
   end
 
   describe 'delegated methods' do
-    it 'delegates update_movie' do
-      allow(media_updater).to receive(:update_movie).with('10', title: 'New')
-      plex_server_service.update_movie('10', title: 'New')
-      expect(media_updater).to have_received(:update_movie).with('10', title: 'New')
+    it 'delegates movie updates through a shared entrypoint' do
+      allow(media_updater).to receive(:update).with('10', { title: 'New' }, media_type: 'movie')
+      plex_server_service.update_media('10', { title: 'New' }, scope: movie_scope)
+      expect(media_updater).to have_received(:update).with('10', { title: 'New' }, media_type: 'movie')
     end
 
     it 'delegates poster_for' do
@@ -134,16 +160,11 @@ RSpec.describe Plex::Server do
       expect(plex_server_service.poster_for('10')).to eq(data: 'img')
     end
 
-    it 'delegates update_show' do
-      allow(media_updater).to receive(:update_show).with('10', title: 'New Show')
-      plex_server_service.update_show('10', title: 'New Show')
-      expect(media_updater).to have_received(:update_show).with('10', title: 'New Show')
-    end
-
-    it 'delegates update_episode' do
-      allow(media_updater).to receive(:update_episode).with('10', title: 'New Episode')
-      plex_server_service.update_episode('10', title: 'New Episode')
-      expect(media_updater).to have_received(:update_episode).with('10', title: 'New Episode')
+    it 'delegates episode updates through a shared entrypoint' do
+      episode_scope = Plex::MediaScope.shows('episodes')
+      allow(media_updater).to receive(:update).with('10', { title: 'New Episode' }, media_type: 'episode')
+      plex_server_service.update_media('10', { title: 'New Episode' }, scope: episode_scope)
+      expect(media_updater).to have_received(:update).with('10', { title: 'New Episode' }, media_type: 'episode')
     end
 
     it 'delegates background_for' do

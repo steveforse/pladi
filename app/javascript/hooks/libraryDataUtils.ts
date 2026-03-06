@@ -39,11 +39,11 @@ export function mergeEnrichedRows({
   const rowKey = (row: Pick<Movie, 'id' | 'file_path'>) => `${row.id}|${row.file_path ?? ''}`
   const previousByRow = new Map<string, Movie>()
   for (const section of previousSections) {
-    for (const row of section.movies) previousByRow.set(rowKey(row), row)
+    for (const row of section.items) previousByRow.set(rowKey(row), row)
   }
   return enrichedSections.map((section) => ({
     ...section,
-    movies: section.movies.map((row) => {
+    items: section.items.map((row) => {
       const existing = previousByRow.get(rowKey(row))
       if (!existing) return row
       const changed = fields.some((field) => row[field] !== existing[field])

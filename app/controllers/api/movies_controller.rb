@@ -16,13 +16,12 @@ module Api
 
     private
 
-    def resource_params
-      params.expect(
-        movie: [:title, :original_title, :sort_title, :summary, :tagline,
-                :studio, :content_rating, :edition, :year, :originally_available,
-                { genres: [], directors: [], writers: [], producers: [],
-                  collections: [], labels: [], country: [] }]
-      )
+    def resource_param_key
+      :movie
+    end
+
+    def resource_extra_fields
+      [:edition]
     end
 
     def media_scope

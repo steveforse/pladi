@@ -145,7 +145,7 @@ function setupHookMocks({
   const baseData = {
     plexServers: [{ id: 1, name: 'Main' }],
     selectedServerId: 1,
-    sections: [{ title: 'Movies', movies: [{ id: 'm1', title: 'Alpha', file_path: '/x' }] }],
+    sections: [{ title: 'Movies', items: [{ id: 'm1', title: 'Alpha', file_path: '/x' }] }],
     selectedTitle: 'Movies',
     loading: false,
     refreshing: false,
@@ -164,7 +164,7 @@ function setupHookMocks({
     refreshMovies: vi.fn(),
     ...moviesData,
   }
-  const baseMovies = baseData.sections.flatMap((s) => s.movies)
+  const baseMovies = baseData.sections.flatMap((s) => s.items)
   const baseFilterState = {
     multiOnly: false,
     setMultiOnly: vi.fn(),
@@ -312,8 +312,8 @@ describe('MoviesTable', () => {
     const { baseData, baseFilterState } = setupHookMocks({
       moviesData: {
         sections: [
-          { title: 'Movies', movies: [{ id: 'm1', title: 'Alpha', file_path: '/x' }] },
-          { title: 'Shows', movies: [] },
+          { title: 'Movies', items: [{ id: 'm1', title: 'Alpha', file_path: '/x' }] },
+          { title: 'Shows', items: [] },
         ],
       },
       moviesFilter: {
@@ -373,7 +373,7 @@ describe('MoviesTable', () => {
       moviesData: {
         sections: [{
           title: 'Movies',
-          movies: [
+          items: [
             { id: 'm1', title: 'Alpha', file_path: '/x', genres: 'Drama' },
             { id: 'm2', title: 'Beta', file_path: '/y', genres: 'Drama, Comedy' },
           ],
@@ -418,7 +418,7 @@ describe('MoviesTable', () => {
       })
       .mockReturnValueOnce({
         ...setupHookMocks().baseData,
-        sections: [{ title: 'Movies', movies: sharedMovies }],
+        sections: [{ title: 'Movies', items: sharedMovies }],
         syncing: false,
         uncachedPosterMovies: ['m1'],
         uncachedBackgroundMovies: ['m1'],

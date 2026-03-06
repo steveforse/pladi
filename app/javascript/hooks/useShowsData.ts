@@ -157,7 +157,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
     setSections((prev) =>
       prev.map((section) => ({
         ...section,
-        movies: section.movies.map((s) => (s.id === showId ? { ...s, ...patch } : s)),
+        items: section.items.map((s) => (s.id === showId ? { ...s, ...patch } : s)),
       }))
     )
   }

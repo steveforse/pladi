@@ -27,12 +27,16 @@ module Plex
       episode_view? ? 'episode' : library_type
     end
 
-    def update_method_name
-      "update_#{update_media_type}"
-    end
-
     def show_library?
       library_type == 'show'
+    end
+
+    def movie_library?
+      library_type == 'movie'
+    end
+
+    def include_image_cache?
+      movie_library?
     end
 
     def episode_view?

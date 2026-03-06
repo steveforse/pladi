@@ -59,7 +59,7 @@ export function useShowsTableState({
   selectedTitle,
   viewMode,
 }: {
-  sections: Array<{ title: string; movies: Movie[] }>
+  sections: Array<{ title: string; items: Movie[] }>
   selectedTitle: string | null
   viewMode: ShowsViewMode
 }) {
@@ -149,8 +149,8 @@ export function useShowsTableState({
 
   const filteredShows = useMemo(() => {
     const rows = selectedTitle === null
-      ? sections.flatMap((section) => section.movies)
-      : (sections.find((section) => section.title === selectedTitle)?.movies ?? [])
+      ? sections.flatMap((section) => section.items)
+      : (sections.find((section) => section.title === selectedTitle)?.items ?? [])
 
     const watchFiltered = rows.filter((row) => {
       if (viewMode === 'episodes') return true

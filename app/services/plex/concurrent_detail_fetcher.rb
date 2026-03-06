@@ -8,8 +8,8 @@ module Plex
       @thread_count = thread_count
     end
 
-    def fetch(movies)
-      queue = movies.dup
+    def fetch(items)
+      queue = items.dup
       mutex = Mutex.new
       result = {}
 
@@ -24,16 +24,16 @@ module Plex
 
     def process_queue(queue, mutex, result)
       loop do
-        movie = mutex.synchronize { queue.shift }
-        break unless movie
+        item = mutex.synchronize { queue.shift }
+        break unless item
 
-        detail = @cache_store.fetch(detail_cache_key(movie)) { @detail_fetcher.fetch(movie[:id]) }
-        mutex.synchronize { result[movie[:id]] = detail }
+        detail = @cache_store.fetch(detail_cache_key(item)) { @detail_fetcher.fetch(item[:id]) }
+        mutex.synchronize { result[item[:id]] = detail }
       end
     end
 
-    def detail_cache_key(movie)
-      @cache_store.key('movie', 'detail', movie[:id], movie[:updated_at], @cache_store.enrich_version)
+    def detail_cache_key(item)
+      @cache_store.key('media', 'detail', item[:id], item[:updated_at], @cache_store.enrich_version)
     end
   end
 end

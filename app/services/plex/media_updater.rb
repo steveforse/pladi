@@ -13,18 +13,6 @@ module Plex
       @cache = cache_store
     end
 
-    def update_movie(movie_id, fields)
-      update(movie_id, fields, media_type: 'movie')
-    end
-
-    def update_show(show_id, fields)
-      update(show_id, fields, media_type: 'show')
-    end
-
-    def update_episode(episode_id, fields)
-      update(episode_id, fields, media_type: 'episode')
-    end
-
     def update(media_id, fields, media_type:)
       before = snapshot_for(media_id)
       @http.put("/library/metadata/#{media_id}?#{build_update_query(fields, media_type: media_type)}")
@@ -54,10 +42,10 @@ module Plex
     end
 
     def collect_field_parts(key, value, scalar_pairs, raw_tag_parts)
-      if (plex_param = Plex::FieldMaps::SCALAR_FIELD_MAP[key])
+      if (plex_param = Plex::MediaUpdateFields::SCALAR_FIELD_MAP[key])
         scalar_pairs << ["#{plex_param}.value", value.to_s]
         scalar_pairs << ["#{plex_param}.locked", '1']
-      elsif (tag_name = Plex::FieldMaps::TAG_FIELD_MAP[key])
+      elsif (tag_name = Plex::MediaTagFields::UPDATE_TAG_MAP[key])
         append_tag_parts(tag_name.downcase, Array(value), raw_tag_parts)
       end
     end
@@ -80,10 +68,10 @@ module Plex
       fields.filter_map do |key, value|
         field = key.to_s
 
-        if Plex::FieldMaps::TAG_FIELD_MAP.key?(field)
+        if Plex::MediaTagFields::UPDATE_TAG_MAP.key?(field)
           expected = Array(value).map(&:to_s).compact_blank.sort
           field unless expected == snapshot[field]
-        elsif Plex::FieldMaps::SCALAR_FIELD_MAP.key?(field)
+        elsif Plex::MediaUpdateFields::SCALAR_FIELD_MAP.key?(field)
           field unless value.to_s == snapshot[field].to_s
         end
       end
@@ -99,13 +87,13 @@ module Plex
     end
 
     def extract_scalar_fields(item)
-      Plex::FieldMaps::SCALAR_FIELD_MAP.to_h do |field, plex_attribute|
+      Plex::MediaUpdateFields::SCALAR_FIELD_MAP.to_h do |field, plex_attribute|
         [field, item[plex_attribute].to_s]
       end
     end
 
     def extract_tag_fields(item)
-      Plex::FieldMaps::TAG_FIELD_MAP.to_h do |field, plex_attribute|
+      Plex::MediaTagFields::UPDATE_TAG_MAP.to_h do |field, plex_attribute|
         [field, Array(item[plex_attribute]).pluck('tag').compact_blank.sort]
       end
     end

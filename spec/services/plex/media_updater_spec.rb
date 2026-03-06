@@ -34,7 +34,7 @@ RSpec.describe Plex::MediaUpdater do
     it { expect(snapshot['genres']).to eq(%w[Drama Sci-Fi]) }
   end
 
-  describe '#update_movie' do
+  describe '#update' do
     let(:fields) do
       {
         title: 'New Title',
@@ -75,7 +75,7 @@ RSpec.describe Plex::MediaUpdater do
         }
       }
     end
-    let(:result) { updater.update_movie('42', fields) }
+    let(:result) { updater.update('42', fields, media_type: 'movie') }
 
     before do
       allow(http_client).to receive(:get).with('/library/metadata/42').and_return(before_payload, after_payload)
@@ -109,7 +109,7 @@ RSpec.describe Plex::MediaUpdater do
     end
   end
 
-  describe '#update_movie with unknown fields' do
+  describe '#update with unknown fields' do
     let(:payload) do
       {
         'MediaContainer' => {
@@ -131,17 +131,17 @@ RSpec.describe Plex::MediaUpdater do
     end
 
     it 'does not include unknown field in query' do
-      updater.update_movie('9', unknown: 'value')
+      updater.update('9', { unknown: 'value' }, media_type: 'movie')
       expect(http_client).to have_received(:put).with('/library/metadata/9?type=1')
     end
 
     it 'does not mark unknown field as unverified' do
-      result = updater.update_movie('9', unknown: 'value')
+      result = updater.update('9', { unknown: 'value' }, media_type: 'movie')
       expect(result[:unverified_fields]).to eq([])
     end
   end
 
-  describe '#update_show' do
+  describe '#update for shows' do
     let(:before_payload) do
       {
         'MediaContainer' => {
@@ -169,14 +169,14 @@ RSpec.describe Plex::MediaUpdater do
     end
 
     it 'uses Plex show type in update query' do
-      updater.update_show('88', title: 'New Show')
+      updater.update('88', { title: 'New Show' }, media_type: 'show')
       expect(http_client).to have_received(:put).with(
         a_string_including('/library/metadata/88?', 'type=2', 'title.value=New+Show')
       )
     end
   end
 
-  describe '#update_episode' do
+  describe '#update for episodes' do
     let(:payload) do
       {
         'MediaContainer' => {
@@ -198,7 +198,7 @@ RSpec.describe Plex::MediaUpdater do
     end
 
     it 'uses Plex episode type in update query' do
-      updater.update_episode('99', title: 'New Pilot')
+      updater.update('99', { title: 'New Pilot' }, media_type: 'episode')
       expect(http_client).to have_received(:put).with(
         a_string_including('/library/metadata/99?', 'type=4', 'title.value=New+Pilot')
       )

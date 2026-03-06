@@ -69,8 +69,8 @@ describe('useMoviesFilter', () => {
 
   it('filters by selected library and sorts', () => {
     const sections = [
-      { title: 'A', movies: [movie({ id: 'a2', title: 'Zulu' }), movie({ id: 'a1', title: 'Alpha' })] },
-      { title: 'B', movies: [movie({ id: 'b1', title: 'Beta' })] },
+      { title: 'A', items: [movie({ id: 'a2', title: 'Zulu' }), movie({ id: 'a1', title: 'Alpha' })] },
+      { title: 'B', items: [movie({ id: 'b1', title: 'Beta' })] },
     ]
 
     const { result } = renderHook(() => useMoviesFilter(sections, 'A'))
@@ -80,7 +80,7 @@ describe('useMoviesFilter', () => {
   it('applies quick filters and can clear all', () => {
     const sections = [{
       title: 'A',
-      movies: [
+      items: [
         movie({ id: 'm1', title: 'Good', file_path: '/movies/Good (2020)/Good (2020).mkv', year: 2020 }),
         movie({ id: 'm2', title: 'Bad', file_path: '/movies/Mismatch/OtherName.mkv', year: 2021 }),
       ],
@@ -104,7 +104,7 @@ describe('useMoviesFilter', () => {
   it('manages advanced filters add/update/remove', () => {
     const sections = [{
       title: 'A',
-      movies: [movie({ id: 'm1', title: 'Alpha' }), movie({ id: 'm2', title: 'Beta' })],
+      items: [movie({ id: 'm1', title: 'Alpha' }), movie({ id: 'm2', title: 'Beta' })],
     }]
     const { result } = renderHook(() => useMoviesFilter(sections, null))
 
@@ -129,7 +129,7 @@ describe('useMoviesFilter', () => {
   it('toggles sort direction and changes sort key', () => {
     const sections = [{
       title: 'A',
-      movies: [movie({ id: 'm1', title: 'Alpha', year: 2020 }), movie({ id: 'm2', title: 'Beta', year: 2019 })],
+      items: [movie({ id: 'm1', title: 'Alpha', year: 2020 }), movie({ id: 'm2', title: 'Beta', year: 2019 })],
     }]
     const { result } = renderHook(() => useMoviesFilter(sections, null))
 
@@ -162,7 +162,7 @@ describe('useMoviesFilter', () => {
 
     const sections = [{
       title: 'A',
-      movies: [
+      items: [
         movie({ id: 'm1', title: 'Alpha', original_title: 'Alpha', year: 2020, file_path: '/movies/Alpha (2020)/Alpha (2020).mkv' }),
         movie({ id: 'm2', title: 'Beta', original_title: 'Different', year: 2021, file_path: '/Beta.mkv' }),
       ],
@@ -186,7 +186,7 @@ describe('useMoviesFilter', () => {
     }
     vi.stubGlobal('localStorage', badStorage)
 
-    const sections = [{ title: 'A', movies: [movie({ id: 'm1', title: 'Alpha' })] }]
+    const sections = [{ title: 'A', items: [movie({ id: 'm1', title: 'Alpha' })] }]
     const { result } = renderHook(() => useMoviesFilter(sections, null))
 
     expect(result.current.visibleMovies).toHaveLength(1)

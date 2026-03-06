@@ -3,7 +3,7 @@
 module Api
   class HistoryController < BaseController
     def index
-      logs = Current.user.movie_audit_logs
+      logs = Current.user.media_audit_logs
         .includes(:plex_server)
         .recent
         .limit(1000)

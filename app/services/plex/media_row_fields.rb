@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Plex
-  module LibraryRowFields
-    BASE_FIELD_MAP = {
+  module MediaRowFields
+    ROW_FIELD_MAP = {
       id: 'ratingKey',
       title: 'title',
       original_title: 'originalTitle',
@@ -56,14 +56,8 @@ module Plex
       audio_bitrate: nil
     }.freeze
 
-    TAG_FIELDS = {
-      collections: 'Collection',
-      country: 'Country',
-      directors: 'Director',
-      genres: 'Genre',
-      labels: 'Label',
-      producers: 'Producer',
-      writers: 'Writer'
-    }.freeze
+    def self.extract(source, field_map)
+      field_map.to_h { |name, key| [name, source[key]] }
+    end
   end
 end

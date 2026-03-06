@@ -2,6 +2,7 @@
 
 class PlexServer < ApplicationRecord
   belongs_to :user
-  has_many :movie_audit_logs, dependent: :destroy
+  has_many :media_audit_logs, class_name: 'MediaAuditLog', inverse_of: :plex_server, dependent: :destroy
+  has_many :movie_audit_logs, dependent: nil
   validates :name, :url, :token, presence: true
 end

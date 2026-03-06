@@ -2,6 +2,8 @@
 
 module Plex
   class Enricher
+    delegate :metadata_for, to: :@movie_detail_fetcher
+
     STREAM_DETAIL_KEYS = %i[
       subtitles_by_file
       audio_by_file
@@ -46,12 +48,12 @@ module Plex
     def enrich_section(section, scope:)
       key = enrich_section_key(section, scope:)
       @cache.fetch(key) do
-        movies = section[:movies]
-        details = concurrent_fetcher_for(movies).fetch(movies)
+        items = section[:items]
+        details = concurrent_fetcher_for(items).fetch(items)
 
         section.merge(
-          movies: movies.map do |m|
-            merge_detail(m, details[m[:id]] || {}, file_path: m[:file_path])
+          items: items.map do |item|
+            merge_detail(item, details[item[:id]] || {}, file_path: item[:file_path])
           end
         )
       end
@@ -76,14 +78,14 @@ module Plex
       )
     end
 
-    def concurrent_fetcher_for(movies)
-      return @concurrent_show_detail_fetcher if movies.all? { |movie| movie[:media_type] == 'show' }
+    def concurrent_fetcher_for(items)
+      return @concurrent_show_detail_fetcher if items.all? { |item| item[:media_type] == 'show' }
 
       @concurrent_movie_detail_fetcher
     end
 
-    def merge_detail(movie, detail, file_path:)
-      movie
+    def merge_detail(item, detail, file_path:)
+      item
         .merge(detail.except(*STREAM_DETAIL_KEYS))
         .merge(file_stream_detail(detail, file_path))
     end

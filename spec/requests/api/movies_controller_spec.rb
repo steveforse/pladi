@@ -24,12 +24,12 @@ RSpec.describe Api::MoviesController do
     context 'when server exists' do
       before do
         allow(service).to receive(:sections).with(scope: movie_scope)
-          .and_return([{ title: 'Movies', movies: [{ id: '1' }], updated_at: 1 }])
+          .and_return([{ title: 'Movies', items: [{ id: '1' }], updated_at: 1 }])
         get '/api/movies', params: { server_id: server.id }, as: :json
       end
 
       it 'returns serialized sections payload' do
-        expect(json_body).to eq([{ 'title' => 'Movies', 'movies' => [{ 'id' => '1' }] }])
+        expect(json_body).to eq([{ 'title' => 'Movies', 'items' => [{ 'id' => '1' }] }])
       end
     end
   end
@@ -61,19 +61,19 @@ RSpec.describe Api::MoviesController do
   describe 'GET /api/movies/refresh' do
     before do
       allow(service).to receive(:sections).with(scope: movie_scope, refresh: true)
-        .and_return([{ title: 'Movies', movies: [] }])
+        .and_return([{ title: 'Movies', items: [] }])
       get '/api/movies/refresh', params: { server_id: server.id }, as: :json
     end
 
     it 'returns refreshed serialized sections' do
-      expect(json_body).to eq([{ 'title' => 'Movies', 'movies' => [] }])
+      expect(json_body).to eq([{ 'title' => 'Movies', 'items' => [] }])
     end
   end
 
   describe 'GET /api/movies/enrich' do
     before do
       allow(service).to receive(:enriched_library).with(scope: movie_scope).and_return(
-        sections: [{ title: 'Movies', movies: [{ id: '1' }] }],
+        sections: [{ title: 'Movies', items: [{ id: '1' }] }],
         cached_poster_ids: ['1'],
         uncached_poster_movies: [],
         cached_background_ids: [],
@@ -83,7 +83,7 @@ RSpec.describe Api::MoviesController do
     end
 
     it 'returns enriched payload with serialized sections' do
-      expect(json_body.fetch('sections')).to eq([{ 'title' => 'Movies', 'movies' => [{ 'id' => '1' }] }])
+      expect(json_body.fetch('sections')).to eq([{ 'title' => 'Movies', 'items' => [{ 'id' => '1' }] }])
     end
   end
 
@@ -148,20 +148,20 @@ RSpec.describe Api::MoviesController do
     let(:movie_params) { { title: 'Updated Title' } }
 
     it 'returns a structured error when Plex request fails' do
-      allow(service).to receive(:update_movie).and_raise(Plex::HttpClient::RequestError, 'Unable to reach Plex server')
+      allow(service).to receive(:update_media).and_raise(Plex::HttpClient::RequestError, 'Unable to reach Plex server')
       patch '/api/movies/123', params: { server_id: server.id, movie: movie_params }, as: :json
       expect(response).to have_api_error(status: :unprocessable_content, message: 'Unable to reach Plex server')
     end
 
     it 'returns unprocessable when update is not persisted' do
-      allow(service).to receive(:update_movie).and_return(before: {}, after: {}, unverified_fields: ['title'])
+      allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: ['title'])
       patch '/api/movies/123', params: { server_id: server.id, movie: movie_params }, as: :json
       expect(response).to have_api_error(status: :unprocessable_content, message: 'Plex did not persist this update')
     end
 
     it 'returns no content on successful update' do
-      allow(service).to receive(:update_movie).and_return(before: {}, after: {}, unverified_fields: [])
-      allow(MovieAuditLog).to receive(:record_changes)
+      allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
+      allow(MediaAuditLog).to receive(:record_changes)
       patch '/api/movies/123', params: { server_id: server.id, movie: movie_params }, as: :json
       expect(response).to have_http_status(:no_content)
     end

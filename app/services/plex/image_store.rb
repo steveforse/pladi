@@ -24,17 +24,17 @@ module Plex
     end
 
     def partition_posters_by_cache(sections)
-      all_movies    = sections.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
-      poster_movies = all_movies.filter_map { |m| { id: m[:id], thumb: m[:thumb] } if m[:thumb] }
-      cached_ids    = @cache.posters_cached(poster_movies.pluck(:id))
-      poster_movies.partition { |m| cached_ids.include?(m[:id]) }
+      all_items = sections.flat_map { |section| section[:items] }.uniq { |item| item[:id] }
+      poster_items = all_items.filter_map { |item| { id: item[:id], thumb: item[:thumb] } if item[:thumb] }
+      cached_ids = @cache.posters_cached(poster_items.pluck(:id))
+      poster_items.partition { |item| cached_ids.include?(item[:id]) }
     end
 
     def partition_backgrounds_by_cache(sections)
-      all_movies        = sections.flat_map { |s| s[:movies] }.uniq { |m| m[:id] }
-      background_movies = all_movies.filter_map { |m| { id: m[:id], art: m[:art] } if m[:art] }
-      cached_ids        = @cache.backgrounds_cached(background_movies.pluck(:id))
-      background_movies.partition { |m| cached_ids.include?(m[:id]) }
+      all_items = sections.flat_map { |section| section[:items] }.uniq { |item| item[:id] }
+      background_items = all_items.filter_map { |item| { id: item[:id], art: item[:art] } if item[:art] }
+      cached_ids = @cache.backgrounds_cached(background_items.pluck(:id))
+      background_items.partition { |item| cached_ids.include?(item[:id]) }
     end
 
     private

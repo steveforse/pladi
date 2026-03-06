@@ -130,7 +130,7 @@ RSpec.describe Plex::LibraryFetcher do
       }
     end
     let(:result) { fetcher.fetch_sections(scope: movie_scope) }
-    let(:movies) { result.first[:movies] }
+    let(:items) { result.first[:items] }
 
     before do
       allow(http_client).to receive(:get).with('/library/sections').and_return(sections_payload)
@@ -138,7 +138,7 @@ RSpec.describe Plex::LibraryFetcher do
       allow(http_client).to receive(:get).with('/identity').and_return(
         'MediaContainer' => { 'machineIdentifier' => 'machine-1' }
       )
-      allow(cache_store).to receive(:cached_movies_for).and_yield
+      allow(cache_store).to receive(:cached_items_for).and_yield
     end
 
     it 'includes only movie sections' do
@@ -149,30 +149,30 @@ RSpec.describe Plex::LibraryFetcher do
       expect(result.first).to include(id: '1', updated_at: 100, title: 'Movies A')
     end
 
-    it 'sorts movies by title' do
-      expect(movies.pluck(:title)).to eq(%w[aTitle zTitle])
+    it 'sorts items by title' do
+      expect(items.pluck(:title)).to eq(%w[aTitle zTitle])
     end
 
     it 'builds plex urls with machine identifier' do
-      expect(movies.first[:plex_url]).to eq(
+      expect(items.first[:plex_url]).to eq(
         'https://app.plex.tv/desktop/#!/server/machine-1/details?key=%2Flibrary%2Fmetadata%2F102'
       )
     end
 
     it 'maps part and media attributes' do
-      expect(movies.last).to include(file_path: '/movies/z.mkv', video_codec: 'h264', audio_channels: 6,
-                                     video_bitrate: 5600)
+      expect(items.last).to include(file_path: '/movies/z.mkv', video_codec: 'h264', audio_channels: 6,
+                                    video_bitrate: 5600)
     end
 
     it 'uses section id and timestamp when reading cache' do
       result
 
-      expect(cache_store).to have_received(:cached_movies_for).with('1', 100, media_type: 'movie', view_mode: 'shows')
+      expect(cache_store).to have_received(:cached_items_for).with('1', 100, media_type: 'movie', view_mode: 'shows')
     end
 
     context 'when fetching show sections' do
       let(:shows) { fetcher.fetch_sections(scope: shows_scope) }
-      let(:show_row) { shows.first[:movies].first }
+      let(:show_row) { shows.first[:items].first }
 
       before do
         allow(http_client).to receive(:get).with('/library/sections/2/all').and_return(show_payload)
@@ -180,7 +180,7 @@ RSpec.describe Plex::LibraryFetcher do
 
       it { expect(shows.first).to include(id: '2', updated_at: 200, title: 'Shows') }
 
-      it { expect(shows.first[:movies].size).to eq(1) }
+      it { expect(shows.first[:items].size).to eq(1) }
       it { expect(show_row[:media_type]).to eq('show') }
       it { expect(show_row[:id]).to eq('301') }
       it { expect(show_row[:title]).to eq('Show A') }
@@ -192,7 +192,7 @@ RSpec.describe Plex::LibraryFetcher do
 
     context 'when fetching episode rows' do
       let(:episodes) { fetcher.fetch_sections(scope: episodes_scope) }
-      let(:episode_row) { episodes.first[:movies].first }
+      let(:episode_row) { episodes.first[:items].first }
 
       before do
         allow(http_client).to receive(:get).with('/library/sections/2/all?type=4').and_return(episodes_payload)

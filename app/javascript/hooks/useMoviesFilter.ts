@@ -104,8 +104,8 @@ export function useMoviesFilter(sections: Section[], selectedTitle: string | nul
 
   const visibleMovies = useMemo(() => {
     let movies = selectedTitle === null
-      ? sections.flatMap((section) => section.movies)
-      : (sections.find((section) => section.title === selectedTitle)?.movies ?? [])
+      ? sections.flatMap((section) => section.items)
+      : (sections.find((section) => section.title === selectedTitle)?.items ?? [])
 
     if (multiOnly) {
       const counts = new Map<string, number>()
