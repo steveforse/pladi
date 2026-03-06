@@ -16,6 +16,11 @@
 
 ---
 
+<img width="3271" height="1556" alt="image" src="https://github.com/user-attachments/assets/7359c80d-8d5c-4aae-979f-ed3e9c69151b" />
+
+---
+
+
 ## What It Does
 
 Pladi connects to your Plex server and gives you a detailed, sortable view of your movie library with the information you need to spot problems:
