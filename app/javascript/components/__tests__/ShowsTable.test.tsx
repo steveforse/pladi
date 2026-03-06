@@ -220,13 +220,13 @@ describe('ShowsTable', () => {
     fireEvent.dragEnd(yearDragHandle)
 
     let reorderedHeaders = within(view.container).getAllByRole('columnheader')
-    expect(reorderedHeaders[0]).toHaveTextContent('Year')
+    expect(reorderedHeaders[1]).toHaveTextContent('Year')
 
     view.unmount()
 
     const utils = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
     reorderedHeaders = within(utils.container).getAllByRole('columnheader')
-    expect(reorderedHeaders[0]).toHaveTextContent('Year')
+    expect(reorderedHeaders[1]).toHaveTextContent('Year')
   })
 
   it('persists selected sort key and direction', async () => {

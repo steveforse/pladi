@@ -19,6 +19,9 @@ interface BulkEditModalProps {
   selectedMovies: Movie[]
   onSave: (tagValues: Partial<Record<TagField, string[]>>, mode: 'append' | 'replace') => Promise<void>
   onClose: () => void
+  tagFields?: Array<{ field: TagField; label: string }>
+  mediaLabelSingular?: string
+  mediaLabelPlural?: string
 }
 
 function TagInput({
@@ -89,7 +92,14 @@ function TagInput({
   )
 }
 
-export function BulkEditModal({ selectedMovies, onSave, onClose }: BulkEditModalProps) {
+export function BulkEditModal({
+  selectedMovies,
+  onSave,
+  onClose,
+  tagFields = TAG_FIELDS,
+  mediaLabelSingular = 'movie',
+  mediaLabelPlural = 'movies',
+}: BulkEditModalProps) {
   const [mode, setMode] = useState<'append' | 'replace'>('append')
   const [tags, setTags] = useState<Record<TagField, string[]>>({
     genres: [], directors: [], writers: [], producers: [], collections: [], labels: [], country: [],
@@ -123,7 +133,7 @@ export function BulkEditModal({ selectedMovies, onSave, onClose }: BulkEditModal
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const patch: Partial<Record<TagField, string[]>> = {}
-    for (const { field } of TAG_FIELDS) {
+    for (const { field } of tagFields) {
       if (tags[field].length > 0) patch[field] = tags[field]
     }
     if (Object.keys(patch).length === 0) {
@@ -153,7 +163,7 @@ export function BulkEditModal({ selectedMovies, onSave, onClose }: BulkEditModal
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h2 className="text-base font-semibold">Bulk Edit ({n} {n === 1 ? 'movie' : 'movies'})</h2>
+          <h2 className="text-base font-semibold">Bulk Edit ({n} {n === 1 ? mediaLabelSingular : mediaLabelPlural})</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X size={18} />
           </button>
@@ -183,7 +193,7 @@ export function BulkEditModal({ selectedMovies, onSave, onClose }: BulkEditModal
 
             {/* Tag fields */}
             <div className="space-y-3">
-              {TAG_FIELDS.map(({ field, label }) => (
+              {tagFields.map(({ field, label }) => (
                 <div key={field} className="space-y-1">
                   <label className="text-sm font-medium">{label}</label>
                   <TagInput
@@ -208,7 +218,7 @@ export function BulkEditModal({ selectedMovies, onSave, onClose }: BulkEditModal
               Cancel
             </button>
             <button type="submit" className="btn px-3 py-1.5 text-sm" disabled={saving}>
-              {saving ? 'Applying…' : `Apply to ${n} ${n === 1 ? 'movie' : 'movies'}`}
+              {saving ? 'Applying…' : `Apply to ${n} ${n === 1 ? mediaLabelSingular : mediaLabelPlural}`}
             </button>
           </div>
         </form>

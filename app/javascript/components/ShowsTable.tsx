@@ -7,6 +7,7 @@ import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
 import { ImageModal } from '@/components/movies/ImageModal'
 import { ColumnPicker } from '@/components/movies/ColumnPicker'
 import { Paginator } from '@/components/movies/Paginator'
+import { BulkEditModal } from '@/components/movies/BulkEditModal'
 import { usePagination } from '@/hooks/usePagination'
 import { useColumnWidths } from '@/hooks/useColumnWidths'
 import { matchesFilterWithFields } from '@/lib/filters'
@@ -181,6 +182,18 @@ function isAlwaysVisibleColumn(viewMode: ShowsViewMode, id: AllColumnId): boolea
   return viewMode === 'episodes' && id === 'show_title'
 }
 
+const SHOW_BULK_TAG_FIELDS = [
+  { field: 'collections', label: 'Collections' },
+  { field: 'country', label: 'Country' },
+  { field: 'genres', label: 'Genres' },
+  { field: 'labels', label: 'Labels' },
+] as const
+
+const EPISODE_BULK_TAG_FIELDS = [
+  { field: 'directors', label: 'Directors' },
+  { field: 'writers', label: 'Writers' },
+] as const
+
 function loadSortFromStorage(): { sortKey: SortKey; sortDir: SortDir } {
   try {
     const raw = localStorage.getItem(SORT_STORAGE_KEY)
@@ -242,6 +255,8 @@ export default function ShowsTable({
   const [sortDir, setSortDir] = useState<SortDir>(() => loadSortFromStorage().sortDir)
   const [openPosterShowId, setOpenPosterShowId] = useState<string | null>(null)
   const [openBackgroundShowId, setOpenBackgroundShowId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkEditOpen, setBulkEditOpen] = useState(false)
 
   const [unwatchedOnly, setUnwatchedOnly] = useState(false)
   const [partiallyWatchedOnly, setPartiallyWatchedOnly] = useState(false)
@@ -378,6 +393,7 @@ export default function ShowsTable({
   function handleViewModeChange(nextMode: ShowsViewMode) {
     if (nextMode === viewMode) return
     setViewMode(nextMode)
+    setSelectedIds(new Set())
     setFilters([])
     setUnwatchedOnly(false)
     setPartiallyWatchedOnly(false)
@@ -490,12 +506,55 @@ export default function ShowsTable({
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
   const pagedShows = pageSize === 0 ? filteredShows : filteredShows.slice((page - 1) * pageSize, page * pageSize)
+  const allSelected = pagedShows.length > 0 && pagedShows.every((show) => selectedIds.has(show.id))
+  const someSelected = selectedIds.size > 0 && !allSelected
   const posterShows = downloadImages ? filteredShows.filter((show) => show.thumb) : []
   const posterModalIdx = openPosterShowId ? posterShows.findIndex((show) => show.id === openPosterShowId) : -1
   const posterModalShow = posterModalIdx >= 0 ? posterShows[posterModalIdx] : null
   const backgroundShows = downloadImages ? filteredShows.filter((show) => show.art) : []
   const backgroundModalIdx = openBackgroundShowId ? backgroundShows.findIndex((show) => show.id === openBackgroundShowId) : -1
   const backgroundModalShow = backgroundModalIdx >= 0 ? backgroundShows[backgroundModalIdx] : null
+
+  function handleToggleAll() {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(pagedShows.map((show) => show.id)))
+    }
+  }
+
+  function handleToggleRow(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleBulkSave(
+    tagValues: Partial<Record<'genres' | 'directors' | 'writers' | 'producers' | 'collections' | 'labels' | 'country', string[]>>,
+    mode: 'append' | 'replace'
+  ) {
+    const rowMap = new Map(filteredShows.map((show) => [show.id, show]))
+    for (const id of selectedIds) {
+      const row = rowMap.get(id)
+      if (!row) continue
+      const patch: Record<string, string | null> = {}
+      for (const [field, newTags] of Object.entries(tagValues)) {
+        if (mode === 'append') {
+          const existing = (row[field as keyof typeof row] as string | null)?.split(', ').filter(Boolean) ?? []
+          const merged = [...new Set([...existing, ...newTags])]
+          patch[field] = merged.join(', ') || null
+        } else {
+          patch[field] = newTags.join(', ') || null
+        }
+      }
+      await updateShow(id, patch)
+    }
+    setSelectedIds(new Set())
+    setBulkEditOpen(false)
+  }
 
   useEffect(() => {
     try {
@@ -550,6 +609,14 @@ export default function ShowsTable({
   useEffect(() => {
     onRouteStateChange?.({ serverId: selectedServerId, library: selectedTitle, mode: viewMode })
   }, [selectedServerId, selectedTitle, viewMode, onRouteStateChange])
+
+  useEffect(() => {
+    const visibleIds = new Set(filteredShows.map((show) => show.id))
+    setSelectedIds((prev) => {
+      const next = new Set(Array.from(prev).filter((id) => visibleIds.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [filteredShows])
 
   if (loading) {
     return (
@@ -795,11 +862,26 @@ export default function ShowsTable({
           onPage={setPage}
           onPageSize={handlePageSize}
           leftSlot={<ColumnPicker groups={viewMode === 'episodes' ? EPISODE_COLUMN_GROUPS : SHOW_COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} />}
+          centerSlot={selectedIds.size > 0 ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setBulkEditOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border font-medium"
+                style={{ backgroundColor: '#E5A00D15', borderColor: '#E5A00D50', color: '#E5A00D' }}
+              >
+                Bulk Edit ({selectedIds.size})
+              </button>
+              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:text-foreground">
+                Clear selection
+              </button>
+            </div>
+          ) : undefined}
         />
 
         <div className="rounded-md border overflow-auto">
           <table className="w-full text-sm">
             <colgroup>
+              <col className="w-8" />
               {colOrder
                 .filter((id) => isAlwaysVisibleColumn(viewMode, id) || visibleCols.has(id as ColumnId))
                 .map((id) => (
@@ -811,6 +893,16 @@ export default function ShowsTable({
             </colgroup>
             <thead>
               <tr className="border-b bg-muted/30">
+                <th className="px-2 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected
+                    }}
+                    onChange={handleToggleAll}
+                  />
+                </th>
                 {colOrder
                   .filter((id) => isAlwaysVisibleColumn(viewMode, id) || visibleCols.has(id as ColumnId))
                   .map((id) => {
@@ -868,6 +960,9 @@ export default function ShowsTable({
             <tbody className="[&_td]:align-top [&_td]:break-words [&_td]:!whitespace-normal">
               {pagedShows.map((show) => (
                 <tr key={`${show.id}|${show.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
+                  <td className="px-2 py-1 w-8">
+                    <input type="checkbox" checked={selectedIds.has(show.id)} onChange={() => handleToggleRow(show.id)} />
+                  </td>
                   {colOrder
                     .filter((id) => isAlwaysVisibleColumn(viewMode, id) || visibleCols.has(id as ColumnId))
                     .map((id) => {
@@ -1187,7 +1282,7 @@ export default function ShowsTable({
               ))}
               {pagedShows.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-muted-foreground text-sm" colSpan={Math.max(1, colOrder.filter((id) => isAlwaysVisibleColumn(viewMode, id) || visibleCols.has(id as ColumnId)).length)}>
+                  <td className="px-4 py-6 text-muted-foreground text-sm" colSpan={Math.max(2, colOrder.filter((id) => isAlwaysVisibleColumn(viewMode, id) || visibleCols.has(id as ColumnId)).length + 1)}>
                     No shows found in this selection.
                   </td>
                 </tr>
@@ -1207,6 +1302,17 @@ export default function ShowsTable({
           leftSlot={<ColumnPicker groups={viewMode === 'episodes' ? EPISODE_COLUMN_GROUPS : SHOW_COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} openDirection="up" />}
         />
       </div>
+
+      {bulkEditOpen && selectedIds.size > 0 && (
+        <BulkEditModal
+          selectedMovies={filteredShows.filter((show) => selectedIds.has(show.id))}
+          tagFields={viewMode === 'episodes' ? [...EPISODE_BULK_TAG_FIELDS] : [...SHOW_BULK_TAG_FIELDS]}
+          mediaLabelSingular={viewMode === 'episodes' ? 'episode' : 'show'}
+          mediaLabelPlural={viewMode === 'episodes' ? 'episodes' : 'shows'}
+          onSave={handleBulkSave}
+          onClose={() => setBulkEditOpen(false)}
+        />
+      )}
 
       {posterModalShow && (
         <ImageModal
