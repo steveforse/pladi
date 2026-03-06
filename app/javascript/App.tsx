@@ -107,6 +107,35 @@ function AuthenticatedRoutes({
   )
 }
 
+type ParsedLibraryRoute = {
+  routeServerId: number | null
+  routeLibrary: string | undefined
+  searchParamsKey: string
+}
+
+type SharedRouteState = { serverId: number | null; library: string | null }
+
+function parseLibraryRoute(searchParams: URLSearchParams): ParsedLibraryRoute {
+  const routeServerIdRaw = Number(searchParams.get('server'))
+  const routeServerId = Number.isFinite(routeServerIdRaw) && routeServerIdRaw > 0 ? routeServerIdRaw : null
+  const routeLibrary = searchParams.has('library') ? searchParams.get('library') : undefined
+  return {
+    routeServerId,
+    routeLibrary,
+    searchParamsKey: searchParams.toString(),
+  }
+}
+
+function applySharedLibraryParams(searchParamsKey: string, state: SharedRouteState): URLSearchParams {
+  const next = new URLSearchParams(searchParamsKey)
+  if (state.serverId) next.set('server', String(state.serverId))
+  else next.delete('server')
+  if (state.library) next.set('library', state.library)
+  else next.delete('library')
+  next.delete('type')
+  return next
+}
+
 function MoviesRoute({
   downloadImages,
   onLogout,
@@ -116,18 +145,10 @@ function MoviesRoute({
 }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const routeServerIdRaw = Number(searchParams.get('server'))
-  const routeServerId = Number.isFinite(routeServerIdRaw) && routeServerIdRaw > 0 ? routeServerIdRaw : null
-  const routeLibrary = searchParams.has('library') ? searchParams.get('library') : undefined
-  const searchParamsKey = useMemo(() => searchParams.toString(), [searchParams])
+  const { routeServerId, routeLibrary, searchParamsKey } = useMemo(() => parseLibraryRoute(searchParams), [searchParams])
 
   const handleRouteStateChange = useCallback(({ serverId, library }: { serverId: number | null; library: string | null }) => {
-    const next = new URLSearchParams(searchParamsKey)
-    if (serverId) next.set('server', String(serverId))
-    else next.delete('server')
-    if (library) next.set('library', library)
-    else next.delete('library')
-    next.delete('type')
+    const next = applySharedLibraryParams(searchParamsKey, { serverId, library })
     const nextKey = next.toString()
     if (nextKey !== searchParamsKey) setSearchParams(next, { replace: true })
   }, [searchParamsKey, setSearchParams])
@@ -160,20 +181,12 @@ function ShowsRoute({
 }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const routeServerIdRaw = Number(searchParams.get('server'))
-  const routeServerId = Number.isFinite(routeServerIdRaw) && routeServerIdRaw > 0 ? routeServerIdRaw : null
-  const routeLibrary = searchParams.has('library') ? searchParams.get('library') : undefined
+  const { routeServerId, routeLibrary, searchParamsKey } = useMemo(() => parseLibraryRoute(searchParams), [searchParams])
   const routeMode = searchParams.get('mode') === 'episodes' ? 'episodes' : 'shows'
-  const searchParamsKey = useMemo(() => searchParams.toString(), [searchParams])
 
   const handleRouteStateChange = useCallback(({ serverId, library, mode }: { serverId: number | null; library: string | null; mode: ShowsViewMode }) => {
-    const next = new URLSearchParams(searchParamsKey)
-    if (serverId) next.set('server', String(serverId))
-    else next.delete('server')
-    if (library) next.set('library', library)
-    else next.delete('library')
+    const next = applySharedLibraryParams(searchParamsKey, { serverId, library })
     next.set('mode', mode)
-    next.delete('type')
     const nextKey = next.toString()
     if (nextKey !== searchParamsKey) setSearchParams(next, { replace: true })
   }, [searchParamsKey, setSearchParams])

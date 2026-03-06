@@ -60,7 +60,7 @@ describe('BulkEditModal', () => {
 
     const view = render(
       <BulkEditModal
-        selectedMovies={[movie('m1', 'One')]}
+        selectedItems={[movie('m1', 'One')]}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onClose={onClose}
       />
@@ -80,7 +80,7 @@ describe('BulkEditModal', () => {
 
     const view = render(
       <BulkEditModal
-        selectedMovies={[movie('m1', 'One'), movie('m2', 'Two')]}
+        selectedItems={[movie('m1', 'One'), movie('m2', 'Two')]}
         onSave={onSave}
         onClose={onClose}
       />
@@ -98,7 +98,7 @@ describe('BulkEditModal', () => {
 
     const view = render(
       <BulkEditModal
-        selectedMovies={[movie('m1', 'One'), movie('m2', 'Two')]}
+        selectedItems={[movie('m1', 'One'), movie('m2', 'Two')]}
         onSave={onSave}
         onClose={vi.fn()}
       />
@@ -121,7 +121,7 @@ describe('BulkEditModal', () => {
 
     const view = render(
       <BulkEditModal
-        selectedMovies={[movie('m1', 'One')]}
+        selectedItems={[movie('m1', 'One')]}
         onSave={onSave}
         onClose={vi.fn()}
       />

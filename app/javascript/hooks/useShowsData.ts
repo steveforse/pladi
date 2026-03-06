@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api } from '@/lib/apiClient'
 import { EnrichResponseSchema, PlexServerInfoListSchema, SectionListSchema } from '@/lib/apiSchemas'
 import { SHOW_ENRICHMENT_FIELDS, mergeShowEnrichmentCache, saveShowEnrichmentCache } from '@/lib/enrichmentCache'
+import { mergeEnrichedRows, normalizeTagPatch, resolveInitialLibrary, resolveInitialServerId } from '@/hooks/libraryDataUtils'
 import type { PlexServerInfo, Section } from '@/lib/types'
 import type { z } from 'zod'
 
@@ -25,11 +26,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
   const loadRequestIdRef = useRef(0)
   const activeLoadAbortRef = useRef<AbortController | null>(null)
 
-  function rowIdentity(row: Section['movies'][number]) {
-    return `${row.id}|${row.file_path ?? ''}`
-  }
-
-  async function loadShows(serverId: number) {
+  const loadShows = useCallback(async (serverId: number) => {
     const requestId = loadRequestIdRef.current + 1
     loadRequestIdRef.current = requestId
     activeLoadAbortRef.current?.abort()
@@ -53,9 +50,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
       if (isStale()) return
       setSections(viewMode === 'shows' ? mergeShowEnrichmentCache(serverId, data) : data)
       if (data.length > 0) {
-        const savedLibrary = localStorage.getItem(STORAGE_KEYS.library(viewMode))
-        const restored = savedLibrary && data.some((s) => s.title === savedLibrary) ? savedLibrary : data[0].title
-        setSelectedTitle(restored)
+        setSelectedTitle(resolveInitialLibrary(data, STORAGE_KEYS.library(viewMode)))
       }
       setLoading(false)
 
@@ -92,21 +87,11 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
         if (isStale()) return
         if (enrichRes.ok && enrichRes.data?.sections) {
           if (viewMode === 'shows') saveShowEnrichmentCache(serverId, enrichRes.data.sections as Section[])
-          setSections((prev) => {
-            const prevById = new Map<string, Section['movies'][number]>()
-            for (const section of prev) {
-              for (const show of section.movies) prevById.set(rowIdentity(show), show)
-            }
-            return (enrichRes.data.sections as Section[]).map((section) => ({
-              ...section,
-              movies: section.movies.map((show) => {
-                const existing = prevById.get(rowIdentity(show))
-                if (!existing) return show
-                const changed = SHOW_ENRICHMENT_FIELDS.some((f) => show[f] !== existing[f])
-                return changed ? show : existing
-              }),
-            }))
-          })
+          setSections((prev) => mergeEnrichedRows({
+            previousSections: prev,
+            enrichedSections: enrichRes.data.sections as Section[],
+            fields: SHOW_ENRICHMENT_FIELDS,
+          }))
         }
       } finally {
         if (!isStale()) setSyncing(false)
@@ -119,7 +104,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
     } finally {
       if (activeLoadAbortRef.current === controller) activeLoadAbortRef.current = null
     }
-  }
+  }, [viewMode])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -137,8 +122,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
           setLoading(false)
           return
         }
-        const savedId = Number(localStorage.getItem(STORAGE_KEYS.serverId))
-        const firstId = (savedId && servers.some((s) => s.id === savedId)) ? savedId : servers[0].id
+        const firstId = resolveInitialServerId(servers, STORAGE_KEYS.serverId)
         setSelectedServerId(firstId)
         await loadShows(firstId)
       } catch (err: unknown) {
@@ -154,7 +138,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
       controller.abort()
       activeLoadAbortRef.current?.abort()
     }
-  }, [viewMode])
+  }, [loadShows])
 
   function handleServerChange(id: number) {
     localStorage.setItem(STORAGE_KEYS.serverId, String(id))
@@ -170,17 +154,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
   async function updateShow(showId: string, patch: Record<string, unknown>) {
     if (!selectedServerId) throw new Error('No server selected')
 
-    const tagFields = ['genres', 'directors', 'writers', 'producers', 'collections', 'labels', 'country']
-    const apiPatch: Record<string, unknown> = {}
-    for (const [key, val] of Object.entries(patch)) {
-      if (tagFields.includes(key)) {
-        apiPatch[key] = typeof val === 'string' && val
-          ? val.split(', ').map((t) => t.trim()).filter(Boolean)
-          : []
-      } else {
-        apiPatch[key] = val
-      }
-    }
+    const apiPatch = normalizeTagPatch(patch as Record<string, unknown>)
 
     await api.patch<unknown, { show: Record<string, unknown> }>(
       `/api/shows/${showId}`,

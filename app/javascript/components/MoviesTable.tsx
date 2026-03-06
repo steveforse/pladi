@@ -24,6 +24,7 @@ import { MovieRow } from '@/components/movies/MovieRow'
 import { PosterModal } from '@/components/movies/PosterModal'
 import { ImageModal } from '@/components/movies/ImageModal'
 import { BulkEditModal } from '@/components/movies/BulkEditModal'
+import LibrarySelectors from '@/components/LibrarySelectors'
 
 export default function MoviesTable({
   onLogout,
@@ -212,47 +213,18 @@ export default function MoviesTable({
         <div className="px-8 space-y-4">
 
         {/* Server + Library selector */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Server:</label>
-            <select
-              value={selectedServerId ?? ''}
-              onChange={(e) => handleServerChange(Number(e.target.value))}
-              className="border rounded px-3 py-1.5 text-sm bg-background"
-            >
-              {plexServers.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Library Type:</label>
-            <select
-              aria-label="Library Type"
-              value="movies"
-              onChange={(e) => {
-                if (e.target.value === 'shows') onShows()
-              }}
-              className="border rounded px-3 py-1.5 text-sm bg-background"
-            >
-              <option value="movies">Movies</option>
-              <option value="shows">TV Shows</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Library:</label>
-            <select
-              value={selectedTitle ?? ''}
-              onChange={(e) => setSelectedTitle(e.target.value === '' ? null : e.target.value)}
-              className="border rounded px-3 py-1.5 text-sm bg-background"
-            >
-              {sections.map((s) => (
-                <option key={s.title} value={s.title}>{s.title}</option>
-              ))}
-              <option value="">All libraries</option>
-            </select>
-          </div>
-        </div>
+        <LibrarySelectors
+          servers={plexServers}
+          selectedServerId={selectedServerId}
+          onServerChange={handleServerChange}
+          libraryType="movies"
+          onLibraryTypeChange={(type) => {
+            if (type === 'shows') onShows()
+          }}
+          selectedLibrary={selectedTitle}
+          libraries={sections}
+          onLibraryChange={setSelectedTitle}
+        />
 
         {/* Filters */}
         <div className="border rounded-md w-fit">
@@ -457,7 +429,7 @@ export default function MoviesTable({
 
       {bulkEditOpen && selectedIds.size > 0 && (
         <BulkEditModal
-          selectedMovies={visibleMovies.filter((m) => selectedIds.has(m.id))}
+          selectedItems={visibleMovies.filter((m) => selectedIds.has(m.id))}
           onSave={handleBulkSave}
           onClose={() => setBulkEditOpen(false)}
         />

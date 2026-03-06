@@ -65,8 +65,8 @@ export function MovieHeaderRow({
   onDragOver,
   onDrop,
   onDragEnd,
-  colWidths,
-  onResizeStart,
+  colWidths = {},
+  onResizeStart = () => {},
 }: {
   colOrder: AllColumnId[]
   visibleCols: Set<ColumnId>
@@ -81,8 +81,8 @@ export function MovieHeaderRow({
   onDragOver: (e: React.DragEvent, id: AllColumnId) => void
   onDrop: (id: AllColumnId) => void
   onDragEnd: () => void
-  colWidths: Partial<Record<AllColumnId, number>>
-  onResizeStart: (id: AllColumnId, e: React.MouseEvent, measuredWidth?: number) => void
+  colWidths?: Partial<Record<AllColumnId, number>>
+  onResizeStart?: (id: AllColumnId, e: React.MouseEvent, measuredWidth?: number) => void
 }) {
   const columns = colOrder
     .filter((id) => id === 'title' || visibleCols.has(id as ColumnId))

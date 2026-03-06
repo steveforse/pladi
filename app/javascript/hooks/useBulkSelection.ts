@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 type WithId = { id: string }
 
@@ -9,7 +9,16 @@ export function useBulkSelection<T extends WithId>({
   pageItems: T[]
   visibleItems?: T[]
 }) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [rawSelectedIds, setRawSelectedIds] = useState<Set<string>>(new Set())
+  const visibleIds = useMemo(
+    () => (visibleItems ? new Set(visibleItems.map((item) => item.id)) : null),
+    [visibleItems]
+  )
+  const selectedIds = useMemo(() => {
+    if (!visibleIds) return rawSelectedIds
+    const filtered = new Set(Array.from(rawSelectedIds).filter((id) => visibleIds.has(id)))
+    return filtered.size === rawSelectedIds.size ? rawSelectedIds : filtered
+  }, [rawSelectedIds, visibleIds])
 
   const allSelected = useMemo(
     () => pageItems.length > 0 && pageItems.every((item) => selectedIds.has(item.id)),
@@ -19,14 +28,14 @@ export function useBulkSelection<T extends WithId>({
 
   function toggleAll() {
     if (allSelected) {
-      setSelectedIds(new Set())
+      setRawSelectedIds(new Set())
       return
     }
-    setSelectedIds(new Set(pageItems.map((item) => item.id)))
+    setRawSelectedIds(new Set(pageItems.map((item) => item.id)))
   }
 
   function toggleRow(id: string) {
-    setSelectedIds((prev) => {
+    setRawSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -35,21 +44,12 @@ export function useBulkSelection<T extends WithId>({
   }
 
   function clearSelection() {
-    setSelectedIds(new Set())
+    setRawSelectedIds(new Set())
   }
-
-  useEffect(() => {
-    if (!visibleItems) return
-    const visibleIds = new Set(visibleItems.map((item) => item.id))
-    setSelectedIds((prev) => {
-      const next = new Set(Array.from(prev).filter((id) => visibleIds.has(id)))
-      return next.size === prev.size ? prev : next
-    })
-  }, [visibleItems])
 
   return {
     selectedIds,
-    setSelectedIds,
+    setSelectedIds: setRawSelectedIds,
     allSelected,
     someSelected,
     toggleAll,

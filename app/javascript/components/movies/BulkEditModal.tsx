@@ -16,7 +16,7 @@ const TAG_FIELDS: { field: TagField; label: string }[] = [
 ]
 
 interface BulkEditModalProps {
-  selectedMovies: Movie[]
+  selectedItems: Movie[]
   onSave: (tagValues: Partial<Record<TagField, string[]>>, mode: 'append' | 'replace') => Promise<void>
   onClose: () => void
   tagFields?: Array<{ field: TagField; label: string }>
@@ -93,7 +93,7 @@ function TagInput({
 }
 
 export function BulkEditModal({
-  selectedMovies,
+  selectedItems,
   onSave,
   onClose,
   tagFields = TAG_FIELDS,
@@ -150,7 +150,7 @@ export function BulkEditModal({
     }
   }
 
-  const n = selectedMovies.length
+  const n = selectedItems.length
 
   return createPortal(
     <div

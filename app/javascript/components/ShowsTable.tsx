@@ -9,6 +9,7 @@ import { ColumnPicker } from '@/components/movies/ColumnPicker'
 import { Paginator } from '@/components/movies/Paginator'
 import { BulkEditModal } from '@/components/movies/BulkEditModal'
 import { DraggableSortableHeaderRow } from '@/components/movies/DraggableSortableHeaderRow'
+import LibrarySelectors from '@/components/LibrarySelectors'
 import { usePagination } from '@/hooks/usePagination'
 import { useColumnWidths } from '@/hooks/useColumnWidths'
 import { useBulkSelection } from '@/hooks/useBulkSelection'
@@ -306,14 +307,22 @@ export default function ShowsTable({
   })
 
   const nextId = useRef(filters.length > 0 ? Math.max(...filters.map((f) => f.id)) + 1 : 1)
-  useEffect(() => {
-    const validFields = new Set((viewMode === 'episodes' ? EPISODE_FILTER_FIELDS : SHOW_FILTER_FIELDS).map((f) => f.id))
-    setFilters((prev) => prev.filter((f) => validFields.has(f.field)))
-  }, [viewMode])
+  const activeFilterFields = useMemo(
+    () => viewMode === 'episodes' ? EPISODE_FILTER_FIELDS : SHOW_FILTER_FIELDS,
+    [viewMode]
+  )
+  const validFilterFieldIds = useMemo(
+    () => new Set(activeFilterFields.map((field) => field.id)),
+    [activeFilterFields]
+  )
+  const activeFilters = useMemo(
+    () => filters.filter((filter) => validFilterFieldIds.has(filter.field)),
+    [filters, validFilterFieldIds]
+  )
 
   const activeFilterCount =
     [unwatchedOnly, partiallyWatchedOnly, fullyWatchedOnly, multiOnly, unmatchedOnly, filenameMismatch, noYearInPath, yearPathMismatch, notInSubfolder].filter(Boolean).length +
-    filters.length
+    activeFilters.length
 
   function addFilter() {
     setFilters((prev) => [
@@ -427,9 +436,8 @@ export default function ShowsTable({
         })()
       : quickFiltered
 
-    const fieldDefs = viewMode === 'episodes' ? EPISODE_FILTER_FIELDS : SHOW_FILTER_FIELDS
-    const advancedFiltered = filters.length > 0
-      ? quickEpisodesFiltered.filter((show) => filters.every((f) => matchesFilterWithFields(fieldDefs, show, f)))
+    const advancedFiltered = activeFilters.length > 0
+      ? quickEpisodesFiltered.filter((show) => activeFilters.every((f) => matchesFilterWithFields(activeFilterFields, show, f)))
       : quickEpisodesFiltered
 
     return sortMovies(advancedFiltered, sortKey, sortDir)
@@ -439,7 +447,8 @@ export default function ShowsTable({
     selectedTitle,
     sortKey,
     sortDir,
-    filters,
+    activeFilters,
+    activeFilterFields,
     unwatchedOnly,
     partiallyWatchedOnly,
     fullyWatchedOnly,
@@ -594,46 +603,18 @@ export default function ShowsTable({
       </div>
 
       <div className="px-8 space-y-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Server:</label>
-            <select
-              value={selectedServerId ?? ''}
-              onChange={(e) => handleServerChange(Number(e.target.value))}
-              className="border rounded px-3 py-1.5 text-sm bg-background"
-            >
-              {plexServers.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Library Type:</label>
-            <select
-              aria-label="Library Type"
-              value="shows"
-              onChange={(e) => {
-                if (e.target.value === 'movies') onMovies()
-              }}
-              className="border rounded px-3 py-1.5 text-sm bg-background"
-            >
-              <option value="movies">Movies</option>
-              <option value="shows">TV Shows</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Library:</label>
-            <select
-              value={selectedTitle ?? ''}
-              onChange={(e) => handleLibraryChange(e.target.value === '' ? null : e.target.value)}
-              className="border rounded px-3 py-1.5 text-sm bg-background"
-            >
-              {sections.map((s) => (
-                <option key={s.title} value={s.title}>{s.title}</option>
-              ))}
-              <option value="">All libraries</option>
-            </select>
-          </div>
+        <LibrarySelectors
+          servers={plexServers}
+          selectedServerId={selectedServerId}
+          onServerChange={handleServerChange}
+          libraryType="shows"
+          onLibraryTypeChange={(type) => {
+            if (type === 'movies') onMovies()
+          }}
+          selectedLibrary={selectedTitle}
+          libraries={sections}
+          onLibraryChange={handleLibraryChange}
+        >
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-muted-foreground">TV Mode:</label>
             <select
@@ -646,7 +627,7 @@ export default function ShowsTable({
               <option value="episodes">Episodes</option>
             </select>
           </div>
-        </div>
+        </LibrarySelectors>
 
         <div className="border rounded-md w-fit">
           <button
@@ -729,13 +710,13 @@ export default function ShowsTable({
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Advanced filters</p>
-                {filters.map((f) => (
+                {activeFilters.map((f) => (
                   <FilterRow
                     key={f.id}
                     filter={f}
                     onChange={(updated) => updateFilter(f.id, updated)}
                     onRemove={() => removeFilter(f.id)}
-                    fieldDefs={viewMode === 'episodes' ? EPISODE_FILTER_FIELDS : SHOW_FILTER_FIELDS}
+                    fieldDefs={activeFilterFields}
                     fieldGroups={viewMode === 'episodes' ? EPISODE_FILTER_FIELD_GROUPS : SHOW_FILTER_FIELD_GROUPS}
                   />
                 ))}
@@ -1172,7 +1153,7 @@ export default function ShowsTable({
 
       {bulkEditOpen && selectedIds.size > 0 && (
         <BulkEditModal
-          selectedMovies={filteredShows.filter((show) => selectedIds.has(show.id))}
+          selectedItems={filteredShows.filter((show) => selectedIds.has(show.id))}
           tagFields={viewMode === 'episodes' ? [...EPISODE_BULK_TAG_FIELDS] : [...SHOW_BULK_TAG_FIELDS]}
           mediaLabelSingular={viewMode === 'episodes' ? 'episode' : 'show'}
           mediaLabelPlural={viewMode === 'episodes' ? 'episodes' : 'shows'}

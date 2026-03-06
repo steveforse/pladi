@@ -4,6 +4,7 @@ import type { Movie, PlexServerInfo, Section } from '@/lib/types'
 import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCache, updateEnrichmentCacheMovie, savePosterReadyCache, loadPosterReadyCache, saveBackgroundReadyCache, loadBackgroundReadyCache } from '@/lib/enrichmentCache'
 import { ApiError, api } from '@/lib/apiClient'
 import { EnrichResponseSchema, PlexServerInfoListSchema, SectionListSchema, MovieDetailSchema } from '@/lib/apiSchemas'
+import { mergeEnrichedRows, normalizeTagPatch, resolveInitialLibrary, resolveInitialServerId } from '@/hooks/libraryDataUtils'
 import type { z } from 'zod'
 
 type PosterMovie = { id: string; thumb: string }
@@ -94,9 +95,7 @@ export function useMoviesData(downloadImages: boolean) {
       if (isStale()) return
       setSections(mergeEnrichmentCache(serverId, data))
       if (data.length > 0) {
-        const savedLibrary = localStorage.getItem(STORAGE_KEYS.library)
-        const restored = savedLibrary && data.some((s) => s.title === savedLibrary) ? savedLibrary : data[0].title
-        setSelectedTitle(restored)
+        setSelectedTitle(resolveInitialLibrary(data, STORAGE_KEYS.library))
       }
       setLoading(false)
 
@@ -137,22 +136,11 @@ export function useMoviesData(downloadImages: boolean) {
           const enrichData = enrichRes.data
           if (isStale()) return
           saveEnrichmentCache(serverId, enrichData.sections)
-          setSections((prev) => {
-            const rowKey = (movie: Pick<Movie, 'id' | 'file_path'>) => `${movie.id}|${movie.file_path ?? ''}`
-            const prevByRow = new Map<string, Movie>()
-            for (const section of prev) {
-              for (const movie of section.movies) prevByRow.set(rowKey(movie), movie)
-            }
-            return (enrichData.sections as Section[]).map((section) => ({
-              ...section,
-              movies: section.movies.map((movie: Movie) => {
-                const existing = prevByRow.get(rowKey(movie))
-                if (!existing) return movie
-                const changed = ENRICHMENT_FIELDS.some((f) => movie[f] !== existing[f])
-                return changed ? movie : existing
-              }),
-            }))
-          })
+          setSections((prev) => mergeEnrichedRows({
+            previousSections: prev,
+            enrichedSections: enrichData.sections as Section[],
+            fields: ENRICHMENT_FIELDS,
+          }))
           if (downloadImages) {
             if (enrichData.cached_poster_ids?.length) {
               savePosterReadyCache(serverId, enrichData.cached_poster_ids)
@@ -206,8 +194,7 @@ export function useMoviesData(downloadImages: boolean) {
           setLoading(false)
           return
         }
-        const savedId = Number(localStorage.getItem(STORAGE_KEYS.serverId))
-        const firstId = (savedId && servers.some((s) => s.id === savedId)) ? savedId : servers[0].id
+        const firstId = resolveInitialServerId(servers, STORAGE_KEYS.serverId)
         setSelectedServerId(firstId)
         await loadMovies(firstId)
       } catch (err: unknown) {
@@ -242,18 +229,7 @@ export function useMoviesData(downloadImages: boolean) {
   async function updateMovie(movieId: string, patch: Partial<Movie>) {
     if (!selectedServerId) throw new Error('No server selected')
 
-    // Convert tag fields from comma-separated strings to arrays for the API
-    const tagFields = ['genres', 'directors', 'writers', 'producers', 'collections', 'labels', 'country']
-    const apiPatch: Record<string, unknown> = {}
-    for (const [key, val] of Object.entries(patch)) {
-      if (tagFields.includes(key)) {
-        apiPatch[key] = typeof val === 'string' && val
-          ? val.split(', ').map((t) => t.trim()).filter(Boolean)
-          : []
-      } else {
-        apiPatch[key] = val
-      }
-    }
+    const apiPatch = normalizeTagPatch(patch as Record<string, unknown>)
 
     await api.patch<unknown, { movie: Record<string, unknown> }>(
       `/api/movies/${movieId}`,
