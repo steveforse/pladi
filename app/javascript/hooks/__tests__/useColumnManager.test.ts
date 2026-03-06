@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useColumnManager } from '@/hooks/useColumnManager'
 import { DEFAULT_COL_ORDER } from '@/lib/columns'
 
-function createSessionStorageMock() {
+function createStorageMock() {
   const store = new Map<string, string>()
   return {
     getItem: (key: string) => store.get(key) ?? null,
@@ -15,7 +15,7 @@ function createSessionStorageMock() {
 
 describe('useColumnManager', () => {
   beforeEach(() => {
-    vi.stubGlobal('sessionStorage', createSessionStorageMock())
+    vi.stubGlobal('localStorage', createStorageMock())
   })
 
   it('starts with defaults and toggles visibility', () => {

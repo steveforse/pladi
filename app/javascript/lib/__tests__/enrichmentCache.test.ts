@@ -7,6 +7,7 @@ import {
   saveBackgroundReadyCache,
   saveEnrichmentCache,
   saveShowEnrichmentCache,
+  saveShowEnrichmentCacheDelta,
   savePosterReadyCache,
   updateEnrichmentCacheMovie,
 } from '@/lib/enrichmentCache'
@@ -80,14 +81,14 @@ describe('enrichmentCache', () => {
     vi.restoreAllMocks()
   })
 
-  it('saves and merges enrichment fields for sections', () => {
+  it('saves and merges enrichment fields for sections', async () => {
     const storage = createStorageMock()
     vi.stubGlobal('localStorage', storage)
 
     const input = sections()
     saveEnrichmentCache(7, input)
 
-    const merged = mergeEnrichmentCache(7, [{
+    const merged = await mergeEnrichmentCache(7, [{
       ...input[0],
       movies: [{ ...input[0].movies[0], summary: null, genres: null }],
     }])
@@ -97,18 +98,44 @@ describe('enrichmentCache', () => {
     expect(merged[0].movies[0].title).toBe('Alpha')
   })
 
-  it('returns original sections when cache is missing or malformed', () => {
+  it('keeps movie enrichment cache separate for rows with the same id but different file paths', async () => {
+    const storage = createStorageMock()
+    vi.stubGlobal('localStorage', storage)
+
+    const input = [{
+      ...sections()[0],
+      movies: [
+        { ...sections()[0].movies[0], id: 'm1', file_path: '/movies/Alpha-a.mkv', subtitles: 'English' },
+        { ...sections()[0].movies[0], id: 'm1', file_path: '/movies/Alpha-b.mkv', subtitles: 'French' },
+      ],
+    }]
+
+    saveEnrichmentCache(12, input)
+
+    const merged = await mergeEnrichmentCache(12, [{
+      ...input[0],
+      movies: [
+        { ...input[0].movies[0], subtitles: null },
+        { ...input[0].movies[1], subtitles: null },
+      ],
+    }])
+
+    expect(merged[0].movies[0].subtitles).toBe('English')
+    expect(merged[0].movies[1].subtitles).toBe('French')
+  })
+
+  it('returns original sections when cache is missing or malformed', async () => {
     const storage = createStorageMock()
     vi.stubGlobal('localStorage', storage)
 
     const input = sections()
-    expect(mergeEnrichmentCache(1, input)).toEqual(input)
+    await expect(mergeEnrichmentCache(1, input)).resolves.toEqual(input)
 
     storage.setItem('pladi_enrichment_v1_1', '{not-json')
-    expect(mergeEnrichmentCache(1, input)).toEqual(input)
+    await expect(mergeEnrichmentCache(1, input)).resolves.toEqual(input)
   })
 
-  it('saves and merges show enrichment fields for sections', () => {
+  it('saves and merges show enrichment fields for sections', async () => {
     const storage = createStorageMock()
     vi.stubGlobal('localStorage', storage)
 
@@ -118,7 +145,7 @@ describe('enrichmentCache', () => {
     input[0].movies[0].viewed_episode_count = 5
     saveShowEnrichmentCache(4, input)
 
-    const merged = mergeShowEnrichmentCache(4, [{
+    const merged = await mergeShowEnrichmentCache(4, [{
       ...input[0],
       movies: [{ ...input[0].movies[0], summary: null, episode_count: null, viewed_episode_count: null }],
     }])
@@ -128,11 +155,90 @@ describe('enrichmentCache', () => {
     expect(merged[0].movies[0].viewed_episode_count).toBeNull()
   })
 
-  it('ignores non-whitelisted fields from legacy show enrichment cache payloads', () => {
+  it('keeps show and episode enrichment caches separate', async () => {
     const storage = createStorageMock()
     vi.stubGlobal('localStorage', storage)
 
-    storage.setItem('pladi_show_enrichment_v1_11', JSON.stringify({
+    const input = sections()
+    saveShowEnrichmentCache(8, input, 'shows')
+    saveShowEnrichmentCache(8, [{
+      ...input[0],
+      movies: [{ ...input[0].movies[0], file_path: '/tv/Show/ep-a.mkv', writers: 'Episode Writer' }],
+    }], 'episodes')
+
+    const showMerged = await mergeShowEnrichmentCache(8, [{
+      ...input[0],
+      movies: [{ ...input[0].movies[0], summary: null }],
+    }], 'shows')
+    const episodeMerged = await mergeShowEnrichmentCache(8, [{
+      ...input[0],
+      movies: [{ ...input[0].movies[0], file_path: '/tv/Show/ep-a.mkv', writers: null }],
+    }], 'episodes')
+
+    expect(showMerged[0].movies[0].summary).toBe('Summary')
+    expect(episodeMerged[0].movies[0].writers).toBe('Episode Writer')
+  })
+
+  it('keeps episode enrichment cache separate for rows with the same id but different file paths', async () => {
+    const storage = createStorageMock()
+    vi.stubGlobal('localStorage', storage)
+
+    const input = [{
+      ...sections()[0],
+      movies: [
+        { ...sections()[0].movies[0], id: 'e1', file_path: '/tv/Show/ep-a.mkv', subtitles: 'English' },
+        { ...sections()[0].movies[0], id: 'e1', file_path: '/tv/Show/ep-b.mkv', subtitles: 'Spanish' },
+      ],
+    }]
+
+    saveShowEnrichmentCache(14, input, 'episodes')
+
+    const merged = await mergeShowEnrichmentCache(14, [{
+      ...input[0],
+      movies: [
+        { ...input[0].movies[0], subtitles: null },
+        { ...input[0].movies[1], subtitles: null },
+      ],
+    }], 'episodes')
+
+    expect(merged[0].movies[0].subtitles).toBe('English')
+    expect(merged[0].movies[1].subtitles).toBe('Spanish')
+  })
+
+  it('stores sparse show enrichment payloads', async () => {
+    const storage = createStorageMock()
+    vi.stubGlobal('localStorage', storage)
+
+    const input = [{
+      ...sections()[0],
+      movies: [{
+        ...sections()[0].movies[0],
+        id: 'e1',
+        file_path: '/tv/Show/ep-a.mkv',
+        writers: 'Writer One, Writer Two',
+        subtitles: 'English',
+        summary: null,
+        audio_language: null,
+      }],
+    }]
+
+    await saveShowEnrichmentCacheDelta(15, input, undefined, 'episodes')
+
+    const parsed = JSON.parse(storage.getItem('pladi_show_enrichment_v1_episodes_15') ?? '{}') as Record<string, unknown>
+    expect(Object.keys(parsed)).toHaveLength(1)
+    expect(Object.values(parsed)).toEqual([{
+      directors: 'Director',
+      imdb_rating: 7.4,
+      writers: 'Writer One, Writer Two',
+      subtitles: 'English',
+    }])
+  })
+
+  it('ignores non-whitelisted fields from legacy show enrichment cache payloads', async () => {
+    const storage = createStorageMock()
+    vi.stubGlobal('localStorage', storage)
+
+    storage.setItem('pladi_show_enrichment_v1_shows_11', JSON.stringify({
       m1: { summary: 'Cached summary', episode_count: null, viewed_episode_count: null, season_count: null },
     }))
 
@@ -142,7 +248,7 @@ describe('enrichmentCache', () => {
     input[0].movies[0].viewed_episode_count = 5
     input[0].movies[0].summary = 'Live summary'
 
-    const merged = mergeShowEnrichmentCache(11, input)
+    const merged = await mergeShowEnrichmentCache(11, input)
 
     expect(merged[0].movies[0].summary).toBe('Cached summary')
     expect(merged[0].movies[0].season_count).toBe(2)
@@ -171,13 +277,13 @@ describe('enrichmentCache', () => {
     expect(loadBackgroundReadyCache(9)).toEqual(new Set())
   })
 
-  it('updates only enrichment fields in cache and skips non-enrichment-only patches', () => {
+  it('updates only enrichment fields in cache and skips non-enrichment-only patches', async () => {
     const storage = createStorageMock()
     vi.stubGlobal('localStorage', storage)
 
     storage.setItem('pladi_enrichment_v1_5', JSON.stringify({ m1: { summary: 'Old' } }))
 
-    updateEnrichmentCacheMovie(5, 'm1', { summary: 'New', title: 'Ignored title', genres: 'Drama' })
+    await updateEnrichmentCacheMovie(5, 'm1', { summary: 'New', title: 'Ignored title', genres: 'Drama' })
     const updated = JSON.parse(storage.getItem('pladi_enrichment_v1_5') ?? '{}')
 
     expect(updated.m1.summary).toBe('New')
@@ -185,7 +291,8 @@ describe('enrichmentCache', () => {
     expect(updated.m1.title).toBeUndefined()
 
     const setItemSpy = vi.spyOn(globalThis.localStorage, 'setItem')
-    updateEnrichmentCacheMovie(5, 'm1', { title: 'Only title change' })
+    setItemSpy.mockClear()
+    await updateEnrichmentCacheMovie(5, 'm1', { title: 'Only title change' })
     expect(setItemSpy).not.toHaveBeenCalled()
   })
 

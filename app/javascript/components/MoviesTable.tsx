@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
-import pladiLogo from '@/assets/pladi_logo.png'
+import { Loader2 } from 'lucide-react'
 
 import { useMoviesData } from '@/hooks/useMoviesData'
 import { useMoviesFilter } from '@/hooks/useMoviesFilter'
@@ -14,7 +13,6 @@ import { useRouteSync } from '@/hooks/useRouteSync'
 import { COLUMN_GROUPS } from '@/lib/columns'
 import type { ColumnId } from '@/lib/types'
 
-import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
 import { WelcomeScreen } from '@/components/movies/WelcomeScreen'
 import { FilterRow } from '@/components/movies/FilterRow'
 import { ColumnPicker } from '@/components/movies/ColumnPicker'
@@ -25,6 +23,8 @@ import { PosterModal } from '@/components/movies/PosterModal'
 import { ImageModal } from '@/components/movies/ImageModal'
 import { BulkEditModal } from '@/components/movies/BulkEditModal'
 import LibrarySelectors from '@/components/LibrarySelectors'
+import LibraryPageHeader from '@/components/LibraryPageHeader'
+import FilterPanel from '@/components/FilterPanel'
 
 export default function MoviesTable({
   onLogout,
@@ -162,14 +162,7 @@ export default function MoviesTable({
   if (error) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-4 px-8 py-2" style={{ backgroundColor: '#1e2730' }}>
-          <div className="flex items-center gap-3">
-            <img src={pladiLogo} alt="Pladi logo" className="h-10 w-auto" />
-            <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
-          </div>
-          <div className="flex-1" />
-          <HamburgerMenu onLogout={onLogout} onSettings={onSettings} onHistory={onHistory} />
-        </div>
+        <LibraryPageHeader syncing={false} syncingLabel={null} refreshing={false} onLogout={onLogout} onSettings={onSettings} onHistory={onHistory} />
         <div className="px-8 py-4 space-y-3">
           <p className="text-destructive text-sm">Failed to load movies: {error}</p>
           <p className="text-muted-foreground text-sm">
@@ -187,28 +180,19 @@ export default function MoviesTable({
 
   return (
     <div className="space-y-4">
-      {/* Title bar */}
-      <div className="flex items-center gap-4 px-8 py-2" style={{ backgroundColor: '#1e2730' }}>
-        <div className="flex items-center gap-3">
-          <img src={pladiLogo} alt="Pladi logo" className="h-10 w-auto" />
-          <h1 className="text-2xl font-bold" style={{ color: '#E5A00D' }}>PLADI</h1>
-        </div>
-        <div className="flex-1 flex justify-center">
-          {syncing && (
-            <div className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border" style={{ backgroundColor: '#E5A00D15', borderColor: '#E5A00D50', color: '#E5A00D' }}>
-              <Loader2 size={14} className="animate-spin" />
-              Syncing additional metadata from Plex...
-            </div>
-          )}
-        </div>
-        {refreshing && (
-          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+      <LibraryPageHeader
+        syncing={syncing}
+        syncingLabel={(
+          <div className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border" style={{ backgroundColor: '#E5A00D15', borderColor: '#E5A00D50', color: '#E5A00D' }}>
             <Loader2 size={14} className="animate-spin" />
-            Updating...
-          </span>
+            Syncing additional metadata from Plex...
+          </div>
         )}
-        <HamburgerMenu onLogout={onLogout} onSettings={onSettings} onHistory={onHistory} />
-      </div>
+        refreshing={refreshing}
+        onLogout={onLogout}
+        onSettings={onSettings}
+        onHistory={onHistory}
+      />
 
         <div className="px-8 space-y-4">
 
@@ -227,22 +211,11 @@ export default function MoviesTable({
         />
 
         {/* Filters */}
-        <div className="border rounded-md w-fit">
-          <button
-            onClick={() => setFiltersOpen((o) => { const next = !o; localStorage.setItem('pladi_filters_open', String(next)); return next })}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {filtersOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full font-semibold" style={{ backgroundColor: '#E5A00D', color: '#161b1f' }}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-
-          {filtersOpen && (
-            <div className="px-3 pb-3 space-y-3 border-t pt-3">
+        <FilterPanel
+          open={filtersOpen}
+          activeCount={activeFilterCount}
+          onToggle={() => setFiltersOpen((open) => { const next = !open; localStorage.setItem('pladi_filters_open', String(next)); return next })}
+        >
               {/* Quick filters */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</p>
@@ -311,9 +284,7 @@ export default function MoviesTable({
                   )}
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+        </FilterPanel>
 
         {/* Table */}
         {sections.length > 0 && (

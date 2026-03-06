@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { ApiError, api } from '@/lib/apiClient'
-import { EnrichResponseSchema, PlexServerInfoListSchema, SectionListSchema } from '@/lib/apiSchemas'
-import { SHOW_ENRICHMENT_FIELDS, mergeShowEnrichmentCache, saveShowEnrichmentCache } from '@/lib/enrichmentCache'
-import { mergeEnrichedRows, normalizeTagPatch, resolveInitialLibrary, resolveInitialServerId } from '@/hooks/libraryDataUtils'
-import type { PlexServerInfo, Section } from '@/lib/types'
+import { EnrichResponseSchema, SectionListSchema } from '@/lib/apiSchemas'
+import { SHOW_ENRICHMENT_FIELDS, mergeShowEnrichmentCache, saveShowEnrichmentCacheDelta } from '@/lib/enrichmentCache'
+import { mergeEnrichedRows, normalizeTagPatch, resolveInitialLibrary } from '@/hooks/libraryDataUtils'
+import { usePlexServerBootstrap } from '@/hooks/usePlexServerBootstrap'
+import type { MediaPatch, PlexServerInfo, Section } from '@/lib/types'
 import type { z } from 'zod'
 
 type EnrichResponse = z.infer<typeof EnrichResponseSchema>
@@ -25,6 +26,14 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
   const [error, setError] = useState<string | null>(null)
   const loadRequestIdRef = useRef(0)
   const activeLoadAbortRef = useRef<AbortController | null>(null)
+  const handleBootstrapError = useCallback((message: string) => {
+    setError(message)
+    setLoading(false)
+  }, [])
+  const handleNoServers = useCallback(() => setLoading(false), [])
+  const abortActiveLoad = useCallback(() => {
+    activeLoadAbortRef.current?.abort()
+  }, [])
 
   const loadShows = useCallback(async (serverId: number) => {
     const requestId = loadRequestIdRef.current + 1
@@ -48,7 +57,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
       })
       const data = listRes.data ?? []
       if (isStale()) return
-      setSections(viewMode === 'shows' ? mergeShowEnrichmentCache(serverId, data) : data)
+      setSections(await mergeShowEnrichmentCache(serverId, data, viewMode))
       if (data.length > 0) {
         setSelectedTitle(resolveInitialLibrary(data, STORAGE_KEYS.library(viewMode)))
       }
@@ -65,7 +74,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
         if (isStale()) return
         if (refreshRes.ok && refreshRes.data) {
           const fresh = refreshRes.data
-          setSections(viewMode === 'shows' ? mergeShowEnrichmentCache(serverId, fresh) : fresh)
+          setSections(await mergeShowEnrichmentCache(serverId, fresh, viewMode))
           setSelectedTitle((prev) =>
             prev === null || fresh.some((s) => s.title === prev)
               ? prev
@@ -86,12 +95,15 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
         })
         if (isStale()) return
         if (enrichRes.ok && enrichRes.data?.sections) {
-          if (viewMode === 'shows') saveShowEnrichmentCache(serverId, enrichRes.data.sections as Section[])
-          setSections((prev) => mergeEnrichedRows({
-            previousSections: prev,
-            enrichedSections: enrichRes.data.sections as Section[],
-            fields: SHOW_ENRICHMENT_FIELDS,
-          }))
+          setSections((prev) => {
+            const mergedSections = mergeEnrichedRows({
+              previousSections: prev,
+              enrichedSections: enrichRes.data.sections as Section[],
+              fields: SHOW_ENRICHMENT_FIELDS,
+            })
+            void saveShowEnrichmentCacheDelta(serverId, mergedSections, prev, viewMode)
+            return mergedSections
+          })
         }
       } finally {
         if (!isStale()) setSyncing(false)
@@ -106,39 +118,19 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
     }
   }, [viewMode])
 
-  useEffect(() => {
-    const controller = new AbortController()
-
-    const init = async () => {
-      try {
-        const serversRes = await api.get<PlexServerInfo[]>('/api/plex_servers', {
-          signal: controller.signal,
-          responseSchema: PlexServerInfoListSchema,
-        })
-        const servers = serversRes.data ?? []
-        if (controller.signal.aborted) return
-        setPlexServers(servers)
-        if (servers.length === 0) {
-          setLoading(false)
-          return
-        }
-        const firstId = resolveInitialServerId(servers, STORAGE_KEYS.serverId)
-        setSelectedServerId(firstId)
-        await loadShows(firstId)
-      } catch (err: unknown) {
-        if (controller.signal.aborted) return
-        if (err instanceof ApiError) setError(err.message)
-        else setError(err instanceof Error ? err.message : 'Unknown error')
-        setLoading(false)
-      }
-    }
-
-    init()
-    return () => {
-      controller.abort()
-      activeLoadAbortRef.current?.abort()
-    }
+  const handleSelectServer = useCallback(async (serverId: number) => {
+    setSelectedServerId(serverId)
+    await loadShows(serverId)
   }, [loadShows])
+
+  usePlexServerBootstrap({
+    storageKey: STORAGE_KEYS.serverId,
+    onServersLoaded: setPlexServers,
+    onSelectServer: handleSelectServer,
+    onNoServers: handleNoServers,
+    onError: handleBootstrapError,
+    abortActiveLoad,
+  })
 
   function handleServerChange(id: number) {
     localStorage.setItem(STORAGE_KEYS.serverId, String(id))
@@ -151,7 +143,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
     setSelectedTitle(title)
   }
 
-  async function updateShow(showId: string, patch: Record<string, unknown>) {
+  async function updateShow(showId: string, patch: MediaPatch) {
     if (!selectedServerId) throw new Error('No server selected')
 
     const apiPatch = normalizeTagPatch(patch as Record<string, unknown>)

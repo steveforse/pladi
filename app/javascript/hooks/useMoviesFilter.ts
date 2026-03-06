@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ActiveFilter, Section, SortKey, SortDir } from '@/lib/types'
-import { matchesFilter } from '@/lib/filters'
+import { useEffect, useMemo, useState } from 'react'
+import type { Section, SortDir, SortKey } from '@/lib/types'
+import { FILTER_FIELDS, matchesFilter } from '@/lib/filters'
 import { sortMovies } from '@/lib/sorting'
+import { useAdvancedFilters } from '@/hooks/useAdvancedFilters'
+import { useStoredSort } from '@/hooks/useStoredSort'
 import {
   titleMatchesPath,
   titleMatchesFilename,
@@ -9,10 +11,19 @@ import {
   pathYearMatchesMetadata,
   fileIsInSubfolder,
 } from '@/lib/pathMatching'
+import { loadStoredJson, saveStoredJson } from '@/lib/storage'
 
 const STORAGE_KEY = 'pladi.filters'
+const MOVIE_SORT_KEYS = new Set<SortKey>([
+  'id', 'title', 'original_title', 'year', 'file_path', 'container', 'video_codec', 'video_resolution',
+  'width', 'height', 'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'overall_bitrate',
+  'size', 'duration', 'updated_at', 'content_rating', 'imdb_rating', 'rt_critics_rating', 'rt_audience_rating',
+  'tmdb_rating', 'genres', 'directors', 'sort_title', 'edition', 'originally_available', 'studio', 'tagline',
+  'country', 'writers', 'producers', 'collections', 'labels', 'subtitles', 'audio_tracks', 'audio_language',
+  'audio_bitrate', 'video_bitrate',
+] as const)
 
-function loadFiltersFromStorage(): {
+type MovieQuickFilterState = {
   multiOnly: boolean
   unmatchedOnly: boolean
   filenameMismatch: boolean
@@ -20,15 +31,15 @@ function loadFiltersFromStorage(): {
   noYearInPath: boolean
   yearPathMismatch: boolean
   notInSubfolder: boolean
+}
+
+type MovieFilterStorage = MovieQuickFilterState & {
   sortKey: SortKey
   sortDir: SortDir
-  filters: ActiveFilter[]
-} {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch { /* storage unavailable; ignore */ }
-  return {
+}
+
+function loadMovieFilterStorage(): MovieFilterStorage {
+  return loadStoredJson('local', STORAGE_KEY, {
     multiOnly: false,
     unmatchedOnly: false,
     filenameMismatch: false,
@@ -36,14 +47,13 @@ function loadFiltersFromStorage(): {
     noYearInPath: false,
     yearPathMismatch: false,
     notInSubfolder: false,
-    sortKey: 'title',
-    sortDir: 'asc',
-    filters: [],
-  }
+    sortKey: 'title' as const,
+    sortDir: 'asc' as const,
+  })
 }
 
 export function useMoviesFilter(sections: Section[], selectedTitle: string | null) {
-  const saved = useMemo(() => loadFiltersFromStorage(), [])
+  const saved = useMemo(() => loadMovieFilterStorage(), [])
   const [multiOnly, setMultiOnly] = useState(saved.multiOnly)
   const [unmatchedOnly, setUnmatchedOnly] = useState(saved.unmatchedOnly)
   const [filenameMismatch, setFilenameMismatch] = useState(saved.filenameMismatch)
@@ -51,64 +61,81 @@ export function useMoviesFilter(sections: Section[], selectedTitle: string | nul
   const [noYearInPath, setNoYearInPath] = useState(saved.noYearInPath)
   const [yearPathMismatch, setYearPathMismatch] = useState(saved.yearPathMismatch)
   const [notInSubfolder, setNotInSubfolder] = useState(saved.notInSubfolder)
-  const [sortKey, setSortKey] = useState<SortKey>(saved.sortKey)
-  const [sortDir, setSortDir] = useState<SortDir>(saved.sortDir)
-  const [filters, setFilters] = useState<ActiveFilter[]>(saved.filters)
-  const nextId = useRef(saved.filters.length > 0 ? Math.max(...saved.filters.map((f) => f.id)) + 1 : 1)
+  const { sortKey, sortDir, handleSort, persistSort } = useStoredSort({
+    storageKey: `${STORAGE_KEY}.sort`,
+    defaultSortKey: saved.sortKey,
+    validSortKeys: MOVIE_SORT_KEYS,
+    storage: 'local',
+  })
+  const {
+    activeFilters,
+    addFilter,
+    updateFilter,
+    removeFilter,
+    clearFilters,
+    persistFilters,
+  } = useAdvancedFilters({
+    storageKey: `${STORAGE_KEY}.advanced`,
+    fieldDefs: FILTER_FIELDS,
+    initialField: 'title',
+  })
 
   useEffect(() => {
-    try {
-      sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, sortKey, sortDir, filters })
-      )
-    } catch { /* storage unavailable; ignore */ }
-  }, [multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, sortKey, sortDir, filters])
+    saveStoredJson('local', STORAGE_KEY, {
+      multiOnly,
+      unmatchedOnly,
+      filenameMismatch,
+      originalTitleMismatch,
+      noYearInPath,
+      yearPathMismatch,
+      notInSubfolder,
+      sortKey,
+      sortDir,
+    })
+  }, [multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, sortKey, sortDir])
+
+  useEffect(() => {
+    persistFilters(activeFilters)
+  }, [activeFilters, persistFilters])
+
+  useEffect(() => {
+    persistSort(sortKey, sortDir)
+  }, [sortKey, sortDir, persistSort])
 
   const visibleMovies = useMemo(() => {
     let movies = selectedTitle === null
-      ? sections.flatMap((s) => s.movies)
-      : (sections.find((s) => s.title === selectedTitle)?.movies ?? [])
+      ? sections.flatMap((section) => section.movies)
+      : (sections.find((section) => section.title === selectedTitle)?.movies ?? [])
 
     if (multiOnly) {
       const counts = new Map<string, number>()
-      for (const m of movies) counts.set(m.id, (counts.get(m.id) ?? 0) + 1)
-      movies = movies.filter((m) => (counts.get(m.id) ?? 0) > 1)
+      for (const movie of movies) counts.set(movie.id, (counts.get(movie.id) ?? 0) + 1)
+      movies = movies.filter((movie) => (counts.get(movie.id) ?? 0) > 1)
     }
 
-    if (unmatchedOnly) movies = movies.filter((m) => !titleMatchesPath(m))
-    if (filenameMismatch) movies = movies.filter((m) => !titleMatchesFilename(m))
-    if (originalTitleMismatch) movies = movies.filter((m) => m.original_title != null && m.original_title !== m.title)
-    if (noYearInPath) movies = movies.filter((m) => !pathContainsYear(m))
-    if (yearPathMismatch) movies = movies.filter((m) => !pathYearMatchesMetadata(m))
-    if (notInSubfolder) movies = movies.filter((m) => !fileIsInSubfolder(m))
-
-    if (filters.length > 0) {
-      movies = movies.filter((m) => filters.every((f) => matchesFilter(m, f)))
-    }
+    if (unmatchedOnly) movies = movies.filter((movie) => !titleMatchesPath(movie))
+    if (filenameMismatch) movies = movies.filter((movie) => !titleMatchesFilename(movie))
+    if (originalTitleMismatch) movies = movies.filter((movie) => movie.original_title != null && movie.original_title !== movie.title)
+    if (noYearInPath) movies = movies.filter((movie) => !pathContainsYear(movie))
+    if (yearPathMismatch) movies = movies.filter((movie) => !pathYearMatchesMetadata(movie))
+    if (notInSubfolder) movies = movies.filter((movie) => !fileIsInSubfolder(movie))
+    if (activeFilters.length > 0) movies = movies.filter((movie) => activeFilters.every((filter) => matchesFilter(movie, filter)))
 
     return sortMovies(movies, sortKey, sortDir)
-  }, [sections, selectedTitle, multiOnly, unmatchedOnly, filenameMismatch, originalTitleMismatch, noYearInPath, yearPathMismatch, notInSubfolder, filters, sortKey, sortDir])
-
-  function handleSort(key: SortKey) {
-    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortKey(key); setSortDir('asc') }
-  }
-
-  function addFilter() {
-    setFilters((prev) => [
-      ...prev,
-      { id: nextId.current++, field: 'title', op: 'includes', value: '' },
-    ])
-  }
-
-  function updateFilter(id: number, updated: ActiveFilter) {
-    setFilters((prev) => prev.map((f) => (f.id === id ? updated : f)))
-  }
-
-  function removeFilter(id: number) {
-    setFilters((prev) => prev.filter((f) => f.id !== id))
-  }
+  }, [
+    sections,
+    selectedTitle,
+    multiOnly,
+    unmatchedOnly,
+    filenameMismatch,
+    originalTitleMismatch,
+    noYearInPath,
+    yearPathMismatch,
+    notInSubfolder,
+    activeFilters,
+    sortKey,
+    sortDir,
+  ])
 
   function clearAllFilters() {
     setMultiOnly(false)
@@ -118,7 +145,7 @@ export function useMoviesFilter(sections: Section[], selectedTitle: string | nul
     setNoYearInPath(false)
     setYearPathMismatch(false)
     setNotInSubfolder(false)
-    setFilters([])
+    clearFilters()
   }
 
   return {
@@ -130,7 +157,7 @@ export function useMoviesFilter(sections: Section[], selectedTitle: string | nul
     yearPathMismatch, setYearPathMismatch,
     notInSubfolder, setNotInSubfolder,
     sortKey, sortDir, handleSort,
-    filters, addFilter, updateFilter, removeFilter, clearAllFilters,
+    filters: activeFilters, addFilter, updateFilter, removeFilter, clearAllFilters,
     visibleMovies,
   }
 }

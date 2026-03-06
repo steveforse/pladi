@@ -104,3 +104,7 @@ export interface ActiveFilter {
   op: FilterOp
   value: string
 }
+
+export type TagField = 'genres' | 'directors' | 'writers' | 'producers' | 'collections' | 'labels' | 'country'
+export type TagPatch = Partial<Record<TagField, string | null>>
+export type MediaPatch = Partial<Movie>

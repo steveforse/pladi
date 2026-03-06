@@ -22,6 +22,7 @@ vi.mock('@/lib/enrichmentCache', () => ({
   ENRICHMENT_FIELDS: ['summary', 'genres'],
   mergeEnrichmentCache: vi.fn((_serverId: number, sections: unknown) => sections),
   saveEnrichmentCache: vi.fn(),
+  saveEnrichmentCacheDelta: vi.fn(),
   updateEnrichmentCacheMovie: vi.fn(),
   savePosterReadyCache: vi.fn(),
   loadPosterReadyCache: vi.fn(() => new Set<string>()),

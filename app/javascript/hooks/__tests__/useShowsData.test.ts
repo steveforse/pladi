@@ -203,7 +203,7 @@ describe('useShowsData', () => {
 
   it('applies cached show enrichment before enrich response', async () => {
     const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
-    localStorage.setItem('pladi_show_enrichment_v1_1', JSON.stringify({ s1: { summary: 'Cached summary' } }))
+    localStorage.setItem('pladi_show_enrichment_v1_shows_1', JSON.stringify({ s1: { summary: 'Cached summary' } }))
 
     mockedApi.get.mockImplementation(async (path: string) => {
       if (path === '/api/plex_servers') {
@@ -224,7 +224,7 @@ describe('useShowsData', () => {
   it('does not let legacy cached count fields override live show counts', async () => {
     const baseSections = [{ title: 'TV Shows', movies: [show('s1', 'Severance')] }]
     localStorage.setItem(
-      'pladi_show_enrichment_v1_1',
+      'pladi_show_enrichment_v1_shows_1',
       JSON.stringify({
         s1: {
           summary: 'Cached summary',
@@ -253,6 +253,61 @@ describe('useShowsData', () => {
     expect(loadedShow.season_count).toBe(2)
     expect(loadedShow.episode_count).toBe(20)
     expect(loadedShow.viewed_episode_count).toBe(5)
+  })
+
+  it('applies cached episode enrichment before enrich response', async () => {
+    const baseSections = [{ title: 'TV Shows', movies: [{ ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01' }] }]
+    localStorage.setItem('pladi_show_enrichment_v1_episodes_1', JSON.stringify({
+      'e1|': { audio_language: 'English', subtitles: 'English, Spanish', video_bitrate: 4500 },
+    }))
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/refresh') return { ok: false, status: 500, data: null }
+      if (path === '/api/shows/enrich') return { ok: false, status: 500, data: null }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useShowsData('episodes'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    const cachedEpisode = result.current.sections[0].movies[0]
+    expect(cachedEpisode.audio_language).toBe('English')
+    expect(cachedEpisode.subtitles).toBe('English, Spanish')
+    expect(cachedEpisode.video_bitrate).toBe(4500)
+  })
+
+  it('hydrates distinct cached enrichment for episode rows with the same id but different files', async () => {
+    const baseSections = [{
+      title: 'TV Shows',
+      movies: [
+        { ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01', file_path: '/tv/Show/ep-a.mkv' },
+        { ...show('e1', 'Pilot'), show_title: 'Show A', episode_number: 'S01E01', file_path: '/tv/Show/ep-b.mkv' },
+      ],
+    }]
+    localStorage.setItem('pladi_show_enrichment_v1_episodes_1', JSON.stringify({
+      'e1|/tv/Show/ep-a.mkv': { subtitles: 'English' },
+      'e1|/tv/Show/ep-b.mkv': { subtitles: 'Spanish' },
+    }))
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/refresh') return { ok: false, status: 500, data: null }
+      if (path === '/api/shows/enrich') return { ok: false, status: 500, data: null }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result } = renderHook(() => useShowsData('episodes'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.sections[0].movies[0].subtitles).toBe('English')
+    expect(result.current.sections[0].movies[1].subtitles).toBe('Spanish')
   })
 
   it('loads episode mode sections and runs enrich', async () => {
@@ -284,5 +339,61 @@ describe('useShowsData', () => {
       '/api/shows/enrich',
       expect.objectContaining({ query: expect.objectContaining({ view_mode: 'episodes' }) })
     )
+  })
+
+  it('hydrates episode enrich values on a fresh mount before enrich reruns', async () => {
+    const baseSections = [{
+      title: 'TV Shows',
+      movies: [{
+        ...show('41014', 'Pilot'),
+        show_title: 'Show A',
+        episode_number: 'S01E01',
+        file_path: '/tv/Show A/Season 01/Show A - S01E01.mkv',
+        writers: 'Stacie Lipp, Michael G. Moye',
+        subtitles: null,
+      }],
+    }]
+    const enrichedSections = [{
+      title: 'TV Shows',
+      movies: [{
+        ...baseSections[0].movies[0],
+        writers: 'Stacie Lipp, Michael G. Moye, Ron Leavitt, Larry Jacobson',
+        subtitles: 'English',
+      }],
+    }]
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/refresh') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: enrichedSections } }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result: firstResult, unmount } = renderHook(() => useShowsData('episodes'))
+    await waitFor(() => {
+      expect(firstResult.current.loading).toBe(false)
+      expect(firstResult.current.sections[0].movies[0].writers).toContain('Ron Leavitt')
+      expect(firstResult.current.sections[0].movies[0].subtitles).toBe('English')
+    })
+    unmount()
+
+    mockedApi.get.mockImplementation(async (path: string) => {
+      if (path === '/api/plex_servers') {
+        return { ok: true, status: 200, data: [{ id: 1, name: 'Main', url: 'http://plex.local' }] }
+      }
+      if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
+      if (path === '/api/shows/refresh') return { ok: false, status: 500, data: null }
+      if (path === '/api/shows/enrich') return { ok: false, status: 500, data: null }
+      return { ok: false, status: 404, data: null }
+    })
+
+    const { result: secondResult } = renderHook(() => useShowsData('episodes'))
+    await waitFor(() => expect(secondResult.current.loading).toBe(false))
+
+    expect(secondResult.current.sections[0].movies[0].writers).toContain('Ron Leavitt')
+    expect(secondResult.current.sections[0].movies[0].subtitles).toBe('English')
   })
 })

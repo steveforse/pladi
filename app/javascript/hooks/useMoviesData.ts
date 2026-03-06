@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createConsumer } from '@rails/actioncable'
 import type { Movie, PlexServerInfo, Section } from '@/lib/types'
-import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCache, updateEnrichmentCacheMovie, savePosterReadyCache, loadPosterReadyCache, saveBackgroundReadyCache, loadBackgroundReadyCache } from '@/lib/enrichmentCache'
+import { ENRICHMENT_FIELDS, mergeEnrichmentCache, saveEnrichmentCacheDelta, updateEnrichmentCacheMovie, savePosterReadyCache, loadPosterReadyCache, saveBackgroundReadyCache, loadBackgroundReadyCache } from '@/lib/enrichmentCache'
 import { ApiError, api } from '@/lib/apiClient'
-import { EnrichResponseSchema, PlexServerInfoListSchema, SectionListSchema, MovieDetailSchema } from '@/lib/apiSchemas'
-import { mergeEnrichedRows, normalizeTagPatch, resolveInitialLibrary, resolveInitialServerId } from '@/hooks/libraryDataUtils'
+import { EnrichResponseSchema, SectionListSchema, MovieDetailSchema } from '@/lib/apiSchemas'
+import { mergeEnrichedRows, normalizeTagPatch, resolveInitialLibrary } from '@/hooks/libraryDataUtils'
+import { usePlexServerBootstrap } from '@/hooks/usePlexServerBootstrap'
 import type { z } from 'zod'
 
 type PosterMovie = { id: string; thumb: string }
@@ -23,7 +24,7 @@ export function useMoviesData(downloadImages: boolean) {
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [syncing, setSyncing] = useState(false)
+  const [syncing, setSyncing] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [posterReady, setPosterReady] = useState<Set<string>>(new Set())
   const [uncachedPosterMovies, setUncachedPosterMovies] = useState<PosterMovie[]>([])
@@ -32,6 +33,18 @@ export function useMoviesData(downloadImages: boolean) {
   const consumerRef = useRef<ReturnType<typeof createConsumer> | null>(null)
   const loadRequestIdRef = useRef(0)
   const activeLoadAbortRef = useRef<AbortController | null>(null)
+  const handleBootstrapError = useCallback((message: string) => {
+    setError(message)
+    setLoading(false)
+    setSyncing(false)
+  }, [])
+  const handleNoServers = useCallback(() => {
+    setLoading(false)
+    setSyncing(false)
+  }, [])
+  const abortActiveLoad = useCallback(() => {
+    activeLoadAbortRef.current?.abort()
+  }, [])
 
   // Create Action Cable consumer once on mount, disconnect on unmount
   useEffect(() => {
@@ -68,7 +81,7 @@ export function useMoviesData(downloadImages: boolean) {
     return () => sub.unsubscribe()
   }, [selectedServerId, downloadImages])
 
-  async function loadMovies(serverId: number) {
+  const loadMovies = useCallback(async (serverId: number) => {
     const requestId = loadRequestIdRef.current + 1
     loadRequestIdRef.current = requestId
     activeLoadAbortRef.current?.abort()
@@ -93,7 +106,7 @@ export function useMoviesData(downloadImages: boolean) {
       })
       const data = listRes.data ?? []
       if (isStale()) return
-      setSections(mergeEnrichmentCache(serverId, data))
+      setSections(await mergeEnrichmentCache(serverId, data))
       if (data.length > 0) {
         setSelectedTitle(resolveInitialLibrary(data, STORAGE_KEYS.library))
       }
@@ -111,7 +124,7 @@ export function useMoviesData(downloadImages: boolean) {
         if (isStale()) return
         if (refreshRes.ok && refreshRes.data) {
           const fresh = refreshRes.data
-          setSections(mergeEnrichmentCache(serverId, fresh))
+          setSections(await mergeEnrichmentCache(serverId, fresh))
           setSelectedTitle((prev) =>
             prev === null || fresh.some((s) => s.title === prev)
               ? prev
@@ -135,12 +148,15 @@ export function useMoviesData(downloadImages: boolean) {
         if (enrichRes.ok && enrichRes.data) {
           const enrichData = enrichRes.data
           if (isStale()) return
-          saveEnrichmentCache(serverId, enrichData.sections)
-          setSections((prev) => mergeEnrichedRows({
-            previousSections: prev,
-            enrichedSections: enrichData.sections as Section[],
-            fields: ENRICHMENT_FIELDS,
-          }))
+          setSections((prev) => {
+            const mergedSections = mergeEnrichedRows({
+              previousSections: prev,
+              enrichedSections: enrichData.sections as Section[],
+              fields: ENRICHMENT_FIELDS,
+            })
+            void saveEnrichmentCacheDelta(serverId, mergedSections, prev)
+            return mergedSections
+          })
           if (downloadImages) {
             if (enrichData.cached_poster_ids?.length) {
               savePosterReadyCache(serverId, enrichData.cached_poster_ids)
@@ -175,39 +191,21 @@ export function useMoviesData(downloadImages: boolean) {
         activeLoadAbortRef.current = null
       }
     }
-  }
+  }, [downloadImages])
 
-  // Fetch servers on mount, then load movies for the first server
-  useEffect(() => {
-    const controller = new AbortController()
+  const handleSelectServer = useCallback(async (serverId: number) => {
+    setSelectedServerId(serverId)
+    await loadMovies(serverId)
+  }, [loadMovies])
 
-    const init = async () => {
-      try {
-        const serversRes = await api.get<PlexServerInfo[]>('/api/plex_servers', {
-          signal: controller.signal,
-          responseSchema: PlexServerInfoListSchema,
-        })
-        const servers = serversRes.data ?? []
-        if (controller.signal.aborted) return
-        setPlexServers(servers)
-        if (servers.length === 0) {
-          setLoading(false)
-          return
-        }
-        const firstId = resolveInitialServerId(servers, STORAGE_KEYS.serverId)
-        setSelectedServerId(firstId)
-        await loadMovies(firstId)
-      } catch (err: unknown) {
-        if (controller.signal.aborted) return
-        if (err instanceof ApiError) setError(err.message)
-        else setError(err instanceof Error ? err.message : 'Unknown error')
-        setLoading(false)
-      }
-    }
-    init()
-    return () => controller.abort()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  usePlexServerBootstrap({
+    storageKey: STORAGE_KEYS.serverId,
+    onServersLoaded: setPlexServers,
+    onSelectServer: handleSelectServer,
+    onNoServers: handleNoServers,
+    onError: handleBootstrapError,
+    abortActiveLoad,
+  })
 
   function handleServerChange(id: number) {
     localStorage.setItem(STORAGE_KEYS.serverId, String(id))
@@ -242,7 +240,7 @@ export function useMoviesData(downloadImages: boolean) {
         movies: section.movies.map((m) => (m.id === movieId ? { ...m, ...patch } : m)),
       }))
     )
-    if (selectedServerId) updateEnrichmentCacheMovie(selectedServerId, movieId, patch)
+    if (selectedServerId) void updateEnrichmentCacheMovie(selectedServerId, movieId, patch)
   }
 
   async function refreshMovies(movieIds: string[]) {
@@ -261,7 +259,7 @@ export function useMoviesData(downloadImages: boolean) {
           movies: section.movies.map((m) => (m.id === movieId ? { ...m, ...detail } : m)),
         }))
       )
-      updateEnrichmentCacheMovie(selectedServerId, movieId, detail)
+      void updateEnrichmentCacheMovie(selectedServerId, movieId, detail)
     }))
   }
 

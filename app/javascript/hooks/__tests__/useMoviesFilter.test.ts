@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMoviesFilter } from '@/hooks/useMoviesFilter'
 
-function createSessionStorageMock() {
+function createStorageMock() {
   const store = new Map<string, string>()
   return {
     getItem: (key: string) => store.get(key) ?? null,
@@ -64,7 +64,7 @@ function movie(overrides: Record<string, unknown>) {
 
 describe('useMoviesFilter', () => {
   beforeEach(() => {
-    vi.stubGlobal('sessionStorage', createSessionStorageMock())
+    vi.stubGlobal('localStorage', createStorageMock())
   })
 
   it('filters by selected library and sorts', () => {
@@ -144,8 +144,8 @@ describe('useMoviesFilter', () => {
     expect(result.current.sortDir).toBe('asc')
   })
 
-  it('loads initial state from sessionStorage and applies additional quick filters', () => {
-    const storage = createSessionStorageMock()
+  it('loads initial state from localStorage and applies additional quick filters', () => {
+    const storage = createStorageMock()
     storage.setItem('pladi.filters', JSON.stringify({
       multiOnly: false,
       unmatchedOnly: false,
@@ -158,7 +158,7 @@ describe('useMoviesFilter', () => {
       sortDir: 'asc',
       filters: [],
     }))
-    vi.stubGlobal('sessionStorage', storage)
+    vi.stubGlobal('localStorage', storage)
 
     const sections = [{
       title: 'A',
@@ -184,7 +184,7 @@ describe('useMoviesFilter', () => {
       removeItem: () => {},
       clear: () => {},
     }
-    vi.stubGlobal('sessionStorage', badStorage)
+    vi.stubGlobal('localStorage', badStorage)
 
     const sections = [{ title: 'A', movies: [movie({ id: 'm1', title: 'Alpha' })] }]
     const { result } = renderHook(() => useMoviesFilter(sections, null))

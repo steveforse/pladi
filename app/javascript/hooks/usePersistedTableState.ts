@@ -47,7 +47,7 @@ export function usePersistedTableState({
   defaultVisible,
   defaultOrder,
   validIds,
-  storage = 'session',
+  storage = 'local',
 }: {
   storageKey: string
   defaultVisible: ColumnId[]
