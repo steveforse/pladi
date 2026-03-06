@@ -27,7 +27,7 @@ module Plex
     end
 
     def detail_for(media_id, scope: MediaScope.movies)
-      item = find_item(media_id, scope:) || direct_item_reference(media_id)
+      item = find_item(media_id, scope:) || direct_item_reference(media_id, scope:)
       return nil unless item
 
       return @enricher.enrich_show(media_id) if item[:media_type] == 'show'
@@ -64,9 +64,10 @@ module Plex
       end
     end
 
-    def direct_item_reference(media_id)
+    def direct_item_reference(media_id, scope:)
       metadata = enricher.metadata_for(media_id)
       return nil if metadata.blank?
+      return nil unless scope.accepts_media_type?(metadata['type'].to_s)
 
       {
         id: metadata['ratingKey'].to_s,

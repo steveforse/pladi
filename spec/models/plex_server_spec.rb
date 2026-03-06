@@ -7,7 +7,6 @@ RSpec.describe PlexServer do
 
   it { is_expected.to belong_to(:user) }
   it { is_expected.to have_many(:media_audit_logs).class_name('MediaAuditLog').dependent(:destroy) }
-  it { is_expected.to have_many(:movie_audit_logs) }
 
   it { is_expected.to validate_presence_of(:name) }
   it { is_expected.to validate_presence_of(:url) }

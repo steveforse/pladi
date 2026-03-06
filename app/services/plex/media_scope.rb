@@ -39,6 +39,10 @@ module Plex
       movie_library?
     end
 
+    def accepts_media_type?(media_type)
+      accepted_media_types.include?(media_type)
+    end
+
     def episode_view?
       show_library? && view_mode == 'episodes'
     end
@@ -55,6 +59,13 @@ module Plex
     end
 
     private
+
+    def accepted_media_types
+      return %w[show episode] if episode_view?
+      return ['show'] if show_library?
+
+      ['movie']
+    end
 
     def normalize_view_mode(value)
       return 'shows' unless show_library?

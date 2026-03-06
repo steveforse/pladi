@@ -98,6 +98,20 @@ RSpec.describe Plex::Server do
 
       it { expect(plex_server_service.detail_for('7')).to eq(summary: 'enriched') }
 
+      context 'when the direct metadata belongs to another library type' do
+        before do
+          allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
+          allow(cache_store).to receive(:fetch).with('show-sections-key').and_return([{ items: [] }])
+          allow(enricher).to receive(:metadata_for).with('7').and_return(
+            direct_movie_metadata.merge('type' => 'movie')
+          )
+        end
+
+        it 'returns nil for the show scope' do
+          expect(plex_server_service.detail_for('7', scope: shows_scope)).to be_nil
+        end
+      end
+
       def direct_movie_metadata
         {
           'ratingKey' => '7',

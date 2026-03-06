@@ -8,7 +8,6 @@ RSpec.describe User do
   it { is_expected.to have_many(:sessions).dependent(:destroy) }
   it { is_expected.to have_many(:plex_servers).dependent(:destroy) }
   it { is_expected.to have_many(:media_audit_logs).class_name('MediaAuditLog').dependent(:destroy) }
-  it { is_expected.to have_many(:movie_audit_logs) }
   it { is_expected.to have_secure_password }
 
   describe 'email normalization' do

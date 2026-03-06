@@ -32,4 +32,14 @@ RSpec.describe Plex::MovieDetailFetcher do
       expect(fetcher.fetch('10')).to eq({})
     end
   end
+
+  describe '#metadata_for' do
+    it 'returns the first metadata item' do
+      allow(http_client).to receive(:get).with('/library/metadata/10').and_return(
+        'MediaContainer' => { 'Metadata' => [{ 'title' => 'Movie' }] }
+      )
+
+      expect(fetcher.metadata_for('10')).to eq('title' => 'Movie')
+    end
+  end
 end
