@@ -8,16 +8,12 @@ module Plex
       @row_builder = LibraryRowBuilder.new
     end
 
-    def fetch_sections(media_type: 'movie', view_mode: 'shows')
-      fetch_sections_by_type(media_type).map do |section|
+    def fetch_sections(scope: MediaScope.movies)
+      fetch_sections_by_type(scope.library_type).map do |section|
         section_id = section['key']
         updated_at = section['updatedAt']
-        movies = @cache.cached_movies_for(section_id, updated_at, media_type: media_type, view_mode: view_mode) do
-          items_for_section(section_id, media_type: media_type, view_mode: view_mode)
-            .sort_by { |item| item[:title].to_s.downcase }
-        end
         { id: section_id, updated_at: updated_at,
-          title: section['title'], movies: movies }
+          title: section['title'], movies: cached_section_items(section_id, updated_at, scope) }
       end
     end
 
@@ -37,11 +33,18 @@ module Plex
       "https://app.plex.tv/desktop/#!/server/#{machine_id}/details?key=#{escaped}"
     end
 
-    def items_for_section(section_key, media_type:, view_mode:)
-      return episodes_for_section(section_key) if media_type == 'show' && view_mode == 'episodes'
-      return shows_for_section(section_key) if media_type == 'show'
+    def items_for_section(section_key, scope:)
+      return episodes_for_section(section_key) if scope.episode_view?
+      return shows_for_section(section_key) if scope.show_library?
 
       movies_for_section(section_key)
+    end
+
+    def cached_section_items(section_id, updated_at, scope)
+      @cache.cached_movies_for(section_id, updated_at, media_type: scope.library_type, view_mode: scope.view_mode) do
+        items_for_section(section_id, scope:)
+          .sort_by { |item| item[:title].to_s.downcase }
+      end
     end
 
     def movies_for_section(section_key)

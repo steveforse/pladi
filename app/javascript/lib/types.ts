@@ -1,6 +1,7 @@
 export interface Movie {
   id: string
   title: string
+  media_type?: string
   original_title: string | null
   show_title?: string | null
   episode_number: string | null

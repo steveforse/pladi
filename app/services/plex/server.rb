@@ -19,28 +19,27 @@ module Plex
       @http_client.get('/').dig('MediaContainer', 'friendlyName')
     end
 
-    def sections(media_type: 'movie', view_mode: 'shows', refresh: false)
-      return refresh_sections(media_type: media_type, view_mode: view_mode) if refresh
+    def sections(scope: MediaScope.movies, refresh: false)
+      return refresh_sections(scope) if refresh
 
-      @cache_store.fetch(@cache_store.key('sections', media_type, view_mode)) do
-        @library.fetch_sections(media_type: media_type, view_mode: view_mode)
+      @cache_store.fetch(@cache_store.key('sections', *scope.cache_key_parts)) do
+        @library.fetch_sections(scope:)
       end
     end
 
-    def detail_for(media_id, media_type: 'movie')
-      media = find_item(media_id, media_type: media_type)
+    def detail_for(media_id, scope: MediaScope.movies)
+      media = find_item(media_id, scope:)
       return nil unless media
 
-      return @enricher.enrich_show(media_id) if media_type == 'show'
+      return @enricher.enrich_show(media_id) if media[:media_type] == 'show'
 
       @enricher.enrich_movie(media_id, media[:file_path])
     end
 
-    def enriched_library(media_type: 'movie', view_mode: 'shows')
+    def enriched_library(scope: MediaScope.movies)
       enriched_sections = @enricher.enrich_sections(
-        sections(media_type: media_type, view_mode: view_mode),
-        media_type: media_type,
-        view_mode: view_mode
+        sections(scope:),
+        scope:
       )
 
       {
@@ -51,14 +50,14 @@ module Plex
 
     private
 
-    def refresh_sections(media_type:, view_mode:)
-      @library.fetch_sections(media_type: media_type, view_mode: view_mode).tap do |section_data|
-        @cache_store.write(@cache_store.key('sections', media_type, view_mode), section_data)
+    def refresh_sections(scope)
+      @library.fetch_sections(scope:).tap do |section_data|
+        @cache_store.write(@cache_store.key('sections', *scope.cache_key_parts), section_data)
       end
     end
 
-    def find_item(media_id, media_type:)
-      sections(media_type: media_type, view_mode: 'shows').flat_map { |section| section[:movies] }.find do |item|
+    def find_item(media_id, scope:)
+      sections(scope:).flat_map { |section| section[:movies] }.find do |item|
         item[:id].to_s == media_id.to_s
       end
     end

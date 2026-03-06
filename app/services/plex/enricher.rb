@@ -20,8 +20,8 @@ module Plex
       @concurrent_show_detail_fetcher = build_concurrent_fetcher(cache_store, @show_detail_fetcher)
     end
 
-    def enrich_sections(sections, media_type: 'movie', view_mode: 'shows')
-      sections.map { |section| enrich_section(section, media_type: media_type, view_mode: view_mode) }
+    def enrich_sections(sections, scope: MediaScope.movies)
+      sections.map { |section| enrich_section(section, scope:) }
     end
 
     def enrich_movie(movie_id, file_path)
@@ -43,11 +43,11 @@ module Plex
 
     private
 
-    def enrich_section(section, media_type:, view_mode:)
-      key = enrich_section_key(section, media_type:, view_mode:)
+    def enrich_section(section, scope:)
+      key = enrich_section_key(section, scope:)
       @cache.fetch(key) do
         movies = section[:movies]
-        details = concurrent_fetcher_for(media_type, movies).fetch(movies)
+        details = concurrent_fetcher_for(movies).fetch(movies)
 
         section.merge(
           movies: movies.map do |m|
@@ -65,11 +65,10 @@ module Plex
       )
     end
 
-    def enrich_section_key(section, media_type:, view_mode:)
+    def enrich_section_key(section, scope:)
       @cache.key(
         'section',
-        media_type,
-        view_mode,
+        *scope.cache_key_parts,
         section[:id],
         section[:updated_at],
         'enriched',
@@ -77,10 +76,8 @@ module Plex
       )
     end
 
-    def concurrent_fetcher_for(media_type, movies)
-      # Show rows (no file path) use show metadata parser; episode rows (with file path)
-      # need per-file stream parsing from the movie detail parser pipeline.
-      return @concurrent_show_detail_fetcher if media_type == 'show' && movies.all? { |m| m[:file_path].blank? }
+    def concurrent_fetcher_for(movies)
+      return @concurrent_show_detail_fetcher if movies.all? { |movie| movie[:media_type] == 'show' }
 
       @concurrent_movie_detail_fetcher
     end

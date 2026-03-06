@@ -12,6 +12,8 @@ RSpec.describe Plex::Server do
   let(:enricher) { instance_double(Plex::Enricher) }
   let(:image_store) { instance_double(Plex::ImageStore) }
   let(:media_updater) { instance_double(Plex::MediaUpdater) }
+  let(:movie_scope) { Plex::MediaScope.movies }
+  let(:shows_scope) { Plex::MediaScope.shows('shows') }
 
   before do
     allow(Plex::HttpClient).to receive(:new).with(server_record).and_return(http_client)
@@ -36,10 +38,8 @@ RSpec.describe Plex::Server do
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return([{ title: 'Movies' }])
-      allow(library_fetcher).to receive(:fetch_sections).with(media_type: 'movie',
-                                                              view_mode: 'shows').and_return([{ title: 'Fresh' }])
-      allow(library_fetcher).to receive(:fetch_sections).with(media_type: 'show',
-                                                              view_mode: 'shows').and_return([{ title: 'TV Shows' }])
+      allow(library_fetcher).to receive(:fetch_sections).with(scope: movie_scope).and_return([{ title: 'Fresh' }])
+      allow(library_fetcher).to receive(:fetch_sections).with(scope: shows_scope).and_return([{ title: 'TV Shows' }])
       allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('shows-sections-key')
       allow(cache_store).to receive(:fetch).with('shows-sections-key').and_return([{ title: 'TV Shows' }])
       allow(cache_store).to receive(:write)
@@ -59,12 +59,12 @@ RSpec.describe Plex::Server do
     end
 
     it 'uses distinct cache keys for show sections' do
-      expect(plex_server_service.sections(media_type: 'show')).to eq([{ title: 'TV Shows' }])
+      expect(plex_server_service.sections(scope: shows_scope)).to eq([{ title: 'TV Shows' }])
     end
   end
 
   describe '#detail_for' do
-    let(:sections) { [{ movies: [{ id: '7', file_path: '/movies/7.mkv' }] }] }
+    let(:sections) { [{ movies: [{ id: '7', media_type: 'movie', file_path: '/movies/7.mkv' }] }] }
 
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
@@ -82,11 +82,11 @@ RSpec.describe Plex::Server do
 
     it 'enriches and returns show detail via show path' do
       allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
-      allow(cache_store).to receive(:fetch).with('show-sections-key').and_return([{ movies: [{ id: '7',
-                                                                                               file_path: nil }] }])
+      allow(cache_store).to receive(:fetch).with('show-sections-key')
+        .and_return([{ movies: [{ id: '7', media_type: 'show', file_path: nil }] }])
       allow(enricher).to receive(:enrich_show).with('7').and_return(summary: 'show enriched')
 
-      expect(plex_server_service.detail_for('7', media_type: 'show')).to eq(summary: 'show enriched')
+      expect(plex_server_service.detail_for('7', scope: shows_scope)).to eq(summary: 'show enriched')
     end
   end
 
@@ -96,8 +96,7 @@ RSpec.describe Plex::Server do
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
-      allow(enricher).to receive(:enrich_sections).with(sections, media_type: 'movie',
-                                                                  view_mode: 'shows').and_return(sections)
+      allow(enricher).to receive(:enrich_sections).with(sections, scope: movie_scope).and_return(sections)
       allow(image_store).to receive(:partition_posters_by_cache).with(sections).and_return(
         [[{ id: '1' }], [{ id: '2' }]]
       )

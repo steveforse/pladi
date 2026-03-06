@@ -6,6 +6,8 @@ RSpec.describe Api::ShowsController do
   let(:user) { create(:user) }
   let(:server) { create(:plex_server, user:) }
   let(:service) { instance_double(Plex::Server) }
+  let(:shows_scope) { Plex::MediaScope.shows('shows') }
+  let(:episodes_scope) { Plex::MediaScope.shows('episodes') }
   let(:serialized_show_section) do
     [{
       'title' => 'TV Shows',
@@ -33,7 +35,7 @@ RSpec.describe Api::ShowsController do
 
     context 'when server exists' do
       before do
-        allow(service).to receive(:sections).with(media_type: 'show', view_mode: 'shows').and_return(
+        allow(service).to receive(:sections).with(scope: shows_scope).and_return(
           [{ title: 'TV Shows', movies: [{ id: '1', season_count: 2, episode_count: 20, viewed_episode_count: 8 }] }]
         )
         get '/api/shows', params: { server_id: server.id }, as: :json
@@ -56,7 +58,7 @@ RSpec.describe Api::ShowsController do
       end
 
       before do
-        allow(service).to receive(:detail_for).with('123', media_type: 'show')
+        allow(service).to receive(:detail_for).with('123', scope: shows_scope)
           .and_return(show_detail.deep_symbolize_keys)
         get '/api/shows/123', params: { server_id: server.id }, as: :json
       end
@@ -66,7 +68,7 @@ RSpec.describe Api::ShowsController do
 
     context 'when show does not exist' do
       before do
-        allow(service).to receive(:detail_for).with('123', media_type: 'show').and_return(nil)
+        allow(service).to receive(:detail_for).with('123', scope: shows_scope).and_return(nil)
         get '/api/shows/123', params: { server_id: server.id }, as: :json
       end
 
@@ -78,7 +80,7 @@ RSpec.describe Api::ShowsController do
 
   describe 'GET /api/shows/refresh' do
     before do
-      allow(service).to receive(:sections).with(media_type: 'show', view_mode: 'shows',
+      allow(service).to receive(:sections).with(scope: shows_scope,
                                                 refresh: true).and_return([{
                                                                             title: 'TV Shows', movies: []
                                                                           }])
@@ -98,7 +100,7 @@ RSpec.describe Api::ShowsController do
     end
 
     before do
-      allow(service).to receive(:enriched_library).with(media_type: 'show', view_mode: 'shows').and_return(
+      allow(service).to receive(:enriched_library).with(scope: shows_scope).and_return(
         sections: [{
           title: 'TV Shows',
           movies: [{
@@ -121,10 +123,7 @@ RSpec.describe Api::ShowsController do
 
   describe 'GET /api/shows with episode view_mode' do
     before do
-      allow(service).to receive(:sections).with(media_type: 'show',
-                                                view_mode: 'episodes').and_return([{
-                                                                                    title: 'TV Shows', movies: []
-                                                                                  }])
+      allow(service).to receive(:sections).with(scope: episodes_scope).and_return([{ title: 'TV Shows', movies: [] }])
 
       get '/api/shows', params: { server_id: server.id, view_mode: 'episodes' }, as: :json
     end

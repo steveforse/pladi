@@ -129,7 +129,7 @@ RSpec.describe Plex::LibraryFetcher do
         }
       }
     end
-    let(:result) { fetcher.fetch_sections }
+    let(:result) { fetcher.fetch_sections(scope: movie_scope) }
     let(:movies) { result.first[:movies] }
 
     before do
@@ -171,7 +171,7 @@ RSpec.describe Plex::LibraryFetcher do
     end
 
     context 'when fetching show sections' do
-      let(:shows) { fetcher.fetch_sections(media_type: 'show') }
+      let(:shows) { fetcher.fetch_sections(scope: shows_scope) }
       let(:show_row) { shows.first[:movies].first }
 
       before do
@@ -181,6 +181,7 @@ RSpec.describe Plex::LibraryFetcher do
       it { expect(shows.first).to include(id: '2', updated_at: 200, title: 'Shows') }
 
       it { expect(shows.first[:movies].size).to eq(1) }
+      it { expect(show_row[:media_type]).to eq('show') }
       it { expect(show_row[:id]).to eq('301') }
       it { expect(show_row[:title]).to eq('Show A') }
       it { expect(show_row[:file_path]).to be_nil }
@@ -190,7 +191,7 @@ RSpec.describe Plex::LibraryFetcher do
     end
 
     context 'when fetching episode rows' do
-      let(:episodes) { fetcher.fetch_sections(media_type: 'show', view_mode: 'episodes') }
+      let(:episodes) { fetcher.fetch_sections(scope: episodes_scope) }
       let(:episode_row) { episodes.first[:movies].first }
 
       before do
@@ -199,6 +200,7 @@ RSpec.describe Plex::LibraryFetcher do
 
       it { expect(episodes.first).to include(id: '2', updated_at: 200, title: 'Shows') }
 
+      it { expect(episode_row[:media_type]).to eq('episode') }
       it { expect(episode_row[:id]).to eq('401') }
       it { expect(episode_row[:title]).to eq('Pilot') }
       it { expect(episode_row[:show_title]).to eq('Show A') }
@@ -217,6 +219,18 @@ RSpec.describe Plex::LibraryFetcher do
       it { expect(episode_row[:subtitles]).to eq('English') }
       it { expect(episode_row[:audio_tracks]).to eq('1') }
       it { expect(episode_row[:audio_language]).to eq('English') }
+    end
+
+    def movie_scope
+      Plex::MediaScope.movies
+    end
+
+    def shows_scope
+      Plex::MediaScope.shows('shows')
+    end
+
+    def episodes_scope
+      Plex::MediaScope.shows('episodes')
     end
   end
 

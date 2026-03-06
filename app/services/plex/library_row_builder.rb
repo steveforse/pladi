@@ -10,35 +10,20 @@ module Plex
     def build_movie(item:, media:, part:, plex_url:)
       base_row(item: item, plex_url: plex_url)
         .merge(file_row(media: media, part: part))
-        .merge(
-          show_title: nil,
-          episode_number: nil,
-          edition: item['editionTitle'],
-          season_count: nil,
-          episode_count: nil,
-          viewed_episode_count: nil
-        )
+        .merge(movie_overrides(item))
     end
 
     def build_show(item:, plex_url:)
       base_row(item: item, plex_url: plex_url)
         .merge(LibraryRowFields::EMPTY_FILE_ROW)
-        .merge(
-          show_title: nil,
-          episode_number: nil,
-          edition: nil,
-          season_count: item['childCount'],
-          episode_count: item['leafCount'],
-          viewed_episode_count: item['viewedLeafCount']
-        )
+        .merge(show_overrides(item))
     end
 
     def build_episode(item:, media:, part:, plex_url:)
       base_row(item: item, plex_url: plex_url)
         .merge(file_row(media: media, part: part))
-        .merge(
-          episode_overrides(item)
-        )
+        .merge(media_type: 'episode')
+        .merge(episode_overrides(item))
         .merge(tag_fields(item))
         .merge(@ratings_parser.parse(item))
         .merge(@stream_info_summary.build(part))
@@ -56,7 +41,7 @@ module Plex
     end
 
     def tag_fields(item)
-      LibraryRowFields::TAG_FIELDS.transform_values { |key| TagFormatter.join(item[key]) }
+      Plex::FieldMaps::TAG_METADATA_FIELDS.transform_values { |key| TagFormatter.join(item[key]) }
     end
 
     def episode_code(item)
@@ -77,6 +62,30 @@ module Plex
         thumb: item['thumb'] || item['grandparentThumb'],
         art: item['art'] || item['grandparentArt']
       }.merge(episode_progress(item))
+    end
+
+    def movie_overrides(item)
+      {
+        media_type: 'movie',
+        show_title: nil,
+        episode_number: nil,
+        edition: item['editionTitle'],
+        season_count: nil,
+        episode_count: nil,
+        viewed_episode_count: nil
+      }
+    end
+
+    def show_overrides(item)
+      {
+        media_type: 'show',
+        show_title: nil,
+        episode_number: nil,
+        edition: nil,
+        season_count: item['childCount'],
+        episode_count: item['leafCount'],
+        viewed_episode_count: item['viewedLeafCount']
+      }
     end
 
     def episode_progress(item)

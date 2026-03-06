@@ -17,5 +17,7 @@ module Plex
       'collections' => 'Collection', 'labels' => 'Label',
       'country' => 'Country'
     }.freeze
+
+    TAG_METADATA_FIELDS = TAG_FIELD_MAP.transform_keys(&:to_sym).freeze
   end
 end

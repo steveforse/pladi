@@ -6,6 +6,7 @@ RSpec.describe Api::MoviesController do
   let(:user) { create(:user) }
   let(:server) { create(:plex_server, user:) }
   let(:service) { instance_double(Plex::Server) }
+  let(:movie_scope) { Plex::MediaScope.movies }
 
   before do
     sign_in_as(user)
@@ -22,7 +23,8 @@ RSpec.describe Api::MoviesController do
 
     context 'when server exists' do
       before do
-        allow(service).to receive(:sections).and_return([{ title: 'Movies', movies: [{ id: '1' }], updated_at: 1 }])
+        allow(service).to receive(:sections).with(scope: movie_scope)
+          .and_return([{ title: 'Movies', movies: [{ id: '1' }], updated_at: 1 }])
         get '/api/movies', params: { server_id: server.id }, as: :json
       end
 
@@ -35,7 +37,7 @@ RSpec.describe Api::MoviesController do
   describe 'GET /api/movies/:id' do
     context 'when movie exists' do
       before do
-        allow(service).to receive(:detail_for).with('123').and_return(summary: 'Details')
+        allow(service).to receive(:detail_for).with('123', scope: movie_scope).and_return(summary: 'Details')
         get '/api/movies/123', params: { server_id: server.id }, as: :json
       end
 
@@ -46,7 +48,7 @@ RSpec.describe Api::MoviesController do
 
     context 'when movie does not exist' do
       before do
-        allow(service).to receive(:detail_for).with('123').and_return(nil)
+        allow(service).to receive(:detail_for).with('123', scope: movie_scope).and_return(nil)
         get '/api/movies/123', params: { server_id: server.id }, as: :json
       end
 
@@ -58,7 +60,8 @@ RSpec.describe Api::MoviesController do
 
   describe 'GET /api/movies/refresh' do
     before do
-      allow(service).to receive(:sections).with(refresh: true).and_return([{ title: 'Movies', movies: [] }])
+      allow(service).to receive(:sections).with(scope: movie_scope, refresh: true)
+        .and_return([{ title: 'Movies', movies: [] }])
       get '/api/movies/refresh', params: { server_id: server.id }, as: :json
     end
 
@@ -69,7 +72,7 @@ RSpec.describe Api::MoviesController do
 
   describe 'GET /api/movies/enrich' do
     before do
-      allow(service).to receive(:enriched_library).and_return(
+      allow(service).to receive(:enriched_library).with(scope: movie_scope).and_return(
         sections: [{ title: 'Movies', movies: [{ id: '1' }] }],
         cached_poster_ids: ['1'],
         uncached_poster_movies: [],

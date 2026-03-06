@@ -24,6 +24,7 @@ export const LookupNameResponseSchema = z.object({
 export const MovieListItemSchema = z.object({
   id: z.string(),
   title: z.string(),
+  media_type: z.string().optional(),
   original_title: z.string().nullable(),
   show_title: z.string().nullable().optional(),
   episode_number: z.string().nullable().optional(),
