@@ -16,7 +16,9 @@ module Api
     end
 
     def refresh
-      render json: ::SectionSerializer.serialize(service.sections(media_type: 'show', view_mode: view_mode, refresh: true))
+      render json: ::SectionSerializer.serialize(
+        service.sections(media_type: 'show', view_mode: view_mode, refresh: true)
+      )
     end
 
     def enrich
@@ -28,7 +30,7 @@ module Api
 
     def update
       fields = show_params.to_h
-      result = service.update_show(params[:id], fields)
+      result = service.public_send(update_method_name, params[:id], fields)
 
       raise Api::Errors::Unprocessable, 'Plex did not persist this update' if result[:unverified_fields].any?
 
@@ -60,7 +62,7 @@ module Api
       MovieAuditLog.record_changes(
         user: Current.user,
         plex_server: @server,
-        media_type: 'show',
+        media_type: update_media_type,
         media_id: params[:id],
         fields: fields,
         before: result[:before],
@@ -78,6 +80,14 @@ module Api
 
     def view_mode
       %w[shows episodes].include?(params[:view_mode]) ? params[:view_mode] : 'shows'
+    end
+
+    def update_media_type
+      view_mode == 'episodes' ? 'episode' : 'show'
+    end
+
+    def update_method_name
+      "update_#{update_media_type}"
     end
 
     def send_image(image)

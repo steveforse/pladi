@@ -9,6 +9,68 @@ RSpec.describe Plex::LibraryFetcher do
   let(:cache_store) { instance_double(Plex::CacheStore) }
 
   describe '#fetch_sections' do
+    let(:show_payload) do
+      {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'ratingKey' => '301',
+              'title' => 'Show A',
+              'year' => 2022,
+              'childCount' => 4,
+              'leafCount' => 36,
+              'viewedLeafCount' => 12,
+              'updatedAt' => 200,
+              'thumb' => '/thumb-a',
+              'art' => '/art-a'
+            }
+          ]
+        }
+      }
+    end
+    let(:episodes_payload) do
+      {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'ratingKey' => '401',
+              'title' => 'Pilot',
+              'titleSort' => 'Pilot Sort',
+              'grandparentTitle' => 'Show A',
+              'parentIndex' => 1,
+              'index' => 1,
+              'updatedAt' => 300,
+              'Director' => [{ 'tag' => 'Aoife McArdle' }],
+              'Writer' => [{ 'tag' => 'Dan Erickson' }],
+              'Rating' => [
+                { 'image' => 'imdb://image.rating', 'value' => 8.4 },
+                { 'image' => 'rottentomatoes://rating', 'type' => 'critic', 'value' => 9.0 },
+                { 'image' => 'rottentomatoes://rating', 'type' => 'audience', 'value' => 8.7 },
+                { 'image' => 'themoviedb://rating', 'value' => 8.2 }
+              ],
+              'Media' => [
+                {
+                  'container' => 'mkv',
+                  'videoCodec' => 'h264',
+                  'audioCodec' => 'aac',
+                  'duration' => 2_700_000,
+                  'Part' => [
+                    {
+                      'file' => '/tv/show_a/s01e01.mkv',
+                      'size' => 1234,
+                      'Stream' => [
+                        { 'streamType' => 2, 'language' => 'English', 'bitrate' => 192 },
+                        { 'streamType' => 3, 'language' => 'English' }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    end
     let(:sections_payload) do
       {
         'MediaContainer' => {
@@ -98,7 +160,8 @@ RSpec.describe Plex::LibraryFetcher do
     end
 
     it 'maps part and media attributes' do
-      expect(movies.last).to include(file_path: '/movies/z.mkv', video_codec: 'h264', audio_channels: 6, video_bitrate: 5600)
+      expect(movies.last).to include(file_path: '/movies/z.mkv', video_codec: 'h264', audio_channels: 6,
+                                     video_bitrate: 5600)
     end
 
     it 'uses section id and timestamp when reading cache' do
@@ -107,107 +170,53 @@ RSpec.describe Plex::LibraryFetcher do
       expect(cache_store).to have_received(:cached_movies_for).with('1', 100, media_type: 'movie', view_mode: 'shows')
     end
 
-    it 'can fetch show sections when requested' do
-      show_payload = {
-        'MediaContainer' => {
-          'Metadata' => [
-            {
-              'ratingKey' => '301',
-              'title' => 'Show A',
-              'year' => 2022,
-              'childCount' => 4,
-              'leafCount' => 36,
-              'viewedLeafCount' => 12,
-              'updatedAt' => 200,
-              'thumb' => '/thumb-a',
-              'art' => '/art-a'
-            }
-          ]
-        }
-      }
-      allow(http_client).to receive(:get).with('/library/sections/2/all').and_return(show_payload)
+    context 'when fetching show sections' do
+      let(:shows) { fetcher.fetch_sections(media_type: 'show') }
+      let(:show_row) { shows.first[:movies].first }
 
-      shows = fetcher.fetch_sections(media_type: 'show')
+      before do
+        allow(http_client).to receive(:get).with('/library/sections/2/all').and_return(show_payload)
+      end
 
-      expect(shows.first).to include(id: '2', updated_at: 200, title: 'Shows')
-      expect(shows.first[:movies].size).to eq(1)
-      expect(shows.first[:movies].first).to include(
-        id: '301',
-        title: 'Show A',
-        file_path: nil,
-        season_count: 4,
-        episode_count: 36,
-        viewed_episode_count: 12
-      )
+      it { expect(shows.first).to include(id: '2', updated_at: 200, title: 'Shows') }
+
+      it { expect(shows.first[:movies].size).to eq(1) }
+      it { expect(show_row[:id]).to eq('301') }
+      it { expect(show_row[:title]).to eq('Show A') }
+      it { expect(show_row[:file_path]).to be_nil }
+      it { expect(show_row[:season_count]).to eq(4) }
+      it { expect(show_row[:episode_count]).to eq(36) }
+      it { expect(show_row[:viewed_episode_count]).to eq(12) }
     end
 
-    it 'can fetch episode rows when show view_mode is episodes' do
-      episodes_payload = {
-        'MediaContainer' => {
-          'Metadata' => [
-            {
-              'ratingKey' => '401',
-              'title' => 'Pilot',
-              'titleSort' => 'Pilot Sort',
-              'grandparentTitle' => 'Show A',
-              'parentIndex' => 1,
-              'index' => 1,
-              'updatedAt' => 300,
-              'Director' => [{ 'tag' => 'Aoife McArdle' }],
-              'Writer' => [{ 'tag' => 'Dan Erickson' }],
-              'Rating' => [
-                { 'image' => 'imdb://image.rating', 'value' => 8.4 },
-                { 'image' => 'rottentomatoes://rating', 'type' => 'critic', 'value' => 9.0 },
-                { 'image' => 'rottentomatoes://rating', 'type' => 'audience', 'value' => 8.7 },
-                { 'image' => 'themoviedb://rating', 'value' => 8.2 }
-              ],
-              'Media' => [
-                {
-                  'container' => 'mkv',
-                  'videoCodec' => 'h264',
-                  'audioCodec' => 'aac',
-                  'duration' => 2_700_000,
-                  'Part' => [
-                    {
-                      'file' => '/tv/show_a/s01e01.mkv',
-                      'size' => 1234,
-                      'Stream' => [
-                        { 'streamType' => 2, 'language' => 'English', 'bitrate' => 192 },
-                        { 'streamType' => 3, 'language' => 'English' }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      }
-      allow(http_client).to receive(:get).with('/library/sections/2/all?type=4').and_return(episodes_payload)
+    context 'when fetching episode rows' do
+      let(:episodes) { fetcher.fetch_sections(media_type: 'show', view_mode: 'episodes') }
+      let(:episode_row) { episodes.first[:movies].first }
 
-      episodes = fetcher.fetch_sections(media_type: 'show', view_mode: 'episodes')
+      before do
+        allow(http_client).to receive(:get).with('/library/sections/2/all?type=4').and_return(episodes_payload)
+      end
 
-      expect(episodes.first).to include(id: '2', updated_at: 200, title: 'Shows')
-      expect(episodes.first[:movies].first).to include(
-        id: '401',
-        title: 'Pilot',
-        show_title: 'Show A',
-        sort_title: 'Pilot Sort',
-        episode_number: 'S01E01',
-        file_path: '/tv/show_a/s01e01.mkv',
-        container: 'mkv',
-        video_codec: 'h264',
-        audio_codec: 'aac',
-        imdb_rating: 8.4,
-        rt_critics_rating: 9.0,
-        rt_audience_rating: 8.7,
-        tmdb_rating: 8.2,
-        directors: 'Aoife McArdle',
-        writers: 'Dan Erickson',
-        subtitles: 'English',
-        audio_tracks: '1',
-        audio_language: 'English'
-      )
+      it { expect(episodes.first).to include(id: '2', updated_at: 200, title: 'Shows') }
+
+      it { expect(episode_row[:id]).to eq('401') }
+      it { expect(episode_row[:title]).to eq('Pilot') }
+      it { expect(episode_row[:show_title]).to eq('Show A') }
+      it { expect(episode_row[:sort_title]).to eq('Pilot Sort') }
+      it { expect(episode_row[:episode_number]).to eq('S01E01') }
+      it { expect(episode_row[:file_path]).to eq('/tv/show_a/s01e01.mkv') }
+      it { expect(episode_row[:container]).to eq('mkv') }
+      it { expect(episode_row[:video_codec]).to eq('h264') }
+      it { expect(episode_row[:audio_codec]).to eq('aac') }
+      it { expect(episode_row[:imdb_rating]).to eq(8.4) }
+      it { expect(episode_row[:rt_critics_rating]).to eq(9.0) }
+      it { expect(episode_row[:rt_audience_rating]).to eq(8.7) }
+      it { expect(episode_row[:tmdb_rating]).to eq(8.2) }
+      it { expect(episode_row[:directors]).to eq('Aoife McArdle') }
+      it { expect(episode_row[:writers]).to eq('Dan Erickson') }
+      it { expect(episode_row[:subtitles]).to eq('English') }
+      it { expect(episode_row[:audio_tracks]).to eq('1') }
+      it { expect(episode_row[:audio_language]).to eq('English') }
     end
   end
 

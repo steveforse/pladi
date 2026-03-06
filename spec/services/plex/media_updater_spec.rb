@@ -2,59 +2,36 @@
 
 require 'rails_helper'
 
-RSpec.describe Plex::MovieUpdater do
+RSpec.describe Plex::MediaUpdater do
   subject(:updater) { described_class.new(http_client, cache_store) }
 
   let(:http_client) { instance_double(Plex::HttpClient) }
   let(:cache_store) { instance_double(Plex::CacheStore) }
 
-  describe '#fetch_movie_snapshot' do
-    let(:payload) do
-      {
+  describe '#snapshot_for' do
+    subject(:snapshot) { updater.snapshot_for('42') }
+
+    before do
+      allow(http_client).to receive(:get).with('/library/metadata/42').and_return(
         'MediaContainer' => {
           'Metadata' => [
             {
               'librarySectionID' => 1,
               'librarySectionTitle' => 'Movies',
               'title' => 'Example',
-              'summary' => 'Summary text',
-              'titleSort' => 'Example, The',
-              'Genre' => [{ 'tag' => 'Sci-Fi' }, { 'tag' => '' }, { 'tag' => 'Drama' }],
-              'Label' => [{ 'tag' => '4K' }]
+              'summary' => 'Plot',
+              'Genre' => [{ 'tag' => 'Drama' }, { 'tag' => 'Sci-Fi' }]
             }
           ]
         }
-      }
-    end
-    let(:snapshot) { updater.fetch_movie_snapshot('42') }
-
-    before do
-      allow(http_client).to receive(:get).with('/library/metadata/42').and_return(payload)
+      )
     end
 
-    it 'returns section id' do
-      expect(snapshot[:section_id]).to eq('1')
-    end
-
-    it 'returns section title' do
-      expect(snapshot[:section_title]).to eq('Movies')
-    end
-
-    it 'returns movie title' do
-      expect(snapshot[:movie_title]).to eq('Example')
-    end
-
-    it 'maps scalar field names' do
-      expect(snapshot['sort_title']).to eq('Example, The')
-    end
-
-    it 'normalizes and sorts tag fields' do
-      expect(snapshot['genres']).to eq(%w[Drama Sci-Fi])
-    end
-
-    it 'keeps label tags' do
-      expect(snapshot['labels']).to eq(['4K'])
-    end
+    it { expect(snapshot[:section_id]).to eq('1') }
+    it { expect(snapshot[:section_title]).to eq('Movies') }
+    it { expect(snapshot[:media_title]).to eq('Example') }
+    it { expect(snapshot['summary']).to eq('Plot') }
+    it { expect(snapshot['genres']).to eq(%w[Drama Sci-Fi]) }
   end
 
   describe '#update_movie' do
@@ -75,8 +52,8 @@ RSpec.describe Plex::MovieUpdater do
               'librarySectionTitle' => 'Movies',
               'title' => 'Old Title',
               'summary' => 'Old summary',
-              'Genre' => [{ 'tag' => 'Drama' }],
-              'Label' => [{ 'tag' => 'Old' }]
+              'Genre' => [{ 'tag' => 'Drama' }, { 'tag' => 'Sci-Fi' }],
+              'Label' => [{ 'tag' => 'Keep' }]
             }
           ]
         }
@@ -180,18 +157,9 @@ RSpec.describe Plex::MovieUpdater do
       }
     end
     let(:after_payload) do
-      {
-        'MediaContainer' => {
-          'Metadata' => [
-            {
-              'librarySectionID' => 2,
-              'librarySectionTitle' => 'TV Shows',
-              'title' => 'New Show',
-              'summary' => 'New summary'
-            }
-          ]
-        }
-      }
+      before_payload.deep_dup.tap do |payload|
+        payload['MediaContainer']['Metadata'][0]['title'] = 'New Show'
+      end
     end
 
     before do
@@ -204,6 +172,35 @@ RSpec.describe Plex::MovieUpdater do
       updater.update_show('88', title: 'New Show')
       expect(http_client).to have_received(:put).with(
         a_string_including('/library/metadata/88?', 'type=2', 'title.value=New+Show')
+      )
+    end
+  end
+
+  describe '#update_episode' do
+    let(:payload) do
+      {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'librarySectionID' => 2,
+              'librarySectionTitle' => 'TV Shows',
+              'title' => 'Pilot'
+            }
+          ]
+        }
+      }
+    end
+
+    before do
+      allow(http_client).to receive(:get).with('/library/metadata/99').and_return(payload, payload)
+      allow(http_client).to receive(:put)
+      allow(cache_store).to receive(:bump_enrich_version)
+    end
+
+    it 'uses Plex episode type in update query' do
+      updater.update_episode('99', title: 'New Pilot')
+      expect(http_client).to have_received(:put).with(
+        a_string_including('/library/metadata/99?', 'type=4', 'title.value=New+Pilot')
       )
     end
   end

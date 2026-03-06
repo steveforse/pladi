@@ -48,6 +48,8 @@ RSpec.describe MovieAuditLog do
     end
 
     context 'when storing scalar metadata' do
+      subject(:audit_log) { described_class.last }
+
       before do
         record_changes(user: user, plex_server: plex_server, fields: fields,
                        before_snapshot: before_state, after_snapshot: after_state)
@@ -58,14 +60,12 @@ RSpec.describe MovieAuditLog do
       end
 
       it 'stores the scalar field name' do
-        expect(described_class.last.field_name).to eq('title')
+        expect(audit_log.field_name).to eq('title')
       end
 
-      it 'stores media metadata' do
-        expect(described_class.last.media_type).to eq('movie')
-        expect(described_class.last.media_id).to eq('99')
-        expect(described_class.last.media_title).to eq('After Movie')
-      end
+      it { expect(audit_log.media_type).to eq('movie') }
+      it { expect(audit_log.media_id).to eq('99') }
+      it { expect(audit_log.media_title).to eq('After Movie') }
     end
 
     context 'when storing tag metadata' do

@@ -16,16 +16,8 @@ module Plex
       @cache = cache_store
       @movie_detail_fetcher = MovieDetailFetcher.new(http_client)
       @show_detail_fetcher = ShowDetailFetcher.new(http_client)
-      @concurrent_movie_detail_fetcher = ConcurrentDetailFetcher.new(
-        cache_store: cache_store,
-        detail_fetcher: @movie_detail_fetcher,
-        thread_count: ENRICH_THREADS
-      )
-      @concurrent_show_detail_fetcher = ConcurrentDetailFetcher.new(
-        cache_store: cache_store,
-        detail_fetcher: @show_detail_fetcher,
-        thread_count: ENRICH_THREADS
-      )
+      @concurrent_movie_detail_fetcher = build_concurrent_fetcher(cache_store, @movie_detail_fetcher)
+      @concurrent_show_detail_fetcher = build_concurrent_fetcher(cache_store, @show_detail_fetcher)
     end
 
     def enrich_sections(sections, media_type: 'movie', view_mode: 'shows')
@@ -52,7 +44,7 @@ module Plex
     private
 
     def enrich_section(section, media_type:, view_mode:)
-      key = @cache.key('section', media_type, view_mode, section[:id], section[:updated_at], 'enriched', @cache.enrich_version)
+      key = enrich_section_key(section, media_type:, view_mode:)
       @cache.fetch(key) do
         movies = section[:movies]
         details = concurrent_fetcher_for(media_type, movies).fetch(movies)
@@ -63,6 +55,26 @@ module Plex
           end
         )
       end
+    end
+
+    def build_concurrent_fetcher(cache_store, detail_fetcher)
+      ConcurrentDetailFetcher.new(
+        cache_store: cache_store,
+        detail_fetcher: detail_fetcher,
+        thread_count: ENRICH_THREADS
+      )
+    end
+
+    def enrich_section_key(section, media_type:, view_mode:)
+      @cache.key(
+        'section',
+        media_type,
+        view_mode,
+        section[:id],
+        section[:updated_at],
+        'enriched',
+        @cache.enrich_version
+      )
     end
 
     def concurrent_fetcher_for(media_type, movies)

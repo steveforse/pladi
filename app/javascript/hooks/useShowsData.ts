@@ -151,7 +151,7 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
     await api.patch<unknown, { show: Record<string, unknown> }>(
       `/api/shows/${showId}`,
       { show: apiPatch },
-      { query: { server_id: selectedServerId }, csrf: true }
+      { query: { server_id: selectedServerId, view_mode: viewMode }, csrf: true }
     )
 
     setSections((prev) =>

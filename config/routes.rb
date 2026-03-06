@@ -39,5 +39,7 @@ Rails.application.routes.draw do
   end
 
   root 'application#index'
-  get '*path', to: 'application#index', constraints: ->(req) { !req.path.start_with?('/api', '/cable', '/up', '/rails') }, format: false
+  get '*path', to: 'application#index', constraints: lambda { |req|
+    !req.path.start_with?('/api', '/cable', '/up', '/rails')
+  }, format: false
 end

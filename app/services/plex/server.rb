@@ -3,7 +3,7 @@
 module Plex
   class Server
     delegate :enrich_sections, to: :enricher
-    delegate :update_movie, :update_show, to: :movie_updater
+    delegate :update_movie, :update_show, :update_episode, to: :media_updater
     delegate :poster_for, :background_for, to: :image_store
 
     def initialize(server)
@@ -12,7 +12,7 @@ module Plex
       @library       = LibraryFetcher.new(@http_client, @cache_store)
       @enricher      = Enricher.new(@http_client, @cache_store)
       @image_store   = ImageStore.new(@http_client, @cache_store)
-      @movie_updater = MovieUpdater.new(@http_client, @cache_store)
+      @media_updater = MediaUpdater.new(@http_client, @cache_store)
     end
 
     def friendly_name
@@ -31,11 +31,9 @@ module Plex
       media = find_item(media_id, media_type: media_type)
       return nil unless media
 
-      if media_type == 'show'
-        @enricher.enrich_show(media_id)
-      else
-        @enricher.enrich_movie(media_id, media[:file_path])
-      end
+      return @enricher.enrich_show(media_id) if media_type == 'show'
+
+      @enricher.enrich_movie(media_id, media[:file_path])
     end
 
     def enriched_library(media_type: 'movie', view_mode: 'shows')
@@ -44,15 +42,10 @@ module Plex
         media_type: media_type,
         view_mode: view_mode
       )
-      cached_posters, uncached_posters = @image_store.partition_posters_by_cache(enriched_sections)
-      cached_backgrounds, uncached_backgrounds = @image_store.partition_backgrounds_by_cache(enriched_sections)
 
       {
         sections: enriched_sections,
-        cached_poster_ids: cached_posters.pluck(:id),
-        uncached_poster_movies: uncached_posters,
-        cached_background_ids: cached_backgrounds.pluck(:id),
-        uncached_background_movies: uncached_backgrounds
+        **image_cache_payload(enriched_sections)
       }
     end
 
@@ -70,6 +63,18 @@ module Plex
       end
     end
 
-    attr_reader :enricher, :movie_updater, :image_store
+    def image_cache_payload(sections)
+      cached_posters, uncached_posters = @image_store.partition_posters_by_cache(sections)
+      cached_backgrounds, uncached_backgrounds = @image_store.partition_backgrounds_by_cache(sections)
+
+      {
+        cached_poster_ids: cached_posters.pluck(:id),
+        uncached_poster_movies: uncached_posters,
+        cached_background_ids: cached_backgrounds.pluck(:id),
+        uncached_background_movies: uncached_backgrounds
+      }
+    end
+
+    attr_reader :enricher, :media_updater, :image_store
   end
 end

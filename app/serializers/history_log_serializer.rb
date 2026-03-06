@@ -4,7 +4,6 @@ class HistoryLogSerializer
   FIELDS = %i[
     id field_name field_type old_value new_value created_at
     media_type media_id media_title
-    movie_id movie_title
     section_title
   ].freeze
 

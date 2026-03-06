@@ -11,7 +11,7 @@ RSpec.describe Plex::Server do
   let(:library_fetcher) { instance_double(Plex::LibraryFetcher) }
   let(:enricher) { instance_double(Plex::Enricher) }
   let(:image_store) { instance_double(Plex::ImageStore) }
-  let(:movie_updater) { instance_double(Plex::MovieUpdater) }
+  let(:media_updater) { instance_double(Plex::MediaUpdater) }
 
   before do
     allow(Plex::HttpClient).to receive(:new).with(server_record).and_return(http_client)
@@ -19,7 +19,7 @@ RSpec.describe Plex::Server do
     allow(Plex::LibraryFetcher).to receive(:new).with(http_client, cache_store).and_return(library_fetcher)
     allow(Plex::Enricher).to receive(:new).with(http_client, cache_store).and_return(enricher)
     allow(Plex::ImageStore).to receive(:new).with(http_client, cache_store).and_return(image_store)
-    allow(Plex::MovieUpdater).to receive(:new).with(http_client, cache_store).and_return(movie_updater)
+    allow(Plex::MediaUpdater).to receive(:new).with(http_client, cache_store).and_return(media_updater)
   end
 
   describe '#friendly_name' do
@@ -36,8 +36,10 @@ RSpec.describe Plex::Server do
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return([{ title: 'Movies' }])
-      allow(library_fetcher).to receive(:fetch_sections).with(media_type: 'movie', view_mode: 'shows').and_return([{ title: 'Fresh' }])
-      allow(library_fetcher).to receive(:fetch_sections).with(media_type: 'show', view_mode: 'shows').and_return([{ title: 'TV Shows' }])
+      allow(library_fetcher).to receive(:fetch_sections).with(media_type: 'movie',
+                                                              view_mode: 'shows').and_return([{ title: 'Fresh' }])
+      allow(library_fetcher).to receive(:fetch_sections).with(media_type: 'show',
+                                                              view_mode: 'shows').and_return([{ title: 'TV Shows' }])
       allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('shows-sections-key')
       allow(cache_store).to receive(:fetch).with('shows-sections-key').and_return([{ title: 'TV Shows' }])
       allow(cache_store).to receive(:write)
@@ -80,7 +82,8 @@ RSpec.describe Plex::Server do
 
     it 'enriches and returns show detail via show path' do
       allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
-      allow(cache_store).to receive(:fetch).with('show-sections-key').and_return([{ movies: [{ id: '7', file_path: nil }] }])
+      allow(cache_store).to receive(:fetch).with('show-sections-key').and_return([{ movies: [{ id: '7',
+                                                                                               file_path: nil }] }])
       allow(enricher).to receive(:enrich_show).with('7').and_return(summary: 'show enriched')
 
       expect(plex_server_service.detail_for('7', media_type: 'show')).to eq(summary: 'show enriched')
@@ -93,7 +96,8 @@ RSpec.describe Plex::Server do
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
-      allow(enricher).to receive(:enrich_sections).with(sections, media_type: 'movie', view_mode: 'shows').and_return(sections)
+      allow(enricher).to receive(:enrich_sections).with(sections, media_type: 'movie',
+                                                                  view_mode: 'shows').and_return(sections)
       allow(image_store).to receive(:partition_posters_by_cache).with(sections).and_return(
         [[{ id: '1' }], [{ id: '2' }]]
       )
@@ -121,9 +125,9 @@ RSpec.describe Plex::Server do
 
   describe 'delegated methods' do
     it 'delegates update_movie' do
-      allow(movie_updater).to receive(:update_movie).with('10', title: 'New')
+      allow(media_updater).to receive(:update_movie).with('10', title: 'New')
       plex_server_service.update_movie('10', title: 'New')
-      expect(movie_updater).to have_received(:update_movie).with('10', title: 'New')
+      expect(media_updater).to have_received(:update_movie).with('10', title: 'New')
     end
 
     it 'delegates poster_for' do
@@ -132,9 +136,15 @@ RSpec.describe Plex::Server do
     end
 
     it 'delegates update_show' do
-      allow(movie_updater).to receive(:update_show).with('10', title: 'New Show')
+      allow(media_updater).to receive(:update_show).with('10', title: 'New Show')
       plex_server_service.update_show('10', title: 'New Show')
-      expect(movie_updater).to have_received(:update_show).with('10', title: 'New Show')
+      expect(media_updater).to have_received(:update_show).with('10', title: 'New Show')
+    end
+
+    it 'delegates update_episode' do
+      allow(media_updater).to receive(:update_episode).with('10', title: 'New Episode')
+      plex_server_service.update_episode('10', title: 'New Episode')
+      expect(media_updater).to have_received(:update_episode).with('10', title: 'New Episode')
     end
 
     it 'delegates background_for' do

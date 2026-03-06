@@ -197,7 +197,7 @@ describe('useShowsData', () => {
     expect(mockedApi.patch).toHaveBeenCalledWith(
       '/api/shows/s1',
       { show: expect.objectContaining({ genres: ['Drama', 'Mystery'] }) },
-      expect.objectContaining({ query: { server_id: 1 } })
+      expect.objectContaining({ query: { server_id: 1, view_mode: 'shows' } })
     )
   })
 

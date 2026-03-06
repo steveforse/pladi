@@ -34,11 +34,7 @@ module Plex
     end
 
     def tag_fields(item)
-      TAG_FIELDS.transform_values { |key| normalized_tags(item[key]) }
-    end
-
-    def normalized_tags(tags)
-      (tags || []).pluck('tag').compact_blank.join(', ')
+      TAG_FIELDS.transform_values { |key| TagFormatter.join(item[key]) }
     end
   end
 end

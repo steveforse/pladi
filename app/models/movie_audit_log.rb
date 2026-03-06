@@ -7,7 +7,7 @@ class MovieAuditLog < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
 
   # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
-  def self.record_changes(user:, plex_server:, media_type: 'movie', media_id:, fields:, before:, after:)
+  def self.record_changes(user:, plex_server:, media_id:, fields:, before:, after:, media_type: 'movie')
     fields.each_key do |key|
       field = key.to_s
       type, old_val, new_val = extract_change(field, before, after)
@@ -18,7 +18,8 @@ class MovieAuditLog < ApplicationRecord
         user: user, plex_server: plex_server,
         section_id: after[:section_id], section_title: after[:section_title],
         media_type: media_type, media_id: media_id, media_title: media_title,
-        movie_id: media_id, movie_title: media_title,
+        movie_id: legacy_movie_id(media_id),
+        movie_title: legacy_movie_title(media_title),
         field_name: field, field_type: type,
         old_value: old_val, new_value: new_val
       )
@@ -36,4 +37,14 @@ class MovieAuditLog < ApplicationRecord
     end
   end
   private_class_method :extract_change
+
+  def self.legacy_movie_id(media_id)
+    media_id
+  end
+  private_class_method :legacy_movie_id
+
+  def self.legacy_movie_title(media_title)
+    media_title
+  end
+  private_class_method :legacy_movie_title
 end
