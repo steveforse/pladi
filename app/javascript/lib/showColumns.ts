@@ -11,7 +11,6 @@ export const SHOW_COLUMN_GROUPS: ColumnGroup[] = [
       { id: 'originally_available', label: 'Originally Available' },
       { id: 'season_count', label: 'Seasons' },
       { id: 'sort_title', label: 'Sort Title' },
-      { id: 'title', label: 'Title' },
       { id: 'viewed_episode_count', label: 'Watched' },
       { id: 'year', label: 'Year' },
     ],

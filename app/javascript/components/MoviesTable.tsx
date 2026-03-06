@@ -6,8 +6,10 @@ import { useMoviesData } from '@/hooks/useMoviesData'
 import { useMoviesFilter } from '@/hooks/useMoviesFilter'
 import { useColumnManager } from '@/hooks/useColumnManager'
 import { usePagination } from '@/hooks/usePagination'
+import { useColumnWidths } from '@/hooks/useColumnWidths'
 
 import { COLUMN_GROUPS } from '@/lib/columns'
+import type { ColumnId } from '@/lib/types'
 
 import { HamburgerMenu } from '@/components/movies/HamburgerMenu'
 import { WelcomeScreen } from '@/components/movies/WelcomeScreen'
@@ -63,6 +65,7 @@ export default function MoviesTable({
     visibleCols, colOrder, dragOverCol,
     handleColChange, resetColumns, handleColDragStart, handleColDragOver, handleColDrop, handleColDragEnd,
   } = useColumnManager()
+  const { colWidths, startResize, resetWidths } = useColumnWidths('pladi.movies.column_widths')
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(visibleMovies.length)
 
@@ -84,6 +87,11 @@ export default function MoviesTable({
     filters.length
 
   const pagedMovies = pageSize === 0 ? visibleMovies : visibleMovies.slice((page - 1) * pageSize, page * pageSize)
+
+  function handleResetColumns() {
+    resetColumns()
+    resetWidths()
+  }
 
   const allSelected = pagedMovies.length > 0 && pagedMovies.every((m) => selectedIds.has(m.id))
   const someSelected = selectedIds.size > 0 && !allSelected
@@ -366,7 +374,7 @@ export default function MoviesTable({
             <Paginator
               page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
               onPage={setPage} onPageSize={handlePageSize}
-              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} />}
+              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={handleResetColumns} />}
               centerSlot={selectedIds.size > 0 ? (
                 <div className="flex items-center gap-3">
                   <button
@@ -384,6 +392,17 @@ export default function MoviesTable({
             />
             <div className="rounded-md border overflow-auto">
               <table className="w-full text-sm">
+                <colgroup>
+                  <col className="w-8" />
+                  {colOrder
+                    .filter((id) => id === 'title' || visibleCols.has(id as ColumnId))
+                    .map((id) => (
+                      <col
+                        key={id}
+                        style={colWidths[id] ? { width: `${colWidths[id]}px`, minWidth: `${colWidths[id]}px` } : undefined}
+                      />
+                    ))}
+                </colgroup>
                 <thead>
                   <MovieHeaderRow
                     colOrder={colOrder}
@@ -399,9 +418,11 @@ export default function MoviesTable({
                     onDragOver={handleColDragOver}
                     onDrop={handleColDrop}
                     onDragEnd={handleColDragEnd}
+                    colWidths={colWidths}
+                    onResizeStart={startResize}
                   />
                 </thead>
-                <tbody>
+                <tbody className="[&_td]:align-top [&_td]:break-words [&_td]:!whitespace-normal">
                   {pagedMovies.map((movie) => (
                     <MovieRow
                       key={`${movie.id}|${movie.file_path ?? ''}`}
@@ -425,7 +446,7 @@ export default function MoviesTable({
             <Paginator
               page={page} totalPages={totalPages} pageSize={pageSize} total={visibleMovies.length}
               onPage={setPage} onPageSize={handlePageSize}
-              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={resetColumns} openDirection="up" />}
+              leftSlot={<ColumnPicker groups={COLUMN_GROUPS} visible={visibleCols} onChange={handleColChange} onReset={handleResetColumns} openDirection="up" />}
             />
           </div>
         )}

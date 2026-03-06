@@ -48,9 +48,10 @@ module Api
 
     def show_params
       params.expect(
-        show: [:title, :sort_title, :summary, :tagline,
+        show: [:title, :original_title, :sort_title, :summary, :tagline,
                :studio, :content_rating, :year, :originally_available,
                { genres: [],
+                 directors: [], writers: [], producers: [],
                  collections: [], labels: [], country: [] }]
       )
     end

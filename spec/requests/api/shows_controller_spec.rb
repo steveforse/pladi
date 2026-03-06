@@ -169,7 +169,11 @@ RSpec.describe Api::ShowsController do
 
     it 'passes permitted tag arrays through to update_show' do
       show_fields = {
+        original_title: 'Localized Title',
         genres: ['Drama', 'Sci-Fi'],
+        directors: ['Director 1'],
+        writers: ['Writer 1'],
+        producers: ['Producer 1'],
         collections: ['Favorites'],
         labels: ['Priority'],
         country: ['US', 'CA']

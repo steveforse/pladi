@@ -8,6 +8,7 @@ import { ImageModal } from '@/components/movies/ImageModal'
 import { ColumnPicker } from '@/components/movies/ColumnPicker'
 import { Paginator } from '@/components/movies/Paginator'
 import { usePagination } from '@/hooks/usePagination'
+import { useColumnWidths } from '@/hooks/useColumnWidths'
 import { matchesFilterWithFields } from '@/lib/filters'
 import { EPISODE_FILTER_FIELDS, EPISODE_FILTER_FIELD_GROUPS, SHOW_FILTER_FIELDS, SHOW_FILTER_FIELD_GROUPS } from '@/lib/showFilters'
 import { EPISODE_COLUMN_GROUPS, SHOW_COLUMN_GROUPS } from '@/lib/showColumns'
@@ -289,6 +290,7 @@ export default function ShowsTable({
   })
   const dragColRef = useRef<AllColumnId | null>(null)
   const [dragOverCol, setDragOverCol] = useState<AllColumnId | null>(null)
+  const { colWidths, startResize, resetWidths } = useColumnWidths(`pladi.shows.column_widths.${viewMode}`)
 
   const [filters, setFilters] = useState<ActiveFilter[]>(() => {
     try {
@@ -370,6 +372,7 @@ export default function ShowsTable({
   function resetColumns() {
     setVisibleCols(new Set(viewMode === 'episodes' ? EPISODE_DEFAULT_VISIBLE_COLUMNS : DEFAULT_VISIBLE_COLUMNS))
     setColOrder([...(viewMode === 'episodes' ? EPISODE_DEFAULT_COL_ORDER : SHOW_DEFAULT_COL_ORDER)])
+    resetWidths()
   }
 
   function handleViewModeChange(nextMode: ShowsViewMode) {
@@ -796,6 +799,16 @@ export default function ShowsTable({
 
         <div className="rounded-md border overflow-auto">
           <table className="w-full text-sm">
+            <colgroup>
+              {colOrder
+                .filter((id) => isAlwaysVisibleColumn(viewMode, id) || visibleCols.has(id as ColumnId))
+                .map((id) => (
+                  <col
+                    key={id}
+                    style={colWidths[id] ? { width: `${colWidths[id]}px`, minWidth: `${colWidths[id]}px` } : undefined}
+                  />
+                ))}
+            </colgroup>
             <thead>
               <tr className="border-b bg-muted/30">
                 {colOrder
@@ -816,9 +829,10 @@ export default function ShowsTable({
                     return (
                       <th
                         key={id}
-                        className={`px-4 py-3 text-left font-medium whitespace-nowrap ${isOver ? 'bg-primary/10' : 'hover:bg-muted/70'}`}
+                        className={`relative px-4 py-3 text-left font-medium whitespace-nowrap ${isOver ? 'bg-primary/10' : 'hover:bg-muted/70'}`}
                         onDragOver={(e) => handleColDragOver(e, id)}
                         onDrop={() => handleColDrop(id)}
+                        style={colWidths[id] ? { width: `${colWidths[id]}px`, minWidth: `${colWidths[id]}px` } : undefined}
                       >
                         <div className="flex items-center gap-1">
                           <span
@@ -840,12 +854,18 @@ export default function ShowsTable({
                             <span>{label}</span>
                           )}
                         </div>
+                        <span
+                          role="separator"
+                          aria-label={`Resize ${label} column`}
+                          className="absolute top-0 right-0 h-full w-2 cursor-col-resize"
+                          onMouseDown={(e) => startResize(id, e, e.currentTarget.parentElement?.getBoundingClientRect().width)}
+                        />
                       </th>
                     )
                   })}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="[&_td]:align-top [&_td]:break-words [&_td]:!whitespace-normal">
               {pagedShows.map((show) => (
                 <tr key={`${show.id}|${show.file_path ?? ''}`} className="border-b last:border-0 even:bg-muted/20 hover:bg-muted/40">
                   {colOrder
@@ -853,18 +873,16 @@ export default function ShowsTable({
                     .map((id) => {
                       switch (id) {
                       case 'title':
-                        return viewMode === 'shows'
-                          ? (
-                              <EditableCell
-                                key={id}
-                                value={show.title}
-                                fieldType="text"
-                                onSave={async (v) => updateShow(show.id, { title: v as string })}
-                                renderView={() => <span className="font-medium whitespace-nowrap">{show.title}</span>}
-                                className="px-4 py-2"
-                              />
-                            )
-                          : <td key={id} className="px-4 py-2 font-medium whitespace-nowrap">{show.title}</td>
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.title}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { title: v as string })}
+                            renderView={() => <span className="font-medium whitespace-nowrap">{show.title}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
                       case 'id':
                         return (
                           <td key={id} className="px-4 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">
@@ -874,25 +892,32 @@ export default function ShowsTable({
                           </td>
                         )
                       case 'original_title':
-                        return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.original_title ?? '—'}</td>
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.original_title}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { original_title: (v as string) || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.original_title ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
                       case 'show_title':
                         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.show_title ?? '—'}</td>
                       case 'year':
-                        return viewMode === 'shows'
-                          ? (
-                              <EditableCell
-                                key={id}
-                                value={show.year != null ? String(show.year) : null}
-                                fieldType="number"
-                                onSave={async (v) => {
-                                  const year = (v as string) ? parseInt(v as string, 10) : null
-                                  await updateShow(show.id, { year: Number.isFinite(year) ? year : null })
-                                }}
-                                renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</span>}
-                                className="px-4 py-2"
-                              />
-                            )
-                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</td>
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.year != null ? String(show.year) : null}
+                            fieldType="number"
+                            onSave={async (v) => {
+                              const year = (v as string) ? parseInt(v as string, 10) : null
+                              await updateShow(show.id, { year: Number.isFinite(year) ? year : null })
+                            }}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.year ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
                       case 'season_count':
                         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.season_count ?? '—'}</td>
                       case 'episode_count':
@@ -900,31 +925,27 @@ export default function ShowsTable({
                       case 'viewed_episode_count':
                         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.viewed_episode_count ?? '—'}</td>
                       case 'sort_title':
-                        return viewMode === 'shows'
-                          ? (
-                              <EditableCell
-                                key={id}
-                                value={show.sort_title}
-                                fieldType="text"
-                                onSave={async (v) => updateShow(show.id, { sort_title: (v as string) || null })}
-                                renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.sort_title ?? '—'}</span>}
-                                className="px-4 py-2"
-                              />
-                            )
-                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.sort_title ?? '—'}</td>
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.sort_title}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { sort_title: (v as string) || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.sort_title ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
                       case 'originally_available':
-                        return viewMode === 'shows'
-                          ? (
-                              <EditableCell
-                                key={id}
-                                value={show.originally_available}
-                                fieldType="date"
-                                onSave={async (v) => updateShow(show.id, { originally_available: (v as string) || null })}
-                                renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{formatISODate(show.originally_available)}</span>}
-                                className="px-4 py-2"
-                              />
-                            )
-                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatISODate(show.originally_available)}</td>
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.originally_available}
+                            fieldType="date"
+                            onSave={async (v) => updateShow(show.id, { originally_available: (v as string) || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{formatISODate(show.originally_available)}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
                       case 'updated_at':
                         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(show.updated_at)}</td>
                       case 'studio':
@@ -954,35 +975,31 @@ export default function ShowsTable({
                             )
                           : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.genres ?? '—'}</td>
                       case 'summary':
-                        return viewMode === 'shows'
-                          ? (
-                              <EditableCell
-                                key={id}
-                                value={show.summary}
-                                fieldType="text"
-                                onSave={async (v) => updateShow(show.id, { summary: (v as string) || null })}
-                                renderView={() => (
-                                  <span className="text-muted-foreground text-xs">
-                                    {show.summary ? show.summary.slice(0, 160) + (show.summary.length > 160 ? '…' : '') : '—'}
-                                  </span>
-                                )}
-                                className="px-4 py-2"
-                              />
-                            )
-                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs">{show.summary ? show.summary.slice(0, 160) + (show.summary.length > 160 ? '…' : '') : '—'}</td>
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.summary}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { summary: (v as string) || null })}
+                            renderView={() => (
+                              <span className="text-muted-foreground text-xs" title={show.summary ?? undefined}>
+                                {show.summary ? show.summary.slice(0, 160) + (show.summary.length > 160 ? '…' : '') : '—'}
+                              </span>
+                            )}
+                            className="px-4 py-2"
+                          />
+                        )
                       case 'content_rating':
-                        return viewMode === 'shows'
-                          ? (
-                              <EditableCell
-                                key={id}
-                                value={show.content_rating}
-                                fieldType="text"
-                                onSave={async (v) => updateShow(show.id, { content_rating: (v as string) || null })}
-                                renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.content_rating ?? '—'}</span>}
-                                className="px-4 py-2"
-                              />
-                            )
-                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.content_rating ?? '—'}</td>
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.content_rating}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { content_rating: (v as string) || null })}
+                            renderView={() => <span className="text-muted-foreground text-xs whitespace-nowrap">{show.content_rating ?? '—'}</span>}
+                            className="px-4 py-2"
+                          />
+                        )
                       case 'imdb_rating':
                         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.imdb_rating != null ? show.imdb_rating.toFixed(1) : '—'}</td>
                       case 'rt_audience_rating':
@@ -992,22 +1009,20 @@ export default function ShowsTable({
                       case 'tmdb_rating':
                         return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.tmdb_rating != null ? show.tmdb_rating.toFixed(1) : '—'}</td>
                       case 'tagline':
-                        return viewMode === 'shows'
-                          ? (
-                              <EditableCell
-                                key={id}
-                                value={show.tagline}
-                                fieldType="text"
-                                onSave={async (v) => updateShow(show.id, { tagline: (v as string) || null })}
-                                renderView={() => (
-                                  <span className="text-muted-foreground text-xs">
-                                    {show.tagline ? show.tagline.slice(0, 120) + (show.tagline.length > 120 ? '…' : '') : '—'}
-                                  </span>
-                                )}
-                                className="px-4 py-2"
-                              />
-                            )
-                          : <td key={id} className="px-4 py-2 text-muted-foreground text-xs">{show.tagline ? show.tagline.slice(0, 120) + (show.tagline.length > 120 ? '…' : '') : '—'}</td>
+                        return (
+                          <EditableCell
+                            key={id}
+                            value={show.tagline}
+                            fieldType="text"
+                            onSave={async (v) => updateShow(show.id, { tagline: (v as string) || null })}
+                            renderView={() => (
+                              <span className="text-muted-foreground text-xs" title={show.tagline ?? undefined}>
+                                {show.tagline ? show.tagline.slice(0, 120) + (show.tagline.length > 120 ? '…' : '') : '—'}
+                              </span>
+                            )}
+                            className="px-4 py-2"
+                          />
+                        )
                       case 'collections':
                         return viewMode === 'shows'
                           ? (
@@ -1048,7 +1063,7 @@ export default function ShowsTable({
                             )
                           : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.country ?? '—'}</td>
                       case 'directors':
-                        return viewMode === 'shows'
+                        return viewMode === 'episodes'
                           ? (
                               <EditableCell
                                 key={id}
@@ -1074,7 +1089,7 @@ export default function ShowsTable({
                             )
                           : <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{show.producers ?? '—'}</td>
                       case 'writers':
-                        return viewMode === 'shows'
+                        return viewMode === 'episodes'
                           ? (
                               <EditableCell
                                 key={id}
