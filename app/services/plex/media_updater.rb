@@ -81,21 +81,9 @@ module Plex
         section_id: item['librarySectionID'].to_s,
         section_title: item['librarySectionTitle'].to_s,
         media_title: item['title'].to_s,
-        file_path: resolved_file_path(item, requested_file_path: file_path)
+        file_path: MediaPartPathResolver.resolve(item, requested_file_path: file_path)
       }.merge(extract_scalar_fields(item))
         .merge(extract_tag_fields(item))
-    end
-
-    def resolved_file_path(item, requested_file_path:)
-      part_file_paths = Array(item['Media']).flat_map do |media|
-        Array(media['Part']).pluck('file')
-      end.compact_blank
-
-      return requested_file_path if requested_file_path.present? && part_file_paths.include?(requested_file_path)
-      return if requested_file_path.present?
-      return part_file_paths.first if part_file_paths.one?
-
-      nil
     end
 
     def extract_scalar_fields(item)

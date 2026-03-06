@@ -92,8 +92,12 @@ module Plex
     end
 
     def section_media_type(items)
-      media_types = items.pluck(:media_type).compact.uniq
-      return 'movie' if media_types.empty?
+      return 'movie' if items.empty?
+
+      media_types = items.pluck(:media_type)
+      raise ArgumentError, 'Missing media_type in section items' if media_types.any?(&:blank?)
+
+      media_types = media_types.uniq
       return media_types.first if media_types.one?
 
       raise ArgumentError, "Mixed media types in section: #{media_types.join(', ')}"

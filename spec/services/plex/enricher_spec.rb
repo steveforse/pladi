@@ -192,6 +192,21 @@ RSpec.describe Plex::Enricher do
           .to raise_error(ArgumentError, 'Mixed media types in section: movie, episode')
       end
     end
+
+    context 'when populated section rows are missing media_type' do
+      let(:section) do
+        {
+          id: '10',
+          updated_at: 1234,
+          items: [{ id: 'm1', media_type: nil, file_path: '/movies/m1.mkv', title: 'Movie 1' }]
+        }
+      end
+
+      it 'fails fast instead of defaulting to movies' do
+        expect { enricher.enrich_sections([section], scope: Plex::MediaScope.movies) }
+          .to raise_error(ArgumentError, 'Missing media_type in section items')
+      end
+    end
   end
 
   describe '#enrich_sections for shows' do

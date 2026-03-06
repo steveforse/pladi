@@ -148,6 +148,20 @@ RSpec.describe Plex::Server do
         expect(plex_server_service.detail_for('7', file_path: '/movies/missing.mkv')).to be_nil
       end
 
+      context 'when the direct metadata is multipart and no row identity was supplied' do
+        before do
+          allow(enricher).to receive(:metadata_for).with('7').and_return(
+            direct_movie_metadata.merge(
+              'Media' => [{ 'Part' => [{ 'file' => '/movies/7-a.mkv' }, { 'file' => '/movies/7-b.mkv' }] }]
+            )
+          )
+        end
+
+        it 'returns nil instead of guessing the first part' do
+          expect(plex_server_service.detail_for('7')).to be_nil
+        end
+      end
+
       context 'when the direct metadata belongs to another library type' do
         before do
           allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')

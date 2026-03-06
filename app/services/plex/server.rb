@@ -67,25 +67,7 @@ module Plex
       return nil if metadata.blank?
       return nil unless scope.accepts_media_type?(metadata['type'].to_s)
 
-      resolved_file_path = resolve_file_path(metadata, file_path)
-      return nil if file_path.present? && resolved_file_path.blank?
-
-      {
-        id: metadata['ratingKey'].to_s,
-        media_type: metadata['type'].to_s,
-        file_path: resolved_file_path
-      }
-    end
-
-    def resolve_file_path(metadata, requested_file_path)
-      part_file_paths = Array(metadata['Media']).flat_map do |media|
-        Array(media['Part']).pluck('file')
-      end.compact_blank
-
-      return requested_file_path if requested_file_path.present? && part_file_paths.include?(requested_file_path)
-      return if requested_file_path.present?
-
-      part_file_paths.first
+      build_direct_item_reference(metadata, file_path:)
     end
 
     def image_cache_payload(sections)
@@ -101,5 +83,21 @@ module Plex
     end
 
     attr_reader :enricher, :media_updater, :image_store
+
+    def build_direct_item_reference(metadata, file_path:)
+      media_type = metadata['type'].to_s
+      resolved_file_path = MediaPartPathResolver.resolve(metadata, requested_file_path: file_path)
+      return nil if row_file_path_required?(media_type) && resolved_file_path.blank?
+
+      {
+        id: metadata['ratingKey'].to_s,
+        media_type: media_type,
+        file_path: resolved_file_path
+      }
+    end
+
+    def row_file_path_required?(media_type)
+      media_type != 'show'
+    end
   end
 end
