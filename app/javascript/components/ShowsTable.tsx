@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, ChevronDown, ChevronRight, GripVertical } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 import { EditableCell } from '@/components/movies/EditableCell'
 import { FilterRow } from '@/components/movies/FilterRow'
@@ -8,8 +8,13 @@ import { ImageModal } from '@/components/movies/ImageModal'
 import { ColumnPicker } from '@/components/movies/ColumnPicker'
 import { Paginator } from '@/components/movies/Paginator'
 import { BulkEditModal } from '@/components/movies/BulkEditModal'
+import { DraggableSortableHeaderRow } from '@/components/movies/DraggableSortableHeaderRow'
 import { usePagination } from '@/hooks/usePagination'
 import { useColumnWidths } from '@/hooks/useColumnWidths'
+import { useBulkSelection } from '@/hooks/useBulkSelection'
+import { useBulkTagEdit } from '@/hooks/useBulkTagEdit'
+import { useRouteSync } from '@/hooks/useRouteSync'
+import { usePersistedTableState } from '@/hooks/usePersistedTableState'
 import { matchesFilterWithFields } from '@/lib/filters'
 import { EPISODE_FILTER_FIELDS, EPISODE_FILTER_FIELD_GROUPS, SHOW_FILTER_FIELDS, SHOW_FILTER_FIELD_GROUPS } from '@/lib/showFilters'
 import { EPISODE_COLUMN_GROUPS, SHOW_COLUMN_GROUPS } from '@/lib/showColumns'
@@ -172,11 +177,6 @@ const SHOW_TABLE_COLUMNS: Array<{ id: AllColumnId; label: string; sortKey?: Sort
 ]
 const SHOW_VALID_COLUMN_IDS = new Set<ColumnId>(SHOW_TABLE_COLUMNS.map((col) => col.id as ColumnId))
 
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="ml-1 text-muted-foreground/40">↕</span>
-  return <span className="ml-1 text-primary">{dir === 'asc' ? '↑' : '↓'}</span>
-}
-
 function isAlwaysVisibleColumn(viewMode: ShowsViewMode, id: AllColumnId): boolean {
   if (id === 'title') return true
   return viewMode === 'episodes' && id === 'show_title'
@@ -255,7 +255,6 @@ export default function ShowsTable({
   const [sortDir, setSortDir] = useState<SortDir>(() => loadSortFromStorage().sortDir)
   const [openPosterShowId, setOpenPosterShowId] = useState<string | null>(null)
   const [openBackgroundShowId, setOpenBackgroundShowId] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkEditOpen, setBulkEditOpen] = useState(false)
 
   const [unwatchedOnly, setUnwatchedOnly] = useState(false)
@@ -276,35 +275,25 @@ export default function ShowsTable({
     }
   })
 
-  const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(() => {
-    try {
-      const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
-      if (!raw) return new Set(viewMode === 'episodes' ? EPISODE_DEFAULT_VISIBLE_COLUMNS : DEFAULT_VISIBLE_COLUMNS)
-      const parsed = JSON.parse(raw) as ColumnId[] | { visibleCols?: ColumnId[]; colOrder?: AllColumnId[] }
-      const fallback = viewMode === 'episodes' ? EPISODE_DEFAULT_VISIBLE_COLUMNS : DEFAULT_VISIBLE_COLUMNS
-      const storedVisible = Array.isArray(parsed) ? parsed : (parsed.visibleCols ?? fallback)
-      const normalizedVisible = storedVisible.filter((id): id is ColumnId => SHOW_VALID_COLUMN_IDS.has(id as ColumnId))
-      return new Set(normalizedVisible)
-    } catch {
-      return new Set(viewMode === 'episodes' ? EPISODE_DEFAULT_VISIBLE_COLUMNS : DEFAULT_VISIBLE_COLUMNS)
-    }
+  const {
+    visibleCols,
+    setVisibleCols,
+    colOrder,
+    setColOrder,
+    dragOverCol,
+    handleColChange,
+    resetColumns: resetPersistedColumns,
+    handleColDragStart,
+    handleColDragOver,
+    handleColDrop,
+    handleColDragEnd,
+  } = usePersistedTableState({
+    storageKey: COLUMNS_STORAGE_KEY,
+    defaultVisible: viewMode === 'episodes' ? EPISODE_DEFAULT_VISIBLE_COLUMNS : DEFAULT_VISIBLE_COLUMNS,
+    defaultOrder: viewMode === 'episodes' ? EPISODE_DEFAULT_COL_ORDER : SHOW_DEFAULT_COL_ORDER,
+    validIds: SHOW_VALID_COLUMN_IDS,
+    storage: 'local',
   })
-  const [colOrder, setColOrder] = useState<AllColumnId[]>(() => {
-    try {
-      const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
-      if (!raw) return [...(viewMode === 'episodes' ? EPISODE_DEFAULT_COL_ORDER : SHOW_DEFAULT_COL_ORDER)]
-      const parsed = JSON.parse(raw) as ColumnId[] | { visibleCols?: ColumnId[]; colOrder?: AllColumnId[] }
-      const stored = Array.isArray(parsed) ? [] : (parsed.colOrder ?? [])
-      const fallbackOrder = viewMode === 'episodes' ? EPISODE_DEFAULT_COL_ORDER : SHOW_DEFAULT_COL_ORDER
-      const normalized = stored.filter((id): id is AllColumnId => fallbackOrder.includes(id as AllColumnId))
-      const deduped = Array.from(new Set(normalized))
-      return [...deduped, ...fallbackOrder.filter((id) => !deduped.includes(id))]
-    } catch {
-      return [...(viewMode === 'episodes' ? EPISODE_DEFAULT_COL_ORDER : SHOW_DEFAULT_COL_ORDER)]
-    }
-  })
-  const dragColRef = useRef<AllColumnId | null>(null)
-  const [dragOverCol, setDragOverCol] = useState<AllColumnId | null>(null)
   const { colWidths, startResize, resetWidths } = useColumnWidths(`pladi.shows.column_widths.${viewMode}`)
 
   const [filters, setFilters] = useState<ActiveFilter[]>(() => {
@@ -375,25 +364,15 @@ export default function ShowsTable({
     })
   }
 
-  function handleColChange(id: ColumnId, checked: boolean) {
-    setVisibleCols((prev) => {
-      const next = new Set(prev)
-      if (checked) next.add(id)
-      else next.delete(id)
-      return next
-    })
-  }
-
   function resetColumns() {
-    setVisibleCols(new Set(viewMode === 'episodes' ? EPISODE_DEFAULT_VISIBLE_COLUMNS : DEFAULT_VISIBLE_COLUMNS))
-    setColOrder([...(viewMode === 'episodes' ? EPISODE_DEFAULT_COL_ORDER : SHOW_DEFAULT_COL_ORDER)])
+    resetPersistedColumns()
     resetWidths()
   }
 
   function handleViewModeChange(nextMode: ShowsViewMode) {
     if (nextMode === viewMode) return
     setViewMode(nextMode)
-    setSelectedIds(new Set())
+    clearSelection()
     setFilters([])
     setUnwatchedOnly(false)
     setPartiallyWatchedOnly(false)
@@ -406,38 +385,6 @@ export default function ShowsTable({
     setNotInSubfolder(false)
     setVisibleCols(new Set(nextMode === 'episodes' ? EPISODE_DEFAULT_VISIBLE_COLUMNS : DEFAULT_VISIBLE_COLUMNS))
     setColOrder([...(nextMode === 'episodes' ? EPISODE_DEFAULT_COL_ORDER : SHOW_DEFAULT_COL_ORDER)])
-  }
-
-  function handleColDragStart(id: AllColumnId) {
-    dragColRef.current = id
-  }
-
-  function handleColDragOver(e: React.DragEvent, id: AllColumnId) {
-    e.preventDefault()
-    setDragOverCol(id)
-  }
-
-  function handleColDrop(targetId: AllColumnId) {
-    const src = dragColRef.current
-    if (!src || src === targetId) {
-      setDragOverCol(null)
-      return
-    }
-    setColOrder((prev) => {
-      const next = [...prev]
-      const from = next.indexOf(src)
-      const to = next.indexOf(targetId)
-      next.splice(from, 1)
-      next.splice(to, 0, src)
-      return next
-    })
-    dragColRef.current = null
-    setDragOverCol(null)
-  }
-
-  function handleColDragEnd() {
-    dragColRef.current = null
-    setDragOverCol(null)
   }
 
   const filteredShows = useMemo(() => {
@@ -506,8 +453,14 @@ export default function ShowsTable({
 
   const { page, setPage, pageSize, totalPages, handlePageSize } = usePagination(filteredShows.length)
   const pagedShows = pageSize === 0 ? filteredShows : filteredShows.slice((page - 1) * pageSize, page * pageSize)
-  const allSelected = pagedShows.length > 0 && pagedShows.every((show) => selectedIds.has(show.id))
-  const someSelected = selectedIds.size > 0 && !allSelected
+  const {
+    selectedIds,
+    allSelected,
+    someSelected,
+    toggleAll: handleToggleAll,
+    toggleRow: handleToggleRow,
+    clearSelection,
+  } = useBulkSelection({ pageItems: pagedShows, visibleItems: filteredShows })
   const posterShows = downloadImages ? filteredShows.filter((show) => show.thumb) : []
   const posterModalIdx = openPosterShowId ? posterShows.findIndex((show) => show.id === openPosterShowId) : -1
   const posterModalShow = posterModalIdx >= 0 ? posterShows[posterModalIdx] : null
@@ -515,46 +468,15 @@ export default function ShowsTable({
   const backgroundModalIdx = openBackgroundShowId ? backgroundShows.findIndex((show) => show.id === openBackgroundShowId) : -1
   const backgroundModalShow = backgroundModalIdx >= 0 ? backgroundShows[backgroundModalIdx] : null
 
-  function handleToggleAll() {
-    if (allSelected) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(pagedShows.map((show) => show.id)))
-    }
-  }
-
-  function handleToggleRow(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  async function handleBulkSave(
-    tagValues: Partial<Record<'genres' | 'directors' | 'writers' | 'producers' | 'collections' | 'labels' | 'country', string[]>>,
-    mode: 'append' | 'replace'
-  ) {
-    const rowMap = new Map(filteredShows.map((show) => [show.id, show]))
-    for (const id of selectedIds) {
-      const row = rowMap.get(id)
-      if (!row) continue
-      const patch: Record<string, string | null> = {}
-      for (const [field, newTags] of Object.entries(tagValues)) {
-        if (mode === 'append') {
-          const existing = (row[field as keyof typeof row] as string | null)?.split(', ').filter(Boolean) ?? []
-          const merged = [...new Set([...existing, ...newTags])]
-          patch[field] = merged.join(', ') || null
-        } else {
-          patch[field] = newTags.join(', ') || null
-        }
-      }
-      await updateShow(id, patch)
-    }
-    setSelectedIds(new Set())
-    setBulkEditOpen(false)
-  }
+  const { handleBulkSave } = useBulkTagEdit({
+    rows: filteredShows,
+    selectedIds,
+    updateItem: async (id, patch) => updateShow(id, patch),
+    onComplete: () => {
+      clearSelection()
+      setBulkEditOpen(false)
+    },
+  })
 
   useEffect(() => {
     try {
@@ -563,17 +485,6 @@ export default function ShowsTable({
       // storage unavailable
     }
   }, [filters])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        COLUMNS_STORAGE_KEY,
-        JSON.stringify({ visibleCols: Array.from(visibleCols), colOrder })
-      )
-    } catch {
-      // storage unavailable
-    }
-  }, [visibleCols, colOrder])
 
   useEffect(() => {
     try {
@@ -591,32 +502,22 @@ export default function ShowsTable({
     }
   }, [sortKey, sortDir])
 
-  useEffect(() => {
-    if (routeServerId == null || selectedServerId == null || routeServerId === selectedServerId) return
-    if (!plexServers.some((s) => s.id === routeServerId)) return
-    handleServerChange(routeServerId)
-  }, [routeServerId, selectedServerId, plexServers, handleServerChange])
-
-  useEffect(() => {
-    if (routeLibrary === undefined || selectedTitle === routeLibrary) return
-    if (routeLibrary === null) {
-      handleLibraryChange(null)
-      return
-    }
-    if (sections.some((s) => s.title === routeLibrary)) handleLibraryChange(routeLibrary)
-  }, [routeLibrary, selectedTitle, sections, handleLibraryChange])
-
-  useEffect(() => {
-    onRouteStateChange?.({ serverId: selectedServerId, library: selectedTitle, mode: viewMode })
-  }, [selectedServerId, selectedTitle, viewMode, onRouteStateChange])
-
-  useEffect(() => {
-    const visibleIds = new Set(filteredShows.map((show) => show.id))
-    setSelectedIds((prev) => {
-      const next = new Set(Array.from(prev).filter((id) => visibleIds.has(id)))
-      return next.size === prev.size ? prev : next
-    })
-  }, [filteredShows])
+  const routeState = useMemo(
+    () => ({ serverId: selectedServerId, library: selectedTitle, mode: viewMode }),
+    [selectedServerId, selectedTitle, viewMode]
+  )
+  useRouteSync({
+    routeServerId,
+    routeLibrary,
+    selectedServerId,
+    selectedLibrary: selectedTitle,
+    servers: plexServers,
+    sections,
+    onServerChange: handleServerChange,
+    onLibraryChange: handleLibraryChange,
+    state: routeState,
+    onRouteStateChange,
+  })
 
   if (loading) {
     return (
@@ -871,7 +772,7 @@ export default function ShowsTable({
               >
                 Bulk Edit ({selectedIds.size})
               </button>
-              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:text-foreground">
+              <button onClick={clearSelection} className="text-xs text-muted-foreground hover:text-foreground">
                 Clear selection
               </button>
             </div>
@@ -892,18 +793,8 @@ export default function ShowsTable({
                 ))}
             </colgroup>
             <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="px-2 py-3 w-8">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = someSelected
-                    }}
-                    onChange={handleToggleAll}
-                  />
-                </th>
-                {colOrder
+              <DraggableSortableHeaderRow
+                columns={colOrder
                   .filter((id) => isAlwaysVisibleColumn(viewMode, id) || visibleCols.has(id as ColumnId))
                   .map((id) => {
                     const col = SHOW_TABLE_COLUMNS.find((c) => c.id === id)
@@ -915,47 +806,23 @@ export default function ShowsTable({
                         : viewMode === 'episodes' && id === 'season_count'
                           ? 'Season'
                           : viewMode === 'episodes' && id === 'episode_count'
-                              ? 'Episode'
-                        : col.label
-                    const isOver = dragOverCol === id
-                    return (
-                      <th
-                        key={id}
-                        className={`relative px-4 py-3 text-left font-medium whitespace-nowrap ${isOver ? 'bg-primary/10' : 'hover:bg-muted/70'}`}
-                        onDragOver={(e) => handleColDragOver(e, id)}
-                        onDrop={() => handleColDrop(id)}
-                        style={colWidths[id] ? { width: `${colWidths[id]}px`, minWidth: `${colWidths[id]}px` } : undefined}
-                      >
-                        <div className="flex items-center gap-1">
-                          <span
-                            draggable
-                            aria-label={`Drag ${label} column`}
-                            onDragStart={() => handleColDragStart(id)}
-                            onDragEnd={handleColDragEnd}
-                            onClick={(e) => e.stopPropagation()}
-                            className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground shrink-0"
-                          >
-                            <GripVertical size={14} />
-                          </span>
-                          {col.sortKey ? (
-                            <span className="cursor-pointer select-none" onClick={() => handleSort(col.sortKey as SortKey)}>
-                              {label}
-                              <SortIcon active={sortKey === col.sortKey} dir={sortDir} />
-                            </span>
-                          ) : (
-                            <span>{label}</span>
-                          )}
-                        </div>
-                        <span
-                          role="separator"
-                          aria-label={`Resize ${label} column`}
-                          className="absolute top-0 right-0 h-full w-2 cursor-col-resize"
-                          onMouseDown={(e) => startResize(id, e, e.currentTarget.parentElement?.getBoundingClientRect().width)}
-                        />
-                      </th>
-                    )
-                  })}
-              </tr>
+                            ? 'Episode'
+                            : col.label
+                    return { id, label, sortKey: col.sortKey, width: colWidths[id] }
+                  })
+                  .filter((col): col is { id: AllColumnId; label: string; sortKey?: SortKey; width?: number } => col !== null)}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                dragOverCol={dragOverCol}
+                onSort={handleSort}
+                onDragStart={handleColDragStart}
+                onDragOver={handleColDragOver}
+                onDrop={handleColDrop}
+                onDragEnd={handleColDragEnd}
+                onResizeStart={startResize}
+                leadingCheckbox={{ checked: allSelected, indeterminate: someSelected, onChange: handleToggleAll }}
+                rowClassName="border-b bg-muted/30"
+              />
             </thead>
             <tbody className="[&_td]:align-top [&_td]:break-words [&_td]:!whitespace-normal">
               {pagedShows.map((show) => (

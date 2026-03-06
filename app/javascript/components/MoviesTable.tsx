@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 import pladiLogo from '@/assets/pladi_logo.png'
 
@@ -7,6 +7,9 @@ import { useMoviesFilter } from '@/hooks/useMoviesFilter'
 import { useColumnManager } from '@/hooks/useColumnManager'
 import { usePagination } from '@/hooks/usePagination'
 import { useColumnWidths } from '@/hooks/useColumnWidths'
+import { useBulkSelection } from '@/hooks/useBulkSelection'
+import { useBulkTagEdit } from '@/hooks/useBulkTagEdit'
+import { useRouteSync } from '@/hooks/useRouteSync'
 
 import { COLUMN_GROUPS } from '@/lib/columns'
 import type { ColumnId } from '@/lib/types'
@@ -72,7 +75,6 @@ export default function MoviesTable({
   const [filtersOpen, setFiltersOpen] = useState(() => localStorage.getItem('pladi_filters_open') === 'true')
   const [openPosterMovieId, setOpenPosterMovieId] = useState<string | null>(null)
   const [openBackgroundMovieId, setOpenBackgroundMovieId] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkEditOpen, setBulkEditOpen] = useState(false)
 
   const posterMovies = visibleMovies.filter((m) => posterReady.has(m.id))
@@ -92,48 +94,27 @@ export default function MoviesTable({
     resetColumns()
     resetWidths()
   }
+  const routeState = useMemo(() => ({ serverId: selectedServerId, library: selectedTitle }), [selectedServerId, selectedTitle])
 
-  const allSelected = pagedMovies.length > 0 && pagedMovies.every((m) => selectedIds.has(m.id))
-  const someSelected = selectedIds.size > 0 && !allSelected
+  const {
+    selectedIds,
+    allSelected,
+    someSelected,
+    toggleAll: handleToggleAll,
+    toggleRow: handleToggleRow,
+    clearSelection,
+  } = useBulkSelection({ pageItems: pagedMovies })
 
-  function handleToggleAll() {
-    if (allSelected) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(pagedMovies.map((m) => m.id)))
-    }
-  }
-
-  function handleToggleRow(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  async function handleBulkSave(tagValues: Partial<Record<'genres' | 'directors' | 'writers' | 'producers' | 'collections' | 'labels' | 'country', string[]>>, mode: 'append' | 'replace') {
-    const movieMap = new Map(visibleMovies.map((m) => [m.id, m]))
-    for (const id of selectedIds) {
-      const movie = movieMap.get(id)
-      if (!movie) continue
-      const patch: Record<string, string | null> = {}
-      for (const [field, newTags] of Object.entries(tagValues)) {
-        if (mode === 'append') {
-          const existing = (movie[field as keyof typeof movie] as string | null)?.split(', ').filter(Boolean) ?? []
-          const merged = [...new Set([...existing, ...newTags])]
-          patch[field] = merged.join(', ') || null
-        } else {
-          patch[field] = newTags.join(', ') || null
-        }
-      }
-      await updateMovie(id, patch)
-    }
-    await refreshMovies(Array.from(selectedIds))
-    setSelectedIds(new Set())
-    setBulkEditOpen(false)
-  }
+  const { handleBulkSave } = useBulkTagEdit({
+    rows: visibleMovies,
+    selectedIds,
+    updateItem: async (id, patch) => updateMovie(id, patch),
+    onComplete: async (updatedIds) => {
+      await refreshMovies(updatedIds)
+      clearSelection()
+      setBulkEditOpen(false)
+    },
+  })
 
   // Once syncing completes and we have uncached posters/backgrounds, warm them with current page first
   const wasSyncing = useRef(false)
@@ -154,24 +135,18 @@ export default function MoviesTable({
     wasSyncing.current = syncing
   }, [syncing, uncachedPosterMovies.length, uncachedBackgroundMovies.length])
 
-  useEffect(() => {
-    if (routeServerId == null || selectedServerId == null || routeServerId === selectedServerId) return
-    if (!plexServers.some((s) => s.id === routeServerId)) return
-    handleServerChange(routeServerId)
-  }, [routeServerId, selectedServerId, plexServers, handleServerChange])
-
-  useEffect(() => {
-    if (routeLibrary === undefined || selectedTitle === routeLibrary) return
-    if (routeLibrary === null) {
-      setSelectedTitle(null)
-      return
-    }
-    if (sections.some((s) => s.title === routeLibrary)) setSelectedTitle(routeLibrary)
-  }, [routeLibrary, selectedTitle, sections, setSelectedTitle])
-
-  useEffect(() => {
-    onRouteStateChange?.({ serverId: selectedServerId, library: selectedTitle })
-  }, [selectedServerId, selectedTitle, onRouteStateChange])
+  useRouteSync({
+    routeServerId,
+    routeLibrary,
+    selectedServerId,
+    selectedLibrary: selectedTitle,
+    servers: plexServers,
+    sections,
+    onServerChange: handleServerChange,
+    onLibraryChange: setSelectedTitle,
+    state: routeState,
+    onRouteStateChange,
+  })
 
   if (loading) {
     return (
@@ -384,7 +359,7 @@ export default function MoviesTable({
                   >
                     Bulk Edit ({selectedIds.size})
                   </button>
-                  <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:text-foreground">
+                  <button onClick={clearSelection} className="text-xs text-muted-foreground hover:text-foreground">
                     Clear selection
                   </button>
                 </div>
