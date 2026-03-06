@@ -81,10 +81,10 @@ module Plex
       cached_backgrounds, uncached_backgrounds = @image_store.partition_backgrounds_by_cache(sections)
 
       {
-        cached_poster_ids: cached_posters.pluck(:id),
-        uncached_poster_movies: uncached_posters,
-        cached_background_ids: cached_backgrounds.pluck(:id),
-        uncached_background_movies: uncached_backgrounds
+        cached_poster_media_ids: cached_posters.pluck(:id),
+        uncached_poster_items: uncached_posters,
+        cached_background_media_ids: cached_backgrounds.pluck(:id),
+        uncached_background_items: uncached_backgrounds
       }
     end
 

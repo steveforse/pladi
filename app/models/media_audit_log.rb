@@ -15,13 +15,11 @@ class MediaAuditLog < ApplicationRecord
       type, old_val, new_val = extract_change(field, before, after)
       next unless type && old_val != new_val
 
-      media_title = after[:media_title] || after[:movie_title]
       create!(
         user: user, plex_server: plex_server,
         section_id: after[:section_id], section_title: after[:section_title],
-        media_type: media_type, media_id: media_id, media_title: media_title,
-        movie_id: media_id,
-        movie_title: media_title,
+        media_type: media_type, media_id: media_id, media_title: media_title_from(after),
+        **legacy_movie_storage_attributes(media_id:, media_title: media_title_from(after)),
         field_name: field, field_type: type,
         old_value: old_val, new_value: new_val
       )
@@ -39,4 +37,14 @@ class MediaAuditLog < ApplicationRecord
     end
   end
   private_class_method :extract_change
+
+  def self.media_title_from(snapshot)
+    snapshot[:media_title] || snapshot[:movie_title]
+  end
+  private_class_method :media_title_from
+
+  def self.legacy_movie_storage_attributes(media_id:, media_title:)
+    { movie_id: media_id, movie_title: media_title }
+  end
+  private_class_method :legacy_movie_storage_attributes
 end

@@ -61,8 +61,8 @@ export function useMoviesData(downloadImages: boolean) {
     setPosterReady(loadPosterReadyCache(selectedServerId))
     const sub = consumerRef.current.subscriptions.create(
       { channel: 'PostersChannel', server_id: selectedServerId },
-      { received(data: { movie_id: string }) {
-          setPosterReady((prev) => new Set([...prev, data.movie_id]))
+      { received(data: { media_id: string }) {
+          setPosterReady((prev) => new Set([...prev, data.media_id]))
       }}
     )
     return () => sub.unsubscribe()
@@ -74,8 +74,8 @@ export function useMoviesData(downloadImages: boolean) {
     setBackgroundReady(loadBackgroundReadyCache(selectedServerId))
     const sub = consumerRef.current.subscriptions.create(
       { channel: 'BackgroundsChannel', server_id: selectedServerId },
-      { received(data: { movie_id: string }) {
-          setBackgroundReady((prev) => new Set([...prev, data.movie_id]))
+      { received(data: { media_id: string }) {
+          setBackgroundReady((prev) => new Set([...prev, data.media_id]))
       }}
     )
     return () => sub.unsubscribe()
@@ -158,24 +158,24 @@ export function useMoviesData(downloadImages: boolean) {
             return mergedSections
           })
           if (downloadImages) {
-            if (enrichData.cached_poster_ids?.length) {
-              savePosterReadyCache(serverId, enrichData.cached_poster_ids)
+            if (enrichData.cached_poster_media_ids?.length) {
+              savePosterReadyCache(serverId, enrichData.cached_poster_media_ids)
               setPosterReady((prev) => {
                 const next = new Set(prev)
-                for (const id of enrichData.cached_poster_ids) next.add(id)
+                for (const id of enrichData.cached_poster_media_ids) next.add(id)
                 return next
               })
             }
-            setUncachedPosterMovies(enrichData.uncached_poster_movies ?? [])
-            if (enrichData.cached_background_ids?.length) {
-              saveBackgroundReadyCache(serverId, enrichData.cached_background_ids)
+            setUncachedPosterMovies(enrichData.uncached_poster_items ?? [])
+            if (enrichData.cached_background_media_ids?.length) {
+              saveBackgroundReadyCache(serverId, enrichData.cached_background_media_ids)
               setBackgroundReady((prev) => {
                 const next = new Set(prev)
-                for (const id of enrichData.cached_background_ids) next.add(id)
+                for (const id of enrichData.cached_background_media_ids) next.add(id)
                 return next
               })
             }
-            setUncachedBackgroundMovies(enrichData.uncached_background_movies ?? [])
+            setUncachedBackgroundMovies(enrichData.uncached_background_items ?? [])
           }
         }
       } finally {

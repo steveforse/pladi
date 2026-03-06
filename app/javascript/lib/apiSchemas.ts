@@ -115,10 +115,10 @@ export const BackgroundMovieSchema = z.object({
 
 export const EnrichResponseSchema = z.object({
   sections: SectionListSchema,
-  cached_poster_ids: z.array(z.string()).optional(),
-  uncached_poster_movies: z.array(PosterMovieSchema).optional(),
-  cached_background_ids: z.array(z.string()).optional(),
-  uncached_background_movies: z.array(BackgroundMovieSchema).optional(),
+  cached_poster_media_ids: z.array(z.string()).optional(),
+  uncached_poster_items: z.array(PosterMovieSchema).optional(),
+  cached_background_media_ids: z.array(z.string()).optional(),
+  uncached_background_items: z.array(BackgroundMovieSchema).optional(),
 })
 
 export const AuditLogSchema = z.object({

@@ -19,11 +19,11 @@ RSpec.describe WarmBackgroundsJob do
     perform_job
   end
 
-  it 'broadcasts for movie ids with background data' do
-    expect(cable_server).to have_received(:broadcast).with("backgrounds_#{server.id}", { movie_id: '1' })
+  it 'broadcasts for media ids with background data' do
+    expect(cable_server).to have_received(:broadcast).with("backgrounds_#{server.id}", { media_id: '1' })
   end
 
   it 'does not broadcast when background is unavailable' do
-    expect(cable_server).not_to have_received(:broadcast).with("backgrounds_#{server.id}", { movie_id: '2' })
+    expect(cable_server).not_to have_received(:broadcast).with("backgrounds_#{server.id}", { media_id: '2' })
   end
 end

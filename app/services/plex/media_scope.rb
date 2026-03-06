@@ -61,7 +61,7 @@ module Plex
     private
 
     def accepted_media_types
-      return %w[show episode] if episode_view?
+      return ['episode'] if episode_view?
       return ['show'] if show_library?
 
       ['movie']

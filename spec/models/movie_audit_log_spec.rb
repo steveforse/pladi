@@ -70,6 +70,8 @@ RSpec.describe MovieAuditLog do
       it { expect(audit_log.media_type).to eq('movie') }
       it { expect(audit_log.media_id).to eq('99') }
       it { expect(audit_log.media_title).to eq('After Movie') }
+      it { expect(audit_log.movie_id).to eq('99') }
+      it { expect(audit_log.movie_title).to eq('After Movie') }
     end
 
     context 'when storing tag metadata' do

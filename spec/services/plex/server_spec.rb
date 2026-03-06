@@ -112,6 +112,20 @@ RSpec.describe Plex::Server do
         end
       end
 
+      context 'when the direct metadata is a show for episode scope' do
+        before do
+          allow(cache_store).to receive(:key).with('sections', 'show', 'episodes').and_return('episode-sections-key')
+          allow(cache_store).to receive(:fetch).with('episode-sections-key').and_return([{ items: [] }])
+          allow(enricher).to receive(:metadata_for).with('7').and_return(
+            direct_movie_metadata.merge('type' => 'show')
+          )
+        end
+
+        it 'returns nil for the episode scope' do
+          expect(plex_server_service.detail_for('7', scope: Plex::MediaScope.shows('episodes'))).to be_nil
+        end
+      end
+
       def direct_movie_metadata
         {
           'ratingKey' => '7',
@@ -138,19 +152,19 @@ RSpec.describe Plex::Server do
     end
 
     it 'returns cached poster ids' do
-      expect(plex_server_service.enriched_library[:cached_poster_ids]).to eq(['1'])
+      expect(plex_server_service.enriched_library[:cached_poster_media_ids]).to eq(['1'])
     end
 
-    it 'returns uncached poster movies' do
-      expect(plex_server_service.enriched_library[:uncached_poster_movies]).to eq([{ id: '2' }])
+    it 'returns uncached poster items' do
+      expect(plex_server_service.enriched_library[:uncached_poster_items]).to eq([{ id: '2' }])
     end
 
     it 'returns cached background ids' do
-      expect(plex_server_service.enriched_library[:cached_background_ids]).to eq(['2'])
+      expect(plex_server_service.enriched_library[:cached_background_media_ids]).to eq(['2'])
     end
 
-    it 'returns uncached background movies' do
-      expect(plex_server_service.enriched_library[:uncached_background_movies]).to eq([{ id: '1' }])
+    it 'returns uncached background items' do
+      expect(plex_server_service.enriched_library[:uncached_background_items]).to eq([{ id: '1' }])
     end
 
     it 'omits image cache payload for shows' do

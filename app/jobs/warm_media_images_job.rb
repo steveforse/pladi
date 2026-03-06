@@ -11,7 +11,7 @@ class WarmMediaImagesJob < ApplicationJob
       item = item.with_indifferent_access
       next unless image_for(service, item[:id])
 
-      ActionCable.server.broadcast(channel_name(server_id), { movie_id: item[:id] })
+      ActionCable.server.broadcast(channel_name(server_id), { media_id: item[:id] })
     end
   end
 

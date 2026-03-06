@@ -74,10 +74,10 @@ RSpec.describe Api::MoviesController do
     before do
       allow(service).to receive(:enriched_library).with(scope: movie_scope).and_return(
         sections: [{ title: 'Movies', items: [{ id: '1' }] }],
-        cached_poster_ids: ['1'],
-        uncached_poster_movies: [],
-        cached_background_ids: [],
-        uncached_background_movies: []
+        cached_poster_media_ids: ['1'],
+        uncached_poster_items: [],
+        cached_background_media_ids: [],
+        uncached_background_items: []
       )
       get '/api/movies/enrich', params: { server_id: server.id }, as: :json
     end

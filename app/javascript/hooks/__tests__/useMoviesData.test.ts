@@ -32,7 +32,7 @@ vi.mock('@/lib/enrichmentCache', () => ({
 
 const cableSubscriptionsCreate = vi.fn()
 const cableDisconnect = vi.fn()
-const cableReceivedHandlers: Record<string, (data: { movie_id: string }) => void> = {}
+const cableReceivedHandlers: Record<string, (data: { media_id: string }) => void> = {}
 
 vi.mock('@rails/actioncable', () => ({
   createConsumer: () => ({
@@ -111,7 +111,7 @@ describe('useMoviesData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('localStorage', createStorageMock())
-    cableSubscriptionsCreate.mockImplementation((identifier: { channel: string }, callbacks: { received: (data: { movie_id: string }) => void }) => {
+    cableSubscriptionsCreate.mockImplementation((identifier: { channel: string }, callbacks: { received: (data: { media_id: string }) => void }) => {
       cableReceivedHandlers[identifier.channel] = callbacks.received
       return { unsubscribe: vi.fn() }
     })
@@ -133,10 +133,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections: enrichedSections,
-            cached_poster_ids: [],
-            uncached_poster_movies: [],
-            cached_background_ids: [],
-            uncached_background_movies: [],
+            cached_poster_media_ids: [],
+            uncached_poster_items: [],
+            cached_background_media_ids: [],
+            uncached_background_items: [],
           },
         }
       }
@@ -171,10 +171,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections: enrichedSections,
-            cached_poster_ids: [],
-            uncached_poster_movies: [],
-            cached_background_ids: [],
-            uncached_background_movies: [],
+            cached_poster_media_ids: [],
+            uncached_poster_items: [],
+            cached_background_media_ids: [],
+            uncached_background_items: [],
           },
         }
       }
@@ -243,10 +243,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections: baseSections,
-            cached_poster_ids: [],
-            uncached_poster_movies: [],
-            cached_background_ids: [],
-            uncached_background_movies: [],
+            cached_poster_media_ids: [],
+            uncached_poster_items: [],
+            cached_background_media_ids: [],
+            uncached_background_items: [],
           },
         }
       }
@@ -288,10 +288,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections: baseSections,
-            cached_poster_ids: ['cached-p'],
-            uncached_poster_movies: [{ id: 'm1', thumb: '/thumb.jpg' }],
-            cached_background_ids: ['cached-b'],
-            uncached_background_movies: [{ id: 'm1', art: '/art.jpg' }],
+            cached_poster_media_ids: ['cached-p'],
+            uncached_poster_items: [{ id: 'm1', thumb: '/thumb.jpg' }],
+            cached_background_media_ids: ['cached-b'],
+            uncached_background_items: [{ id: 'm1', art: '/art.jpg' }],
           },
         }
       }
@@ -313,8 +313,8 @@ describe('useMoviesData', () => {
     )
 
     act(() => {
-      cableReceivedHandlers.PostersChannel?.({ movie_id: 'ws-poster' })
-      cableReceivedHandlers.BackgroundsChannel?.({ movie_id: 'ws-bg' })
+      cableReceivedHandlers.PostersChannel?.({ media_id: 'ws-poster' })
+      cableReceivedHandlers.BackgroundsChannel?.({ media_id: 'ws-bg' })
     })
 
     expect(result.current.posterReady.has('ws-poster')).toBe(true)
@@ -352,10 +352,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections: baseSections,
-            cached_poster_ids: [],
-            uncached_poster_movies: [],
-            cached_background_ids: [],
-            uncached_background_movies: [],
+            cached_poster_media_ids: [],
+            uncached_poster_items: [],
+            cached_background_media_ids: [],
+            uncached_background_items: [],
           },
         }
       }
@@ -415,10 +415,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections: baseSections,
-            cached_poster_ids: [],
-            uncached_poster_movies: [],
-            cached_background_ids: [],
-            uncached_background_movies: [],
+            cached_poster_media_ids: [],
+            uncached_poster_items: [],
+            cached_background_media_ids: [],
+            uncached_background_items: [],
           },
         }
       }
@@ -480,10 +480,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections,
-            cached_poster_ids: [],
-            uncached_poster_movies: [],
-            cached_background_ids: [],
-            uncached_background_movies: [],
+            cached_poster_media_ids: [],
+            uncached_poster_items: [],
+            cached_background_media_ids: [],
+            uncached_background_items: [],
           },
         }
       }
@@ -521,10 +521,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections,
-            cached_poster_ids: [],
-            uncached_poster_movies: [],
-            cached_background_ids: [],
-            uncached_background_movies: [],
+            cached_poster_media_ids: [],
+            uncached_poster_items: [],
+            cached_background_media_ids: [],
+            uncached_background_items: [],
           },
         }
       }
@@ -568,10 +568,10 @@ describe('useMoviesData', () => {
           status: 200,
           data: {
             sections: [{ title: 'Movies', items: [movie('m1', 'Alpha')] }],
-            cached_poster_ids: [],
-            uncached_poster_movies: [],
-            cached_background_ids: [],
-            uncached_background_movies: [],
+            cached_poster_media_ids: [],
+            uncached_poster_items: [],
+            cached_background_media_ids: [],
+            uncached_background_items: [],
           },
         }
       }
