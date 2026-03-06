@@ -8,7 +8,10 @@ module Plex
     end
 
     def fetch(media_id)
-      @parser.parse(metadata_for(media_id))
+      metadata = metadata_for(media_id)
+      return {} if metadata.blank?
+
+      @parser.parse(metadata)
     rescue StandardError
       {}
     end

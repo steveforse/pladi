@@ -61,6 +61,12 @@ RSpec.describe Plex::Server do
     it 'uses distinct cache keys for show sections' do
       expect(plex_server_service.sections(scope: shows_scope)).to eq([{ title: 'TV Shows' }])
     end
+
+    it 'fetches from the library on cache miss' do
+      allow(cache_store).to receive(:fetch).with('sections-key').and_yield
+
+      expect(plex_server_service.sections).to eq([{ title: 'Fresh' }])
+    end
   end
 
   describe '#detail_for' do
@@ -102,6 +108,10 @@ RSpec.describe Plex::Server do
 
       it 'uses file_path to disambiguate multipart media rows' do
         expect(plex_server_service.detail_for('7', file_path: '/movies/7-b.mkv')).to eq(summary: 'part b')
+      end
+
+      it 'returns nil when a cached multipart row is requested without file_path' do
+        expect(plex_server_service.detail_for('7')).to be_nil
       end
     end
 
@@ -173,6 +183,24 @@ RSpec.describe Plex::Server do
 
         it 'returns nil for the show scope' do
           expect(plex_server_service.detail_for('7', scope: shows_scope)).to be_nil
+        end
+      end
+
+      context 'when show metadata is fetched directly for show scope' do
+        before do
+          allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
+          allow(cache_store).to receive(:fetch).with('show-sections-key').and_return([{ items: [] }])
+          allow(enricher).to receive(:metadata_for).with('7').and_return(
+            'ratingKey' => '7',
+            'type' => 'show'
+          )
+          allow(enricher).to receive(:enrich_detail)
+            .with('7', media_type: 'show', file_path: nil)
+            .and_return(summary: 'direct show')
+        end
+
+        it 'returns the direct show detail' do
+          expect(plex_server_service.detail_for('7', scope: shows_scope)).to eq(summary: 'direct show')
         end
       end
 

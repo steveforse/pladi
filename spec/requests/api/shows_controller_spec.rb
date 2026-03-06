@@ -146,25 +146,6 @@ RSpec.describe Api::ShowsController do
             params: { server_id: server.id, file_path: '/tv/show/s01e01.mkv', show: show_params },
             as: :json
     end
-    let(:expected_update_call) do
-      [
-        '123',
-        hash_including('title' => 'Updated Show Title'),
-        { scope: shows_scope, file_path: '/tv/show/s01e01.mkv' }
-      ]
-    end
-    let(:show_fields) do
-      {
-        original_title: 'Localized Title',
-        genres: %w[Drama Sci-Fi],
-        directors: ['Director 1'],
-        writers: ['Writer 1'],
-        producers: ['Producer 1'],
-        collections: ['Favorites'],
-        labels: ['Priority'],
-        country: %w[US CA]
-      }
-    end
 
     it 'returns a structured error when Plex request fails' do
       allow(service).to receive(:update_media).and_raise(Plex::HttpClient::RequestError, 'Unable to reach Plex server')
@@ -178,9 +159,28 @@ RSpec.describe Api::ShowsController do
       expect(response).to have_api_error(status: :unprocessable_content, message: 'Plex did not persist this update')
     end
 
+    it 'returns unprocessable when multipart row identity is invalid' do
+      invalid_row_identity_message = 'Requested media row does not match Plex metadata'
+      stub_invalid_row_identity!(invalid_row_identity_message)
+      patch_invalid_row_update(show_params)
+      expect_invalid_row_identity_response(invalid_row_identity_message)
+    end
+
     context 'when update succeeds' do
+      let(:expected_update_call) do
+        [
+          '123',
+          hash_including('title' => 'Updated Show Title'),
+          { scope: shows_scope, file_path: '/tv/show/s01e01.mkv' }
+        ]
+      end
+
       before do
-        allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
+        allow(service).to receive(:update_media).and_return(
+          before: { file_path: '/tv/show/s01e01.mkv' },
+          after: { file_path: '/tv/show/s01e01.mkv' },
+          unverified_fields: []
+        )
         allow(MediaAuditLogRecorder).to receive(:record_changes)
         update_request
       end
@@ -197,6 +197,19 @@ RSpec.describe Api::ShowsController do
     end
 
     context 'with permitted tag arrays' do
+      let(:show_fields) do
+        {
+          original_title: 'Localized Title',
+          genres: %w[Drama Sci-Fi],
+          directors: ['Director 1'],
+          writers: ['Writer 1'],
+          producers: ['Producer 1'],
+          collections: ['Favorites'],
+          labels: ['Priority'],
+          country: %w[US CA]
+        }
+      end
+
       before do
         allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
         allow(MediaAuditLogRecorder).to receive(:record_changes)
@@ -254,5 +267,26 @@ RSpec.describe Api::ShowsController do
     it { expect(response).to have_http_status(:ok) }
     it { expect(response.media_type).to eq('image/png') }
     it { expect(response.body).to eq('img-bg') }
+  end
+
+  def invalid_row_request_params(show_params)
+    {
+      server_id: server.id,
+      file_path: '/tv/show/missing.mkv',
+      show: show_params
+    }
+  end
+
+  def patch_invalid_row_update(show_params)
+    patch '/api/shows/123', params: invalid_row_request_params(show_params), as: :json
+  end
+
+  def stub_invalid_row_identity!(message)
+    allow(service).to receive(:update_media)
+      .and_raise(Plex::MediaPartPathResolver::InvalidRowIdentityError, message)
+  end
+
+  def expect_invalid_row_identity_response(message)
+    expect(response).to have_api_error(status: :unprocessable_content, message: message)
   end
 end

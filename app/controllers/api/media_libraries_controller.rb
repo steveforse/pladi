@@ -55,7 +55,7 @@ module Api
         plex_server: @server,
         media_type: media_scope.update_media_type,
         media_id: params[:id],
-        file_path: params[:file_path],
+        file_path: result[:after][:file_path].presence || result[:before][:file_path].presence,
         fields: fields,
         before: result[:before],
         after: result[:after]

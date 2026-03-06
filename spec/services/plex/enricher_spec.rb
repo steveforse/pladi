@@ -207,6 +207,18 @@ RSpec.describe Plex::Enricher do
           .to raise_error(ArgumentError, 'Missing media_type in section items')
       end
     end
+
+    context 'when a section has no items' do
+      let(:section) { { id: '10', updated_at: 1234, items: [] } }
+
+      before do
+        allow(movie_concurrent_fetcher).to receive(:fetch).with([]).and_return({})
+      end
+
+      it 'treats the empty section as movie-shaped for fetch selection' do
+        expect(enricher.enrich_sections([section], scope: Plex::MediaScope.movies)).to eq([section])
+      end
+    end
   end
 
   describe '#enrich_sections for shows' do

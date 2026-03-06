@@ -15,10 +15,12 @@ module Plex
     end
 
     def update(media_id, fields, media_type:, file_path: nil)
-      before = snapshot_for(media_id, file_path: file_path)
+      metadata = @metadata_fetcher.fetch(media_id)
+      before = extract_snapshot(metadata, file_path: file_path)
+      resolved_file_path = validated_file_path(metadata, before, media_type:, requested_file_path: file_path)
       @http.put("/library/metadata/#{media_id}?#{build_update_query(fields, media_type: media_type)}")
       @cache.bump_enrich_version
-      after = snapshot_for(media_id, file_path: file_path)
+      after = snapshot_for(media_id, file_path: resolved_file_path)
 
       { before: before, after: after, unverified_fields: verify_fields(fields, after) }
     end
@@ -96,6 +98,19 @@ module Plex
       Plex::MediaTagFields::UPDATE_TAG_MAP.to_h do |field, plex_attribute|
         [field, Array(item[plex_attribute]).pluck('tag').compact_blank.sort]
       end
+    end
+
+    def validated_file_path(metadata, snapshot, media_type:, requested_file_path:)
+      return snapshot[:file_path] unless media_type_requires_file_path?(media_type)
+
+      resolver = MediaPartPathResolver.new(metadata, requested_file_path:)
+      raise MediaPartPathResolver::InvalidRowIdentityError, resolver.error_message if resolver.error_message
+
+      snapshot[:file_path]
+    end
+
+    def media_type_requires_file_path?(media_type)
+      media_type != 'show'
     end
   end
 end

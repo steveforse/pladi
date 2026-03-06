@@ -48,11 +48,7 @@ module Plex
     end
 
     def movies_for_section(section_key)
-      metadata_for("/library/sections/#{section_key}/all").flat_map do |item|
-        build_rows(item) do |media, part, plex_url|
-          @row_builder.build_movie(item:, media:, part:, plex_url:)
-        end
-      end
+      file_rows_for_section("/library/sections/#{section_key}/all", :build_movie)
     end
 
     def shows_for_section(section_key)
@@ -62,15 +58,19 @@ module Plex
     end
 
     def episodes_for_section(section_key)
-      metadata_for("/library/sections/#{section_key}/all?type=4").flat_map do |item|
-        build_rows(item) do |media, part, plex_url|
-          @row_builder.build_episode(item:, media:, part:, plex_url:)
-        end
-      end
+      file_rows_for_section("/library/sections/#{section_key}/all?type=4", :build_episode)
     end
 
     def metadata_for(path)
       @http.get(path).dig('MediaContainer', 'Metadata') || []
+    end
+
+    def file_rows_for_section(path, builder_method)
+      metadata_for(path).flat_map do |item|
+        build_rows(item) do |media, part, plex_url|
+          @row_builder.public_send(builder_method, item:, media:, part:, plex_url:)
+        end
+      end
     end
 
     def build_rows(item)

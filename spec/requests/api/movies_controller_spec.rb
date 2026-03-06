@@ -181,9 +181,20 @@ RSpec.describe Api::MoviesController do
       expect(response).to have_api_error(status: :unprocessable_content, message: 'Plex did not persist this update')
     end
 
+    it 'returns unprocessable when multipart row identity is invalid' do
+      invalid_row_identity_message = 'Requested media row does not match Plex metadata'
+      stub_invalid_row_identity!(invalid_row_identity_message)
+      patch_invalid_row_update(movie_params)
+      expect_invalid_row_identity_response(invalid_row_identity_message)
+    end
+
     context 'when update succeeds' do
       before do
-        allow(service).to receive(:update_media).and_return(before: {}, after: {}, unverified_fields: [])
+        allow(service).to receive(:update_media).and_return(
+          before: { file_path: '/movies/a.mkv' },
+          after: { file_path: '/movies/a.mkv' },
+          unverified_fields: []
+        )
         allow(MediaAuditLogRecorder).to receive(:record_changes)
         update_request
       end
@@ -226,5 +237,26 @@ RSpec.describe Api::MoviesController do
       get '/api/movies/123/background', params: { server_id: server.id }, as: :json
       expect(response).to have_http_status(:not_found)
     end
+  end
+
+  def invalid_row_request_params(movie_params)
+    {
+      server_id: server.id,
+      file_path: '/movies/missing.mkv',
+      movie: movie_params
+    }
+  end
+
+  def patch_invalid_row_update(movie_params)
+    patch '/api/movies/123', params: invalid_row_request_params(movie_params), as: :json
+  end
+
+  def stub_invalid_row_identity!(message)
+    allow(service).to receive(:update_media)
+      .and_raise(Plex::MediaPartPathResolver::InvalidRowIdentityError, message)
+  end
+
+  def expect_invalid_row_identity_response(message)
+    expect(response).to have_api_error(status: :unprocessable_content, message: message)
   end
 end

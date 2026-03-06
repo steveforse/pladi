@@ -5,6 +5,7 @@ module Api
     before_action :require_authentication
     rescue_from Api::Errors::ApiError, with: :render_api_error
     rescue_from Plex::HttpClient::RequestError, with: :render_plex_error
+    rescue_from Plex::MediaPartPathResolver::InvalidRowIdentityError, with: :render_plex_error
 
     private
 

@@ -2,6 +2,8 @@
 
 module Plex
   class MediaPartPathResolver
+    class InvalidRowIdentityError < StandardError; end
+
     def self.resolve(item, requested_file_path: nil)
       new(item, requested_file_path:).resolve
     end
@@ -17,6 +19,21 @@ module Plex
       return part_file_paths.first if part_file_paths.one?
 
       nil
+    end
+
+    def error_message
+      return 'Requested media row does not match Plex metadata' if invalid_requested_file_path?
+      return 'Multipart media updates require a file_path' if ambiguous_without_request?
+
+      nil
+    end
+
+    def invalid_requested_file_path?
+      requested_file_path.present? && part_file_paths.exclude?(requested_file_path)
+    end
+
+    def ambiguous_without_request?
+      requested_file_path.blank? && part_file_paths.many?
     end
 
     private

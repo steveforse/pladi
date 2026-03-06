@@ -2,6 +2,8 @@
 
 module Plex
   class Server
+    AMBIGUOUS_ITEM = Object.new.freeze
+
     delegate :enrich_sections, to: :enricher
     delegate :poster_for, :background_for, to: :image_store
 
@@ -27,7 +29,10 @@ module Plex
     end
 
     def detail_for(media_id, scope: MediaScope.movies, file_path: nil)
-      item = find_item(media_id, scope:, file_path:) || direct_item_reference(media_id, scope:, file_path:)
+      item = find_item(media_id, scope:, file_path:)
+      return nil if item.equal?(AMBIGUOUS_ITEM)
+
+      item ||= direct_item_reference(media_id, scope:, file_path:)
       return nil unless item
 
       @enricher.enrich_detail(media_id, media_type: item[:media_type], file_path: item[:file_path])
@@ -57,9 +62,11 @@ module Plex
     end
 
     def find_item(media_id, scope:, file_path: nil)
-      sections(scope:).flat_map { |section| section[:items] }.find do |item|
-        item[:id].to_s == media_id.to_s && (file_path.blank? || item[:file_path].to_s == file_path.to_s)
-      end
+      matches = matching_items(media_id, scope:, file_path:)
+      return matches.first if file_path.present? || matches.one?
+      return AMBIGUOUS_ITEM if matches.many?
+
+      nil
     end
 
     def direct_item_reference(media_id, scope:, file_path: nil)
@@ -86,8 +93,9 @@ module Plex
 
     def build_direct_item_reference(metadata, file_path:)
       media_type = metadata['type'].to_s
-      resolved_file_path = MediaPartPathResolver.resolve(metadata, requested_file_path: file_path)
-      return nil if row_file_path_required?(media_type) && resolved_file_path.blank?
+      resolver = MediaPartPathResolver.new(metadata, requested_file_path: file_path)
+      resolved_file_path = resolver.resolve
+      return nil if row_identity_invalid?(media_type, resolver)
 
       {
         id: metadata['ratingKey'].to_s,
@@ -96,8 +104,22 @@ module Plex
       }
     end
 
-    def row_file_path_required?(media_type)
-      media_type != 'show'
+    def matching_items(media_id, scope:, file_path:)
+      sections(scope:).flat_map { |section| section[:items] }.select do |item|
+        matching_item?(item, media_id, file_path)
+      end
+    end
+
+    def matching_item?(item, media_id, file_path)
+      item[:id].to_s == media_id.to_s && (file_path.blank? || item[:file_path].to_s == file_path.to_s)
+    end
+
+    def row_identity_invalid?(media_type, resolver)
+      return false if media_type == 'show'
+      return true if resolver.invalid_requested_file_path?
+      return true if resolver.ambiguous_without_request?
+
+      false
     end
   end
 end

@@ -229,4 +229,52 @@ RSpec.describe Plex::MediaUpdater do
       )
     end
   end
+
+  describe '#update row identity validation' do
+    let(:error_class) { Plex::MediaPartPathResolver::InvalidRowIdentityError }
+    let(:payload) do
+      {
+        'MediaContainer' => {
+          'Metadata' => [
+            {
+              'librarySectionID' => 1,
+              'librarySectionTitle' => 'Movies',
+              'title' => 'Example',
+              'Media' => [{ 'Part' => part_files.map { |file| { 'file' => file } } }]
+            }
+          ]
+        }
+      }
+    end
+
+    before do
+      allow(http_client).to receive(:get).with('/library/metadata/42').and_return(payload)
+      allow(http_client).to receive(:put)
+      allow(cache_store).to receive(:bump_enrich_version)
+    end
+
+    context 'when the requested file_path does not exist on Plex metadata' do
+      subject(:perform_update) do
+        updater.update('42', { title: 'New Title' }, media_type: 'movie', file_path: '/movies/missing.mkv')
+      end
+
+      let(:part_files) { ['/movies/a.mkv'] }
+
+      it 'raises a row identity error before updating Plex' do
+        expect { perform_update }.to raise_error(error_class, 'Requested media row does not match Plex metadata')
+      end
+    end
+
+    context 'when multipart media is updated without file_path' do
+      subject(:perform_update) do
+        updater.update('42', { title: 'New Title' }, media_type: 'movie')
+      end
+
+      let(:part_files) { ['/movies/a.mkv', '/movies/b.mkv'] }
+
+      it 'raises a row identity error instead of guessing a row' do
+        expect { perform_update }.to raise_error(error_class, 'Multipart media updates require a file_path')
+      end
+    end
+  end
 end
