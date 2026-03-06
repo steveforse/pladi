@@ -31,6 +31,7 @@ module Plex
       return nil unless item
 
       return @enricher.enrich_show(media_id) if item[:media_type] == 'show'
+      return @enricher.enrich_episode(media_id, item[:file_path]) if item[:media_type] == 'episode'
 
       @enricher.enrich_movie(media_id, item[:file_path])
     end

@@ -71,7 +71,7 @@ RSpec.describe Plex::ImageStore do
     end
 
     before do
-      allow(cache_store).to receive(:posters_cached).with(%w[1 2]).and_return(['2'])
+      allow(cache_store).to receive(:cached_poster_media_ids).with(%w[1 2]).and_return(['2'])
     end
 
     it 'returns cached and uncached posters by movie id' do
@@ -90,7 +90,7 @@ RSpec.describe Plex::ImageStore do
     end
 
     before do
-      allow(cache_store).to receive(:backgrounds_cached).with(%w[1 2]).and_return(['1'])
+      allow(cache_store).to receive(:cached_background_media_ids).with(%w[1 2]).and_return(['1'])
     end
 
     it 'returns cached and uncached backgrounds by movie id' do

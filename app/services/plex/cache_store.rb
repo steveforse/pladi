@@ -3,7 +3,7 @@
 module Plex
   class CacheStore
     CACHE_TTL = 30.days
-    CACHE_SCHEMA_VERSION = 3
+    CACHE_SCHEMA_VERSION = 4
 
     def initialize(server_id)
       @server_id = server_id
@@ -47,14 +47,14 @@ module Plex
       )
     end
 
-    def posters_cached(movie_ids)
-      keys = movie_ids.index_by { |id| key('poster', id) }
+    def cached_poster_media_ids(media_ids)
+      keys = media_ids.index_by { |id| key('poster', id) }
       hits = Rails.cache.read_multi(*keys.keys)
       keys.filter_map { |cache_key, id| id if hits.key?(cache_key) }.to_set
     end
 
-    def backgrounds_cached(movie_ids)
-      keys = movie_ids.index_by { |id| key('background', id) }
+    def cached_background_media_ids(media_ids)
+      keys = media_ids.index_by { |id| key('background', id) }
       hits = Rails.cache.read_multi(*keys.keys)
       keys.filter_map { |cache_key, id| id if hits.key?(cache_key) }.to_set
     end

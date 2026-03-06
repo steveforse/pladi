@@ -7,19 +7,33 @@ RSpec.describe Plex::Enricher do
 
   let(:http_client) { instance_double(Plex::HttpClient) }
   let(:cache_store) { instance_double(Plex::CacheStore) }
+  let(:support_doubles) do
+    {
+      metadata_fetcher: instance_double(Plex::MediaMetadataFetcher),
+      episode_detail_fetcher: instance_double(Plex::EpisodeDetailFetcher),
+      movie_concurrent_fetcher: instance_double(Plex::ConcurrentDetailFetcher),
+      episode_concurrent_fetcher: instance_double(Plex::ConcurrentDetailFetcher),
+      show_concurrent_fetcher: instance_double(Plex::ConcurrentDetailFetcher)
+    }
+  end
   let(:movie_detail_fetcher) { instance_double(Plex::MovieDetailFetcher) }
   let(:show_detail_fetcher) { instance_double(Plex::ShowDetailFetcher) }
-  let(:movie_concurrent_fetcher) { instance_double(Plex::ConcurrentDetailFetcher) }
-  let(:show_concurrent_fetcher) { instance_double(Plex::ConcurrentDetailFetcher) }
 
   before do
+    allow(Plex::MediaMetadataFetcher).to receive(:new).with(http_client).and_return(metadata_fetcher)
     allow(Plex::MovieDetailFetcher).to receive(:new).with(http_client).and_return(movie_detail_fetcher)
+    allow(Plex::EpisodeDetailFetcher).to receive(:new).with(http_client).and_return(episode_detail_fetcher)
     allow(Plex::ShowDetailFetcher).to receive(:new).with(http_client).and_return(show_detail_fetcher)
     allow(Plex::ConcurrentDetailFetcher).to receive(:new).with(
       cache_store: cache_store,
       detail_fetcher: movie_detail_fetcher,
       thread_count: described_class::ENRICH_THREADS
     ).and_return(movie_concurrent_fetcher)
+    allow(Plex::ConcurrentDetailFetcher).to receive(:new).with(
+      cache_store: cache_store,
+      detail_fetcher: episode_detail_fetcher,
+      thread_count: described_class::ENRICH_THREADS
+    ).and_return(episode_concurrent_fetcher)
     allow(Plex::ConcurrentDetailFetcher).to receive(:new).with(
       cache_store: cache_store,
       detail_fetcher: show_detail_fetcher,
@@ -60,6 +74,26 @@ RSpec.describe Plex::Enricher do
         expect(result[:subtitles]).to be_nil
       end
     end
+  end
+
+  def metadata_fetcher
+    support_doubles[:metadata_fetcher]
+  end
+
+  def episode_detail_fetcher
+    support_doubles[:episode_detail_fetcher]
+  end
+
+  def movie_concurrent_fetcher
+    support_doubles[:movie_concurrent_fetcher]
+  end
+
+  def episode_concurrent_fetcher
+    support_doubles[:episode_concurrent_fetcher]
+  end
+
+  def show_concurrent_fetcher
+    support_doubles[:show_concurrent_fetcher]
   end
 
   describe '#enrich_sections' do
@@ -158,7 +192,7 @@ RSpec.describe Plex::Enricher do
         allow(cache_store).to receive(:key).with('section', 'show', 'shows', '13', 5331, 'enriched',
                                                  8).and_return('episode-section-cache-key')
         allow(cache_store).to receive(:fetch).with('episode-section-cache-key').and_yield
-        allow(movie_concurrent_fetcher).to receive(:fetch)
+        allow(episode_concurrent_fetcher).to receive(:fetch)
           .with(episode_section[:items])
           .and_return('e1' => stream_detail)
       end
@@ -190,6 +224,28 @@ RSpec.describe Plex::Enricher do
       def result_episode
         enricher.enrich_sections([episode_section], scope: Plex::MediaScope.shows('shows')).first[:items].first
       end
+    end
+  end
+
+  describe '#enrich_episode' do
+    subject(:result) { enricher.enrich_episode('e1', '/tv/show/s01e01.mkv') }
+
+    before do
+      allow(episode_detail_fetcher).to receive(:fetch).with('e1').and_return(
+        summary: 'Pilot summary',
+        subtitles_by_file: { '/tv/show/s01e01.mkv' => 'English (SRT)' }
+      )
+    end
+
+    it { expect(result[:summary]).to eq('Pilot summary') }
+    it { expect(result[:subtitles]).to eq('English (SRT)') }
+  end
+
+  describe '#metadata_for' do
+    it 'uses the shared metadata fetcher' do
+      allow(metadata_fetcher).to receive(:fetch).with('42').and_return('type' => 'movie')
+
+      expect(enricher.metadata_for('42')).to eq('type' => 'movie')
     end
   end
 end

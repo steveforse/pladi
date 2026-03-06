@@ -70,6 +70,7 @@ RSpec.describe Plex::Server do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
       allow(enricher).to receive(:enrich_movie).with('7', '/movies/7.mkv').and_return(summary: 'enriched')
+      allow(enricher).to receive(:enrich_episode)
     end
 
     it 'returns nil when movie is not found' do
@@ -88,6 +89,22 @@ RSpec.describe Plex::Server do
       allow(enricher).to receive(:enrich_show).with('7').and_return(summary: 'show enriched')
 
       expect(plex_server_service.detail_for('7', scope: shows_scope)).to eq(summary: 'show enriched')
+    end
+
+    context 'when the cached section row is an episode' do
+      before do
+        allow(cache_store).to receive(:key).with('sections', 'show', 'episodes').and_return('episode-sections-key')
+        allow(cache_store).to receive(:fetch).with('episode-sections-key')
+          .and_return([{ items: [{ id: '7', media_type: 'episode', file_path: '/tv/show/s01e01.mkv' }] }])
+        allow(enricher).to receive(:enrich_episode)
+          .with('7', '/tv/show/s01e01.mkv')
+          .and_return(summary: 'episode enriched')
+      end
+
+      it 'enriches and returns episode detail via episode path' do
+        expect(plex_server_service.detail_for('7', scope: Plex::MediaScope.shows('episodes')))
+          .to eq(summary: 'episode enriched')
+      end
     end
 
     context 'when the cached section list misses the item' do

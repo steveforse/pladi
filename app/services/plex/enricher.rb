@@ -2,8 +2,6 @@
 
 module Plex
   class Enricher
-    delegate :metadata_for, to: :@movie_detail_fetcher
-
     STREAM_DETAIL_KEYS = %i[
       subtitles_by_file
       audio_by_file
@@ -16,9 +14,12 @@ module Plex
 
     def initialize(http_client, cache_store)
       @cache = cache_store
+      @metadata_fetcher = MediaMetadataFetcher.new(http_client)
       @movie_detail_fetcher = MovieDetailFetcher.new(http_client)
+      @episode_detail_fetcher = EpisodeDetailFetcher.new(http_client)
       @show_detail_fetcher = ShowDetailFetcher.new(http_client)
       @concurrent_movie_detail_fetcher = build_concurrent_fetcher(cache_store, @movie_detail_fetcher)
+      @concurrent_episode_detail_fetcher = build_concurrent_fetcher(cache_store, @episode_detail_fetcher)
       @concurrent_show_detail_fetcher = build_concurrent_fetcher(cache_store, @show_detail_fetcher)
     end
 
@@ -31,12 +32,25 @@ module Plex
       merge_detail({}, detail, file_path: file_path)
     end
 
+    def enrich_episode(episode_id, file_path)
+      detail = fetch_episode_detail(episode_id)
+      merge_detail({}, detail, file_path: file_path)
+    end
+
     def enrich_show(show_id)
       fetch_show_detail(show_id)
     end
 
+    def metadata_for(media_id)
+      @metadata_fetcher.fetch(media_id)
+    end
+
     def fetch_movie_detail(movie_id)
       @movie_detail_fetcher.fetch(movie_id)
+    end
+
+    def fetch_episode_detail(episode_id)
+      @episode_detail_fetcher.fetch(episode_id)
     end
 
     def fetch_show_detail(show_id)
@@ -80,6 +94,7 @@ module Plex
 
     def concurrent_fetcher_for(items)
       return @concurrent_show_detail_fetcher if items.all? { |item| item[:media_type] == 'show' }
+      return @concurrent_episode_detail_fetcher if items.all? { |item| item[:media_type] == 'episode' }
 
       @concurrent_movie_detail_fetcher
     end

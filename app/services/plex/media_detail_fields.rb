@@ -3,6 +3,7 @@
 module Plex
   module MediaDetailFields
     MOVIE_FIELDS = %i[summary content_rating edition].freeze
+    EPISODE_FIELDS = %i[summary content_rating].freeze
     SHOW_FIELDS = %i[
       summary content_rating studio tagline season_count episode_count viewed_episode_count
     ].freeze

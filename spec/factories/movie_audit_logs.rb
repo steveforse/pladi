@@ -9,8 +9,6 @@ FactoryBot.define do
     media_type { 'movie' }
     media_id { '100' }
     media_title { 'Example Movie' }
-    movie_id { '100' }
-    movie_title { 'Example Movie' }
     field_name { 'title' }
     field_type { 'scalar' }
     old_value { 'Old Title' }

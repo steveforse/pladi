@@ -17,7 +17,7 @@ RSpec.describe MovieAuditLog do
       {
         section_id: '10',
         section_title: 'Movies',
-        movie_title: 'Before Movie',
+        media_title: 'Before Movie',
         'title' => 'Before Title',
         'genres' => %w[Comedy Drama]
       }
@@ -26,7 +26,7 @@ RSpec.describe MovieAuditLog do
       {
         section_id: '10',
         section_title: 'Movies',
-        movie_title: 'After Movie',
+        media_title: 'After Movie',
         'title' => 'After Title',
         'genres' => %w[Drama Thriller]
       }

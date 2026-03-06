@@ -5,6 +5,7 @@ class MediaAuditLog < ApplicationRecord
 
   belongs_to :user
   belongs_to :plex_server
+  before_validation :sync_legacy_movie_columns
 
   scope :recent, -> { order(created_at: :desc) }
 
@@ -19,7 +20,6 @@ class MediaAuditLog < ApplicationRecord
         user: user, plex_server: plex_server,
         section_id: after[:section_id], section_title: after[:section_title],
         media_type: media_type, media_id: media_id, media_title: media_title_from(after),
-        **legacy_movie_storage_attributes(media_id:, media_title: media_title_from(after)),
         field_name: field, field_type: type,
         old_value: old_val, new_value: new_val
       )
@@ -39,12 +39,14 @@ class MediaAuditLog < ApplicationRecord
   private_class_method :extract_change
 
   def self.media_title_from(snapshot)
-    snapshot[:media_title] || snapshot[:movie_title]
+    snapshot[:media_title]
   end
   private_class_method :media_title_from
 
-  def self.legacy_movie_storage_attributes(media_id:, media_title:)
-    { movie_id: media_id, movie_title: media_title }
+  private
+
+  def sync_legacy_movie_columns
+    self.movie_id = media_id if media_id.present?
+    self.movie_title = media_title if media_title.present?
   end
-  private_class_method :legacy_movie_storage_attributes
 end

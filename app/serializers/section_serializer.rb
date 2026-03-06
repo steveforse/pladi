@@ -5,7 +5,7 @@ class SectionSerializer
     sections.map do |section|
       {
         title: section[:title],
-        items: Array(section[:items] || section[:movies])
+        items: Array(section[:items])
       }
     end
   end

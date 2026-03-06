@@ -7,7 +7,7 @@ RSpec.describe Plex::CacheStore do
 
   describe '#key' do
     it 'builds a namespaced cache key' do
-      expect(cache_store.key('section', '1')).to eq('plex/server/10/v3/section/1')
+      expect(cache_store.key('section', '1')).to eq('plex/server/10/v4/section/1')
     end
   end
 
@@ -73,7 +73,7 @@ RSpec.describe Plex::CacheStore do
     end
 
     it 'writes incremented version back to cache' do
-      expect(Rails.cache).to have_received(:write).with('plex/server/10/v3/enrich_version', 3,
+      expect(Rails.cache).to have_received(:write).with('plex/server/10/v4/enrich_version', 3,
                                                         expires_in: Plex::CacheStore::CACHE_TTL)
     end
   end
@@ -86,28 +86,28 @@ RSpec.describe Plex::CacheStore do
 
     it 'uses section key with enrich version' do
       cache_store.cached_items_for('2', 100) { [] }
-      expect(Rails.cache).to have_received(:fetch).with('plex/server/10/v3/section/movie/shows/2/100/1',
+      expect(Rails.cache).to have_received(:fetch).with('plex/server/10/v4/section/movie/shows/2/100/1',
                                                         expires_in: Plex::CacheStore::CACHE_TTL)
     end
   end
 
-  describe '#posters_cached' do
+  describe '#cached_poster_media_ids' do
     before do
-      allow(Rails.cache).to receive(:read_multi).and_return('plex/server/10/v3/poster/2' => 'hit')
+      allow(Rails.cache).to receive(:read_multi).and_return('plex/server/10/v4/poster/2' => 'hit')
     end
 
     it 'returns only ids with cached posters' do
-      expect(cache_store.posters_cached(%w[1 2 3])).to eq(Set.new(['2']))
+      expect(cache_store.cached_poster_media_ids(%w[1 2 3])).to eq(Set.new(['2']))
     end
   end
 
-  describe '#backgrounds_cached' do
+  describe '#cached_background_media_ids' do
     before do
-      allow(Rails.cache).to receive(:read_multi).and_return('plex/server/10/v3/background/1' => 'hit')
+      allow(Rails.cache).to receive(:read_multi).and_return('plex/server/10/v4/background/1' => 'hit')
     end
 
     it 'returns only ids with cached backgrounds' do
-      expect(cache_store.backgrounds_cached(%w[1 2 3])).to eq(Set.new(['1']))
+      expect(cache_store.cached_background_media_ids(%w[1 2 3])).to eq(Set.new(['1']))
     end
   end
 end

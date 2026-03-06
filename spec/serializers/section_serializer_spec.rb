@@ -16,5 +16,11 @@ RSpec.describe SectionSerializer do
         [{ title: 'Movies', items: [{ id: 'm1' }] }, { title: 'TV', items: [] }]
       )
     end
+
+    it 'does not fall back to legacy movies keys' do
+      expect(described_class.serialize([{ title: 'Legacy', movies: [{ id: 'm1' }] }])).to eq(
+        [{ title: 'Legacy', items: [] }]
+      )
+    end
   end
 end
