@@ -2,6 +2,7 @@ import React from 'react'
 import type { ActiveFilter, FilterFieldDef, FilterFieldId, FilterGroup, FilterOp } from '@/lib/types'
 import { FILTER_FIELDS, STRING_OPS, NUMERIC_OPS, NULL_OPS, defaultOp } from '@/lib/filters'
 import { FieldPicker } from './FieldPicker'
+import DatePicker from '@/components/ui/date-picker'
 
 export function FilterRow({
   filter,
@@ -51,13 +52,23 @@ export function FilterRow({
 
       {!isNullOp && (
         <div className="flex items-center gap-1">
-          <input
-            type={fieldDef.type === 'numeric' ? 'number' : fieldDef.type === 'date' ? 'date' : 'text'}
-            value={filter.value}
-            onChange={(e) => onChange({ ...filter, value: e.target.value })}
-            placeholder="value"
-            className="border rounded px-2 py-1 text-sm bg-background w-32"
-          />
+          {fieldDef.type === 'date' ? (
+            <DatePicker
+              value={filter.value}
+              onChange={(value) => onChange({ ...filter, value })}
+              placeholder="Pick a date"
+              allowClear
+              buttonClassName="h-9 min-w-[176px] justify-start text-sm"
+            />
+          ) : (
+            <input
+              type={fieldDef.type === 'numeric' ? 'number' : 'text'}
+              value={filter.value}
+              onChange={(e) => onChange({ ...filter, value: e.target.value })}
+              placeholder="value"
+              className="border rounded px-2 py-1 text-sm bg-background w-32"
+            />
+          )}
           {fieldDef.unit && (
             <span className="text-xs text-muted-foreground">{fieldDef.unit}</span>
           )}

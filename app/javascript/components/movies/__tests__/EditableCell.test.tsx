@@ -174,4 +174,5 @@ describe('EditableCell', () => {
     expect(await screen.findByText('Save failed')).toBeInTheDocument()
     view.unmount()
   })
+
 })

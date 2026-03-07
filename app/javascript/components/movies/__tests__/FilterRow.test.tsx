@@ -79,4 +79,5 @@ describe('FilterRow', () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ value: '120' }))
     view.unmount()
   })
+
 })

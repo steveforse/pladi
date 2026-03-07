@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Loader2, X } from 'lucide-react'
+import DatePicker from '@/components/ui/date-picker'
 
 interface Props {
   value: string | string[] | null
@@ -55,6 +56,26 @@ export function EditableCell({ value, fieldType, onSave, renderView, className }
     setSaving(true)
     try {
       await onSave(newValue)
+      setEditing(false)
+      setError(null)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSaveScalar(nextValue: string) {
+    if (saving) return
+    const originalScalar = Array.isArray(value) ? value.join(', ') : (value ?? '')
+    if (nextValue === originalScalar) {
+      setEditing(false)
+      return
+    }
+
+    setSaving(true)
+    try {
+      await onSave(nextValue)
       setEditing(false)
       setError(null)
     } catch (err: unknown) {
@@ -156,6 +177,26 @@ export function EditableCell({ value, fieldType, onSave, renderView, className }
         <div className="flex items-center gap-1">
           <span className="text-xs">{editValue}</span>
           <Loader2 size={12} className="animate-spin text-muted-foreground" />
+        </div>
+      ) : fieldType === 'date' ? (
+        <div className="flex items-center gap-1">
+          <DatePicker
+            value={editValue}
+            onChange={(nextValue) => {
+              setEditValue(nextValue)
+              void handleSaveScalar(nextValue)
+            }}
+            defaultOpen
+            allowClear
+            buttonClassName="h-8 min-w-[172px] justify-start bg-transparent text-xs"
+          />
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="btn px-2 py-1 text-xs"
+          >
+            Cancel
+          </button>
         </div>
       ) : (
         <input
