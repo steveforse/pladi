@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Plex
+  # rubocop:disable Metrics/ClassLength
   class Server
     AMBIGUOUS_ITEM = Object.new.freeze
 
@@ -159,4 +160,5 @@ module Plex
       false
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

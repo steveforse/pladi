@@ -234,7 +234,9 @@ RSpec.describe Plex::Server do
     before do
       allow(cache_store).to receive(:key).with('sections', 'movie', 'shows').and_return('sections-key')
       allow(cache_store).to receive(:fetch).with('sections-key').and_return(sections)
-      allow(enricher).to receive(:enrich_sections).with(sections, scope: movie_scope).and_return(sections)
+      allow(enricher).to receive(:progressive_enriched_sections).with(sections, scope: movie_scope).and_return(
+        { sections: sections, pending_section_ids: [] }
+      )
       allow(image_store).to receive(:partition_posters_by_cache).with(sections).and_return(
         [[{ id: '1' }], [{ id: '2' }]]
       )
@@ -259,12 +261,86 @@ RSpec.describe Plex::Server do
       expect(plex_server_service.enriched_library[:uncached_background_items]).to eq([{ id: '1' }])
     end
 
+    # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+    it 'schedules warm enrichment for pending sections' do
+      allow(enricher).to receive(:progressive_enriched_sections).with(sections, scope: movie_scope).and_return(
+        { sections: sections, pending_section_ids: ['2'] }
+      )
+      allow(WarmLibraryEnrichmentJob).to receive(:perform_later)
+
+      expect(plex_server_service.enriched_library[:pending_section_ids]).to eq(['2'])
+      expect(WarmLibraryEnrichmentJob).to have_received(:perform_later).with(9, movie_scope.to_h, ['2'])
+    end
+    # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
+
+    # rubocop:disable RSpec/ExampleLength
     it 'omits image cache payload for shows' do
       allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
       allow(cache_store).to receive(:fetch).with('show-sections-key').and_return(sections)
-      allow(enricher).to receive(:enrich_sections).with(sections, scope: shows_scope).and_return(sections)
+      allow(enricher).to receive(:progressive_enriched_sections)
+        .with(sections, scope: shows_scope)
+        .and_return({ sections:, pending_section_ids: [] })
 
-      expect(plex_server_service.enriched_library(scope: shows_scope)).to eq(sections: sections)
+      expect(plex_server_service.enriched_library(scope: shows_scope)).to eq(sections:, pending_section_ids: [])
+    end
+    # rubocop:enable RSpec/ExampleLength
+  end
+
+  describe '#stream_enrich_section' do
+    let(:section) do
+      {
+        id: '10',
+        updated_at: 1234,
+        items: [
+          { id: '1', title: 'First' },
+          { id: '2', title: 'Second' }
+        ]
+      }
+    end
+
+    before do
+      allow(cache_store).to receive(:enrich_version).and_return(7)
+      allow(cache_store).to receive(:key)
+        .with('section', 'movie', 'shows', '10', 1234, 'enriched', 7)
+        .and_return('enriched-key')
+      allow(cache_store).to receive(:write)
+      allow(enricher).to receive(:enrich_items).with([{ id: '1', title: 'First' }])
+        .and_return([{ id: '1', summary: 'A' }])
+      allow(enricher).to receive(:enrich_items).with([{ id: '2', title: 'Second' }])
+        .and_return([{ id: '2', summary: 'B' }])
+    end
+
+    # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+    it 'enriches batches, yields them, and writes the merged section to cache' do
+      yielded_batches = []
+
+      result = plex_server_service.stream_enrich_section(section, batch_size: 1) do |batch|
+        yielded_batches << batch
+      end
+
+      expect(yielded_batches).to eq([[{ id: '1', summary: 'A' }], [{ id: '2', summary: 'B' }]])
+      expect(result).to eq(section.merge(items: [{ id: '1', summary: 'A' }, { id: '2', summary: 'B' }]))
+      expect(cache_store).to have_received(:write).with('enriched-key', result)
+    end
+    # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
+
+    it 'enriches and caches the section even when no block is given' do
+      allow(enricher).to receive(:enrich_items).with(section[:items]).and_return(
+        [{ id: '1', summary: 'A' }, { id: '2', summary: 'B' }]
+      )
+
+      result = plex_server_service.stream_enrich_section(section, batch_size: 2)
+
+      expect(result).to eq(section.merge(items: [{ id: '1', summary: 'A' }, { id: '2', summary: 'B' }]))
+    end
+  end
+
+  describe '#enrich_section' do
+    it 'delegates section enrichment to the enricher' do
+      section = { id: '10', items: [] }
+      allow(enricher).to receive(:enrich_section).with(section, scope: movie_scope).and_return(section)
+
+      expect(plex_server_service.enrich_section(section, scope: movie_scope)).to eq(section)
     end
   end
 

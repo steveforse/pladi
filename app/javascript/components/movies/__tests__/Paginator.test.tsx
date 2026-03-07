@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Paginator } from '@/components/movies/Paginator'
@@ -51,7 +51,8 @@ describe('Paginator', () => {
     expect(onPage).toHaveBeenNthCalledWith(3, 3)
     expect(onPage).toHaveBeenNthCalledWith(4, 4)
 
-    await userEvent.selectOptions(screen.getByRole('combobox'), '50')
+    await userEvent.click(screen.getByRole('button', { name: '25 per page' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '50 per page' }))
     expect(onPageSize).toHaveBeenCalledWith(50)
     view.unmount()
   })
@@ -71,10 +72,11 @@ describe('Paginator', () => {
     expect(screen.getByText('10 movies')).toBeInTheDocument()
     expect(screen.queryByText(/page 1 of 1/)).not.toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: '«' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '‹' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '›' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '»' })).toBeDisabled()
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.find((button) => button.textContent === '«')).toBeDisabled()
+    expect(buttons.find((button) => button.textContent === '‹')).toBeDisabled()
+    expect(buttons.find((button) => button.textContent === '›')).toBeDisabled()
+    expect(buttons.find((button) => button.textContent === '»')).toBeDisabled()
     view.unmount()
   })
 })

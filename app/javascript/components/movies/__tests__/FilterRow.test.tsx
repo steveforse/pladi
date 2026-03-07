@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { FilterRow } from '@/components/movies/FilterRow'
@@ -71,7 +71,8 @@ describe('FilterRow', () => {
 
     expect(screen.getByText('min')).toBeInTheDocument()
 
-    await userEvent.selectOptions(screen.getByRole('combobox'), 'lt')
+    await userEvent.click(screen.getByRole('button', { name: '≥' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '<' }))
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ op: 'lt', value: '' }))
 
     const input = screen.getByPlaceholderText('value')

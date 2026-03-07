@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Plex
+  # rubocop:disable Metrics/ClassLength
   class Enricher
     DETAIL_PARSERS = {
       'movie' => MovieDetailParser,
@@ -152,4 +153,5 @@ module Plex
       }.compact
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end
