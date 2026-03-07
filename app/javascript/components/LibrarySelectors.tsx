@@ -31,7 +31,7 @@ export default function LibrarySelectors({
         <label className="text-sm font-medium text-muted-foreground">Server:</label>
         <Select
           value={selectedServerId ?? ''}
-          onChange={(e) => onServerChange(Number(e.target.value))}
+          onValueChange={(value) => onServerChange(Number(value))}
           className="min-w-48"
         >
           {servers.map((server) => (
@@ -45,7 +45,7 @@ export default function LibrarySelectors({
         <Select
           aria-label="Library Type"
           value={libraryType}
-          onChange={(e) => onLibraryTypeChange(e.target.value as 'movies' | 'shows')}
+          onValueChange={(value) => onLibraryTypeChange(value as 'movies' | 'shows')}
           className="min-w-44"
         >
           <option value="movies">Movies</option>
@@ -57,7 +57,7 @@ export default function LibrarySelectors({
         <label className="text-sm font-medium text-muted-foreground">Library:</label>
         <Select
           value={selectedLibrary ?? ''}
-          onChange={(e) => onLibraryChange(e.target.value === '' ? null : e.target.value)}
+          onValueChange={(value) => onLibraryChange(value === '' ? null : value)}
           className="min-w-52"
         >
           {libraries.map((library) => (

@@ -22,10 +22,11 @@ type ParsedItem = ParsedOption | ParsedGroup
 
 export type SelectProps = Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'children'> & {
   children: React.ReactNode
+  onValueChange?: (value: string) => void
 }
 
 export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
-  { className, children, disabled, onChange, value, 'aria-label': ariaLabel, ...props },
+  { className, children, disabled, onChange, onValueChange, value, 'aria-label': ariaLabel, ...props },
   ref
 ) {
   const [open, setOpen] = React.useState(false)
@@ -36,6 +37,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function 
 
   function handleSelect(nextValue: string) {
     if (disabled) return
+    onValueChange?.(nextValue)
     onChange?.({
       target: { value: nextValue },
       currentTarget: { value: nextValue },
@@ -95,7 +97,18 @@ function renderOption(
       key={option.value}
       type="button"
       disabled={option.disabled}
-      onClick={() => onSelect(option.value)}
+      onPointerDown={(event) => {
+        if (event.button !== 0 || option.disabled) return
+        event.preventDefault()
+        onSelect(option.value)
+      }}
+      onKeyDown={(event) => {
+        if (option.disabled) return
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect(option.value)
+        }
+      }}
       className={cn(
         'flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-sm transition-colors',
         selected

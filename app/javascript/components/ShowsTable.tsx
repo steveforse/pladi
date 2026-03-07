@@ -198,9 +198,9 @@ export default function ShowsTable({
             <Select
               aria-label="TV Mode"
               value={viewMode}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 clearSelection()
-                const nextMode = event.target.value as ShowsViewMode
+                const nextMode = value as ShowsViewMode
                 tableState.handleViewModeChange(nextMode)
                 setViewMode(nextMode)
               }}

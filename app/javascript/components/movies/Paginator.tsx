@@ -44,7 +44,7 @@ export function Paginator({
       </div>
       <Select
         value={pageSize}
-        onChange={(e) => onPageSize(Number(e.target.value))}
+        onValueChange={(value) => onPageSize(Number(value))}
         className="min-w-32"
       >
         {[25, 50, 100, 250].map((n) => (

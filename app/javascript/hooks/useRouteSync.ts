@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 export function useRouteSync<TState>({
   routeServerId,
@@ -23,13 +23,24 @@ export function useRouteSync<TState>({
   state: TState
   onRouteStateChange?: (state: TState) => void
 }) {
+  const prevRouteServerIdRef = useRef<typeof routeServerId>(undefined)
+  const prevRouteLibraryRef = useRef<typeof routeLibrary>(undefined)
+
   useEffect(() => {
+    const routeServerChanged = prevRouteServerIdRef.current !== routeServerId
+    prevRouteServerIdRef.current = routeServerId
+
+    if (!routeServerChanged) return
     if (routeServerId == null || selectedServerId == null || routeServerId === selectedServerId) return
     if (!servers.some((server) => server.id === routeServerId)) return
     onServerChange(routeServerId)
   }, [routeServerId, selectedServerId, servers, onServerChange])
 
   useEffect(() => {
+    const routeLibraryChanged = prevRouteLibraryRef.current !== routeLibrary
+    prevRouteLibraryRef.current = routeLibrary
+
+    if (!routeLibraryChanged) return
     if (routeLibrary === undefined || selectedLibrary === routeLibrary) return
     if (routeLibrary === null) {
       onLibraryChange(null)

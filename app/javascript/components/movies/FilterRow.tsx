@@ -39,7 +39,7 @@ export function FilterRow({
 
       <Select
         value={filter.op}
-        onChange={(e) => onChange({ ...filter, op: e.target.value as FilterOp, value: '' })}
+        onValueChange={(value) => onChange({ ...filter, op: value as FilterOp, value: '' })}
         className="px-2 min-w-28"
       >
         {!fieldDef.nullOnly && typeOps.map((o) => (
