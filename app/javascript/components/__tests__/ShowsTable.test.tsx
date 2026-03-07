@@ -79,7 +79,8 @@ describe('ShowsTable', () => {
     const view = render(<ShowsTable onMovies={onMovies} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
 
     expect(screen.getByText('Severance')).toBeInTheDocument()
-    await userEvent.selectOptions(within(view.container).getByLabelText('Library Type'), 'movies')
+    await userEvent.click(within(view.container).getByRole('button', { name: 'Media Type' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Movies' }))
     expect(onMovies).toHaveBeenCalledTimes(1)
   })
 
@@ -295,7 +296,8 @@ describe('ShowsTable', () => {
     })
 
     const view = render(<ShowsTable onMovies={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
-    await userEvent.selectOptions(within(view.container).getByRole('combobox', { name: 'TV Mode' }), 'episodes')
+    await userEvent.click(within(view.container).getByRole('button', { name: 'TV Mode' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Episodes' }))
 
     await waitFor(() => {
       expect(within(view.container).getByRole('columnheader', { name: /Show Title/ })).toBeInTheDocument()

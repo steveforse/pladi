@@ -344,7 +344,7 @@ describe('MoviesTable', () => {
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Backup' }))
     expect(baseData.handleServerChange).toHaveBeenCalledWith(2)
 
-    const libraryTypeSelect = screen.getByRole('button', { name: 'Library Type' })
+    const libraryTypeSelect = screen.getByRole('button', { name: 'Media Type' })
     await userEvent.click(libraryTypeSelect)
     await userEvent.click(screen.getByRole('button', { name: 'TV Shows' }))
     expect(onShows).toHaveBeenCalledTimes(1)
