@@ -11,16 +11,19 @@ vi.mock('@/components/MoviesTable', () => ({
     onShows,
     onLogout,
     downloadImages,
+    routeLibrary,
   }: {
     onSettings: () => void
     onHistory: () => void
     onShows: () => void
     onLogout: () => void
     downloadImages: boolean
+    routeLibrary?: string | null
   }) => (
     <div>
       <div>movies-page</div>
       <div>download-images:{String(downloadImages)}</div>
+      <div>route-library:{routeLibrary === undefined ? 'undefined' : String(routeLibrary)}</div>
       <button onClick={onSettings}>to-settings</button>
       <button onClick={onHistory}>to-history</button>
       <button onClick={onShows}>to-shows</button>
@@ -228,6 +231,22 @@ describe('App auth bootstrap', () => {
     expect(await screen.findByText('history-page')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'history-settings' }))
     expect(await screen.findByText('settings-page')).toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('preserves all-libraries selection from the route on reload', async () => {
+    window.history.replaceState({}, '', '/movies?library=all')
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ email_address: 'user@example.com', download_images: false }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const view = render(<App />)
+
+    expect(await screen.findByText('movies-page')).toBeInTheDocument()
+    expect(screen.getByText('route-library:null')).toBeInTheDocument()
     view.unmount()
   })
 })

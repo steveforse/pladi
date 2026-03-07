@@ -109,16 +109,22 @@ function AuthenticatedRoutes({
 
 type ParsedLibraryRoute = {
   routeServerId: number | null
-  routeLibrary: string | undefined
+  routeLibrary: string | null | undefined
   searchParamsKey: string
 }
 
 type SharedRouteState = { serverId: number | null; library: string | null }
+const ALL_LIBRARIES_PARAM = 'all'
 
 function parseLibraryRoute(searchParams: URLSearchParams): ParsedLibraryRoute {
   const routeServerIdRaw = Number(searchParams.get('server'))
   const routeServerId = Number.isFinite(routeServerIdRaw) && routeServerIdRaw > 0 ? routeServerIdRaw : null
-  const routeLibrary = searchParams.has('library') ? searchParams.get('library') : undefined
+  const routeLibraryParam = searchParams.get('library')
+  const routeLibrary = !searchParams.has('library')
+    ? undefined
+    : routeLibraryParam === ALL_LIBRARIES_PARAM
+      ? null
+      : routeLibraryParam
   return {
     routeServerId,
     routeLibrary,
@@ -130,8 +136,8 @@ function applySharedLibraryParams(searchParamsKey: string, state: SharedRouteSta
   const next = new URLSearchParams(searchParamsKey)
   if (state.serverId) next.set('server', String(state.serverId))
   else next.delete('server')
-  if (state.library) next.set('library', state.library)
-  else next.delete('library')
+  if (state.library === null) next.set('library', ALL_LIBRARIES_PARAM)
+  else next.set('library', state.library)
   next.delete('type')
   return next
 }
