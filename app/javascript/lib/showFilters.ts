@@ -6,6 +6,7 @@ export const SHOW_FILTER_FIELD_GROUPS: FilterGroup[] = [
     fields: [
       { id: 'id', label: 'ID', type: 'string' },
       { id: 'episode_count', label: 'Episodes', type: 'numeric' },
+      { id: 'added_at', label: 'Added At', type: 'date' },
       { id: 'updated_at', label: 'Last Updated', type: 'date' },
       { id: 'original_title', label: 'Original Title', type: 'string' },
       { id: 'originally_available', label: 'Originally Available', type: 'date' },
@@ -55,6 +56,7 @@ export const EPISODE_FILTER_FIELD_GROUPS: FilterGroup[] = [
       { id: 'duration', label: 'Duration', type: 'numeric', unit: 'min' },
       { id: 'episode_count', label: 'Episode', type: 'numeric' },
       { id: 'title', label: 'Episode Title', type: 'string' },
+      { id: 'added_at', label: 'Added At', type: 'date' },
       { id: 'updated_at', label: 'Last Updated', type: 'date' },
       { id: 'originally_available', label: 'Originally Available', type: 'date' },
       { id: 'season_count', label: 'Season', type: 'numeric' },

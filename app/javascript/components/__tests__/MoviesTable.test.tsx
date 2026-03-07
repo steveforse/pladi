@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MoviesTable from '@/components/MoviesTable'
@@ -222,7 +222,8 @@ function setupHookMocks({
 
 describe('MoviesTable', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    cleanup()
+    vi.resetAllMocks()
     vi.stubGlobal('localStorage', createStorageMock())
   })
 
@@ -253,11 +254,27 @@ describe('MoviesTable', () => {
   })
 
   it('renders main table state', () => {
-    setupHookMocks()
+    setupHookMocks({
+      moviesData: {
+        sections: [{
+          title: 'Movies',
+          items: [
+            { id: 'm1', title: 'Alpha', file_path: '/x', size: 2_147_483_648, duration: 7_200_000, year: 2024, originally_available: '2024-01-01', added_at: 1_722_470_400, view_count: 1 },
+            { id: 'm2', title: 'Beta', file_path: '/y', size: 1_073_741_824, duration: 5_400_000, year: 1984, originally_available: '1984-06-08', added_at: 1_704_067_200, view_count: 0 },
+          ],
+        }],
+      },
+    })
     const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
     expect(screen.getAllByRole('button', { name: 'paginator-page' })).toHaveLength(2)
     expect(screen.getByText('header-row')).toBeInTheDocument()
-    expect(screen.getByText('Alpha')).toBeInTheDocument()
+    expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0)
+    expect(screen.getByRole('region', { name: 'Movie statistics' })).toBeInTheDocument()
+    expect(screen.getByText('Statistics For Movies')).toBeInTheDocument()
+    expect(screen.getByText('3.00 GB')).toBeInTheDocument()
+    expect(screen.getByText('1 / 2 (50%)')).toBeInTheDocument()
+    expect(screen.getByText('Beta (1-1-2024)')).toBeInTheDocument()
+    expect(screen.getByText('Alpha (8-1-2024)')).toBeInTheDocument()
     view.unmount()
   })
 
@@ -297,7 +314,7 @@ describe('MoviesTable', () => {
     const { baseData } = setupHookMocks()
     const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
 
-    await userEvent.click(screen.getByRole('button', { name: 'row-toggle' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'row-toggle' })[0])
     expect(screen.getByRole('button', { name: 'Bulk Edit (1)' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Bulk Edit (1)' }))

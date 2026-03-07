@@ -4,7 +4,7 @@ import { buildColumnGroups, MOVIE_HEADER_COLUMN_META } from '@/lib/mediaColumns'
 export const DEFAULT_COL_ORDER = Array.from(MOVIE_HEADER_COLUMN_META.keys())
 
 export const COLUMN_GROUPS = buildColumnGroups([
-  { label: 'General', columns: ['id', 'duration', 'edition', 'updated_at', 'originally_available', 'original_title', 'sort_title', 'year'] },
+  { label: 'General', columns: ['id', 'duration', 'edition', 'added_at', 'updated_at', 'originally_available', 'original_title', 'sort_title', 'year'] },
   { label: 'Audio', columns: ['audio_bitrate', 'audio_channels', 'audio_codec', 'audio_language', 'audio_tracks', 'subtitles'] },
   { label: 'Credits', columns: ['directors', 'producers', 'writers'] },
   { label: 'Details', columns: ['collections', 'country', 'genres', 'labels', 'studio', 'summary', 'tagline'] },

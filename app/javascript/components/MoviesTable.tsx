@@ -22,6 +22,7 @@ import { MovieRow } from '@/components/movies/MovieRow'
 import { PosterModal } from '@/components/movies/PosterModal'
 import { ImageModal } from '@/components/movies/ImageModal'
 import { BulkEditModal } from '@/components/movies/BulkEditModal'
+import MovieStatsPanel from '@/components/movies/MovieStatsPanel'
 import LibrarySelectors from '@/components/LibrarySelectors'
 import LibraryPageHeader from '@/components/LibraryPageHeader'
 import FilterPanel from '@/components/FilterPanel'
@@ -210,81 +211,81 @@ export default function MoviesTable({
           onLibraryChange={setSelectedTitle}
         />
 
-        {/* Filters */}
-        <FilterPanel
-          open={filtersOpen}
-          activeCount={activeFilterCount}
-          onToggle={() => setFiltersOpen((open) => { const next = !open; localStorage.setItem('pladi_filters_open', String(next)); return next })}
-        >
-              {/* Quick filters */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</p>
-                <div className="flex flex-wrap gap-x-6 gap-y-2">
-                  {/* Title group */}
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Title</p>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={unmatchedOnly} onChange={(e) => setUnmatchedOnly(e.target.checked)} />
-                      Mismatches file path
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={filenameMismatch} onChange={(e) => setFilenameMismatch(e.target.checked)} />
-                      Mismatches filename
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={originalTitleMismatch} onChange={(e) => setOriginalTitleMismatch(e.target.checked)} />
-                      Mismatches Original Title
-                    </label>
-                  </div>
-                  {/* Year group */}
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Year</p>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={noYearInPath} onChange={(e) => setNoYearInPath(e.target.checked)} />
-                      Missing from file path
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={yearPathMismatch} onChange={(e) => setYearPathMismatch(e.target.checked)} />
-                      File path mismatches metadata
-                    </label>
-                  </div>
-                  {/* File group */}
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">File</p>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={multiOnly} onChange={(e) => setMultiOnly(e.target.checked)} />
-                      Multiple files only
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={notInSubfolder} onChange={(e) => setNotInSubfolder(e.target.checked)} />
-                      Not in movie subfolder
-                    </label>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+          <div className="min-w-0 flex-1">
+            <MovieStatsPanel sections={sections} selectedTitle={selectedTitle} />
+          </div>
+
+          <FilterPanel
+            open={filtersOpen}
+            activeCount={activeFilterCount}
+            onToggle={() => setFiltersOpen((open) => { const next = !open; localStorage.setItem('pladi_filters_open', String(next)); return next })}
+          >
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</p>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Title</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={unmatchedOnly} onChange={(e) => setUnmatchedOnly(e.target.checked)} />
+                        Mismatches file path
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={filenameMismatch} onChange={(e) => setFilenameMismatch(e.target.checked)} />
+                        Mismatches filename
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={originalTitleMismatch} onChange={(e) => setOriginalTitleMismatch(e.target.checked)} />
+                        Mismatches Original Title
+                      </label>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Year</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={noYearInPath} onChange={(e) => setNoYearInPath(e.target.checked)} />
+                        Missing from file path
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={yearPathMismatch} onChange={(e) => setYearPathMismatch(e.target.checked)} />
+                        File path mismatches metadata
+                      </label>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">File</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={multiOnly} onChange={(e) => setMultiOnly(e.target.checked)} />
+                        Multiple files only
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={notInSubfolder} onChange={(e) => setNotInSubfolder(e.target.checked)} />
+                        Not in movie subfolder
+                      </label>
+                    </div>
                   </div>
                 </div>
-              </div>
-              {/* Advanced filters */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Advanced filters</p>
-                {filters.map((f) => (
-                  <FilterRow
-                    key={f.id}
-                    filter={f}
-                    onChange={(updated) => updateFilter(f.id, updated)}
-                    onRemove={() => removeFilter(f.id)}
-                  />
-                ))}
-                <div className="flex items-center gap-2">
-                  <button onClick={addFilter} className="btn px-3 py-1.5 text-sm">
-                    + Add Filter
-                  </button>
-                  {activeFilterCount > 0 && (
-                    <button onClick={clearAllFilters} className="btn px-3 py-1.5 text-sm text-destructive">
-                      Clear all
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Advanced filters</p>
+                  {filters.map((f) => (
+                    <FilterRow
+                      key={f.id}
+                      filter={f}
+                      onChange={(updated) => updateFilter(f.id, updated)}
+                      onRemove={() => removeFilter(f.id)}
+                    />
+                  ))}
+                  <div className="flex items-center gap-2">
+                    <button onClick={addFilter} className="btn px-3 py-1.5 text-sm">
+                      + Add Filter
                     </button>
-                  )}
+                    {activeFilterCount > 0 && (
+                      <button onClick={clearAllFilters} className="btn px-3 py-1.5 text-sm text-destructive">
+                        Clear all
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-        </FilterPanel>
+          </FilterPanel>
+        </div>
 
         {/* Table */}
         {sections.length > 0 && (

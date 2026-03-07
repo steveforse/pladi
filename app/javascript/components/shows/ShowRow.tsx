@@ -114,6 +114,8 @@ export default function ShowRow({
                 className="px-4 py-2"
               />
             )
+          case 'added_at':
+            return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(show.added_at ?? null)}</td>
           case 'updated_at':
             return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDate(show.updated_at)}</td>
           case 'studio':

@@ -7,6 +7,7 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'duration',             label: 'Duration',             type: 'numeric', unit: 'min' },
     { id: 'edition',              label: 'Edition',              type: 'string' },
     { id: 'episode_number',       label: 'Episode Number',       type: 'string' },
+    { id: 'added_at',             label: 'Added At',             type: 'date' },
     { id: 'updated_at',           label: 'Last Updated',         type: 'date' },
     { id: 'originally_available', label: 'Originally Available', type: 'date' },
     { id: 'original_title',       label: 'Original Title',       type: 'string' },
@@ -110,7 +111,7 @@ export function matchesFilterWithFields(fieldDefs: FilterFieldDef[], movie: Movi
     if (isNaN(filterLocal.getTime())) return true
     const filterDay = filterLocal.getFullYear() * 10000 + (filterLocal.getMonth() + 1) * 100 + filterLocal.getDate()
     if (raw == null) return false
-    // updated_at is unix seconds (number); originally_available is ISO date string
+    // added_at/updated_at are unix seconds (number); originally_available is ISO date string
     const movieLocal = typeof raw === 'string'
       ? new Date(raw + 'T00:00:00')
       : new Date((raw as number) * 1000)

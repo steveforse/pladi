@@ -22,6 +22,7 @@ function movie(overrides: Partial<Movie>): Movie {
     overall_bitrate: 4_000,
     size: 2_097_152,
     duration: 7_200_000,
+    added_at: 1_704_067_200,
     updated_at: 1_735_689_600,
     thumb: '/thumb.jpg',
     plex_url: null,
@@ -106,5 +107,14 @@ describe('matchesFilter', () => {
     expect(matchesFilter(row, filter('originally_available', 'neq', '2022-01-15'))).toBe(false)
     expect(matchesFilter(row, filter('originally_available', 'eq', 'bad-date'))).toBe(true)
     expect(matchesFilter(movie({ originally_available: null }), filter('originally_available', 'eq', '2022-01-15'))).toBe(false)
+  })
+
+  it('supports unix timestamp date filters for added dates', () => {
+    const row = movie({ added_at: 1_704_067_200 })
+
+    expect(matchesFilter(row, filter('added_at', 'eq', '2024-01-01'))).toBe(true)
+    expect(matchesFilter(row, filter('added_at', 'lt', '2024-02-01'))).toBe(true)
+    expect(matchesFilter(row, filter('added_at', 'gt', '2024-02-01'))).toBe(false)
+    expect(matchesFilter(movie({ added_at: null }), filter('added_at', 'eq', '2024-01-01'))).toBe(false)
   })
 })

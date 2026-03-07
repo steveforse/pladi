@@ -92,6 +92,7 @@ RSpec.describe Plex::LibraryFetcher do
               'year' => 2020,
               'titleSort' => 'Z Sort',
               'originallyAvailableAt' => '2020-01-01',
+              'addedAt' => 946_684_800,
               'studio' => 'Studio Z',
               'tagline' => 'Tagline Z',
               'updatedAt' => 100,
@@ -162,6 +163,10 @@ RSpec.describe Plex::LibraryFetcher do
     it 'maps part and media attributes' do
       expect(items.last).to include(file_path: '/movies/z.mkv', video_codec: 'h264', audio_channels: 6,
                                     video_bitrate: 5600)
+    end
+
+    it 'maps library addition timestamps from Plex metadata' do
+      expect(items.last[:added_at]).to eq(946_684_800)
     end
 
     it 'uses section id and timestamp when reading cache' do

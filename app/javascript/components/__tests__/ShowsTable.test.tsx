@@ -21,7 +21,7 @@ function setupHookMock(overrides: Partial<ReturnType<typeof useShowsData>> = {})
   mockedUseShowsData.mockReturnValue({
     plexServers: [{ id: 1, name: 'Main', url: 'http://plex.local' }],
     selectedServerId: 1,
-    sections: [{ title: 'TV Shows', items: [{ id: 's1', title: 'Severance', year: 2022, season_count: 2, episode_count: 19, viewed_episode_count: 8, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', file_path: null }] }],
+    sections: [{ title: 'TV Shows', items: [{ id: 's1', title: 'Severance', year: 2022, season_count: 2, episode_count: 19, viewed_episode_count: 8, studio: 'Apple', genres: 'Drama', summary: 'A workplace mystery.', added_at: 1_704_067_200, file_path: null }] }],
     selectedTitle: 'TV Shows',
     loading: false,
     refreshing: false,
@@ -201,10 +201,13 @@ describe('ShowsTable', () => {
 
     expect(within(view.container).getByRole('columnheader', { name: /Summary/ })).toBeInTheDocument()
     await userEvent.click(within(view.container).getAllByRole('button', { name: /Toggle Columns/i })[0])
+    expect(within(view.container).getByRole('checkbox', { name: 'Added At' })).toBeInTheDocument()
     expect(within(view.container).getByRole('checkbox', { name: 'Content Rating' })).toBeInTheDocument()
     await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Summary' }))
+    await userEvent.click(within(view.container).getByRole('checkbox', { name: 'Added At' }))
 
     expect(within(view.container).queryByRole('columnheader', { name: /Summary/ })).not.toBeInTheDocument()
+    expect(within(view.container).getByRole('columnheader', { name: /Added At/ })).toBeInTheDocument()
   })
 
   it('reorders columns via drag and drop and persists order', async () => {

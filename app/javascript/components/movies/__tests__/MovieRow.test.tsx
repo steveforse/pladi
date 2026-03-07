@@ -49,6 +49,7 @@ function movie(overrides?: Partial<Movie>): Movie {
     overall_bitrate: 1200,
     size: 1000,
     duration: 100000,
+    added_at: 1704067200,
     updated_at: 1700000000,
     thumb: '/thumb.jpg',
     plex_url: 'https://app.plex.tv/m1',
@@ -232,14 +233,14 @@ describe('MovieRow', () => {
         'title', 'id', 'content_rating', 'imdb_rating', 'rt_audience_rating', 'rt_critics_rating', 'tmdb_rating',
         'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'video_bitrate', 'width', 'height',
         'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'audio_bitrate', 'audio_language', 'audio_tracks',
-        'subtitles', 'overall_bitrate', 'size', 'duration', 'updated_at', 'sort_title', 'edition', 'originally_available',
+        'subtitles', 'overall_bitrate', 'size', 'duration', 'added_at', 'updated_at', 'sort_title', 'edition', 'originally_available',
         'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'directors', 'poster', 'background',
       ],
       visibleCols: new Set<ColumnId>([
         'id', 'content_rating', 'imdb_rating', 'rt_audience_rating', 'rt_critics_rating', 'tmdb_rating',
         'summary', 'file_path', 'container', 'video_codec', 'video_resolution', 'video_bitrate', 'width', 'height',
         'aspect_ratio', 'frame_rate', 'audio_codec', 'audio_channels', 'audio_bitrate', 'audio_language', 'audio_tracks',
-        'subtitles', 'overall_bitrate', 'size', 'duration', 'updated_at', 'sort_title', 'edition', 'originally_available',
+        'subtitles', 'overall_bitrate', 'size', 'duration', 'added_at', 'updated_at', 'sort_title', 'edition', 'originally_available',
         'studio', 'tagline', 'country', 'writers', 'producers', 'collections', 'labels', 'directors', 'poster', 'background',
       ]),
       downloadImages: false,
@@ -249,6 +250,7 @@ describe('MovieRow', () => {
     expect(screen.getByText('/movies/Alpha.mkv')).toBeInTheDocument()
     expect(screen.getByText('StudioX')).toBeInTheDocument()
     expect(screen.getByText('Favorite')).toBeInTheDocument()
+    expect(screen.getByText(/2024/)).toBeInTheDocument()
     expect(screen.getAllByText('✓')).toHaveLength(2)
     view.unmount()
   })

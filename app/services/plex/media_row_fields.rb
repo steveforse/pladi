@@ -9,10 +9,12 @@ module Plex
       year: 'year',
       sort_title: 'titleSort',
       originally_available: 'originallyAvailableAt',
+      added_at: 'addedAt',
       studio: 'studio',
       tagline: 'tagline',
       summary: 'summary',
       content_rating: 'contentRating',
+      view_count: 'viewCount',
       updated_at: 'updatedAt',
       thumb: 'thumb',
       art: 'art'

@@ -7,6 +7,7 @@ export interface Movie {
   episode_number: string | null
   year: number | null
   file_path: string | null
+  added_at?: number | null
   container: string | null
   video_codec: string | null
   video_resolution: string | null
@@ -24,6 +25,7 @@ export interface Movie {
   plex_url: string | null
   summary: string | null
   content_rating: string | null
+  view_count?: number | null
   imdb_rating: number | null
   rt_critics_rating: number | null
   rt_audience_rating: number | null
@@ -62,10 +64,10 @@ export interface Section {
   items: Movie[]
 }
 
-export type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'show_title' | 'episode_number' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'season_count' | 'episode_count' | 'viewed_episode_count' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'>
+export type SortKey = keyof Pick<Movie, 'id' | 'title' | 'original_title' | 'show_title' | 'episode_number' | 'year' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'added_at' | 'updated_at' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'season_count' | 'episode_count' | 'viewed_episode_count' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'>
 export type SortDir = 'asc' | 'desc'
 
-export type ColumnId = 'title' | 'id' | 'original_title' | 'show_title' | 'episode_number' | 'year' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'season_count' | 'episode_count' | 'viewed_episode_count' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'
+export type ColumnId = 'title' | 'id' | 'original_title' | 'show_title' | 'episode_number' | 'year' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'added_at' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'season_count' | 'episode_count' | 'viewed_episode_count' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'
 export type AllColumnId = ColumnId
 
 export interface ColumnDef {
@@ -82,7 +84,7 @@ export type NumericOp = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq'
 export type StringOp = 'includes' | 'excludes' | 'eq' | 'neq' | 'starts' | 'ends'
 export type NullOp = 'present' | 'missing'
 export type FilterOp = NumericOp | StringOp | NullOp
-export type FilterFieldId = 'id' | 'title' | 'original_title' | 'show_title' | 'episode_number' | 'year' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'season_count' | 'episode_count' | 'viewed_episode_count' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'
+export type FilterFieldId = 'id' | 'title' | 'original_title' | 'show_title' | 'episode_number' | 'year' | 'content_rating' | 'imdb_rating' | 'rt_critics_rating' | 'rt_audience_rating' | 'tmdb_rating' | 'genres' | 'directors' | 'summary' | 'file_path' | 'container' | 'video_codec' | 'video_resolution' | 'width' | 'height' | 'aspect_ratio' | 'frame_rate' | 'audio_codec' | 'audio_channels' | 'overall_bitrate' | 'size' | 'duration' | 'added_at' | 'updated_at' | 'poster' | 'sort_title' | 'edition' | 'originally_available' | 'studio' | 'tagline' | 'season_count' | 'episode_count' | 'viewed_episode_count' | 'country' | 'writers' | 'producers' | 'collections' | 'labels' | 'background' | 'subtitles' | 'audio_tracks' | 'audio_language' | 'audio_bitrate' | 'video_bitrate'
 
 export interface FilterFieldDef {
   id: FilterFieldId

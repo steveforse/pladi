@@ -30,6 +30,7 @@ export const MovieListItemSchema = z.object({
   episode_number: z.string().nullable().optional(),
   year: z.number().nullable(),
   file_path: z.string().nullable(),
+  added_at: z.number().nullable().optional(),
   container: z.string().nullable(),
   video_codec: z.string().nullable(),
   video_resolution: z.string().nullable(),
@@ -47,6 +48,7 @@ export const MovieListItemSchema = z.object({
   plex_url: z.string().nullable(),
   summary: z.string().nullable().optional(),
   content_rating: z.string().nullable().optional(),
+  view_count: z.number().nullable().optional(),
   imdb_rating: z.number().nullable().optional(),
   rt_critics_rating: z.number().nullable().optional(),
   rt_audience_rating: z.number().nullable().optional(),
@@ -115,6 +117,7 @@ export const BackgroundMovieSchema = z.object({
 
 export const EnrichResponseSchema = z.object({
   sections: SectionListSchema,
+  pending_section_ids: z.array(z.string()).optional(),
   cached_poster_media_ids: z.array(z.string()).optional(),
   uncached_poster_items: z.array(PosterMovieSchema).optional(),
   cached_background_media_ids: z.array(z.string()).optional(),
