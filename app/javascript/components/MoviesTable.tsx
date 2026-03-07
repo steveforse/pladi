@@ -22,7 +22,6 @@ import { MovieRow } from '@/components/movies/MovieRow'
 import { PosterModal } from '@/components/movies/PosterModal'
 import { ImageModal } from '@/components/movies/ImageModal'
 import { BulkEditModal } from '@/components/movies/BulkEditModal'
-import MovieStatsPanel from '@/components/movies/MovieStatsPanel'
 import LibrarySelectors from '@/components/LibrarySelectors'
 import LibraryPageHeader from '@/components/LibraryPageHeader'
 import FilterPanel from '@/components/FilterPanel'
@@ -212,10 +211,6 @@ export default function MoviesTable({
         />
 
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-          <div className="min-w-0 flex-1">
-            <MovieStatsPanel sections={sections} selectedTitle={selectedTitle} />
-          </div>
-
           <FilterPanel
             open={filtersOpen}
             activeCount={activeFilterCount}

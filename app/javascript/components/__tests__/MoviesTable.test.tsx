@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MoviesTable from '@/components/MoviesTable'
@@ -258,8 +258,8 @@ describe('MoviesTable', () => {
         sections: [{
           title: 'Movies',
           items: [
-            { id: 'm1', title: 'Alpha', file_path: '/x', size: 2_147_483_648, duration: 7_200_000, year: 2024, originally_available: '2024-01-01', added_at: 1_722_470_400, view_count: 1 },
-            { id: 'm2', title: 'Beta', file_path: '/y', size: 1_073_741_824, duration: 5_400_000, year: 1984, originally_available: '1984-06-08', added_at: 1_704_067_200, view_count: 0 },
+            { id: 'm1', title: 'Alpha', file_path: '/x', size: 2_147_483_648, duration: 7_200_000, year: 2024, originally_available: '2024-01-01', added_at: 1_722_470_400, view_count: 1, genres: 'Drama', video_resolution: '4k', video_codec: 'hevc' },
+            { id: 'm2', title: 'Beta', file_path: '/y', size: 1_073_741_824, duration: 5_400_000, year: 1984, originally_available: '1984-06-08', added_at: 1_704_067_200, view_count: 0, genres: null, summary: null, studio: null, tagline: null, video_resolution: '1080', video_codec: 'h264' },
           ],
         }],
       },
@@ -268,34 +268,6 @@ describe('MoviesTable', () => {
     expect(screen.getAllByRole('button', { name: 'paginator-page' })).toHaveLength(2)
     expect(screen.getByText('header-row')).toBeInTheDocument()
     expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0)
-    expect(screen.getByRole('region', { name: 'Movie statistics' })).toBeInTheDocument()
-    expect(screen.getByText('Statistics For Movies')).toBeInTheDocument()
-    expect(screen.getByText('3.00 GB')).toBeInTheDocument()
-    expect(screen.getByText('1 / 2 (50%)')).toBeInTheDocument()
-    expect(screen.getByText('Beta (1-1-2024)')).toBeInTheDocument()
-    expect(screen.getByText('Alpha (8-1-2024)')).toBeInTheDocument()
-    view.unmount()
-  })
-
-  it('merges duplicate rows for watched and hides empty addition dates in stats', () => {
-    setupHookMocks({
-      moviesData: {
-        sections: [{
-          title: 'Movies',
-          items: [
-            { id: 'm1', title: 'Alpha', file_path: '/x-a', size: 2_147_483_648, duration: 7_200_000, year: 2024, originally_available: '2024-01-01', added_at: null, view_count: null },
-            { id: 'm1', title: 'Alpha', file_path: '/x-b', size: 3_221_225_472, duration: 7_200_000, year: 2024, originally_available: '2024-01-01', added_at: null, view_count: 1 },
-            { id: 'm2', title: 'Beta', file_path: '/y', size: 1_073_741_824, duration: 5_400_000, year: 1984, originally_available: '1984-06-08', added_at: 1_704_067_200, view_count: 0 },
-            { id: 'm3', title: 'Gamma', file_path: '/z', size: 536_870_912, duration: 3_600_000, year: 1999, originally_available: '1999-12-31', added_at: 1_722_470_400, view_count: 0 },
-          ],
-        }],
-      },
-    })
-    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
-
-    expect(screen.getByText('1 / 3 (33%)')).toBeInTheDocument()
-    expect(screen.getByText('Beta (1-1-2024)')).toBeInTheDocument()
-    expect(screen.getByText('Gamma (8-1-2024)')).toBeInTheDocument()
     view.unmount()
   })
 
@@ -367,9 +339,9 @@ describe('MoviesTable', () => {
     const onShows = vi.fn()
     const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={onShows} downloadImages={false} />)
 
-    const serverSelect = screen.getByRole('button', { name: 'Main' })
+    const serverSelect = screen.getAllByRole('button', { name: 'Main' })[0]
     await userEvent.click(serverSelect)
-    await userEvent.click(screen.getByRole('button', { name: 'Backup' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Backup' }))
     expect(baseData.handleServerChange).toHaveBeenCalledWith(2)
 
     const libraryTypeSelect = screen.getByRole('button', { name: 'Library Type' })
