@@ -146,6 +146,7 @@ describe('SettingsPage', () => {
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'Preferences' }))
+    expect(screen.getByText('Experimental: this may be slower on large libraries and can put extra load on your Plex server.')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('checkbox'))
 
     await waitFor(() => {
