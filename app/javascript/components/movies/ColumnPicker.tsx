@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import type { ColumnGroup, ColumnId } from '@/lib/types'
+import { fieldButtonClassName } from '@/components/ui/field'
 
 export function ColumnPicker({
   groups,
@@ -37,11 +39,13 @@ export function ColumnPicker({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="border rounded px-3 py-1.5 text-sm gap-1.5 inline-flex items-center bg-background cursor-pointer"
+        className={fieldButtonClassName('group cursor-pointer px-3 py-1.5')}
       >
         Toggle Columns
-        <span className="text-muted-foreground text-xs">({visible.size}/{totalCols})</span>
-        <span className="text-muted-foreground">▾</span>
+        <span className="text-xs text-muted-foreground transition-colors group-hover:text-current group-focus-visible:text-current">
+          ({visible.size}/{totalCols})
+        </span>
+        <ChevronDown className="h-4 w-4 text-current/80" />
       </button>
       {open && (
         <div className={`absolute right-0 z-10 bg-card border rounded-md shadow-lg p-2 w-[32rem] ${

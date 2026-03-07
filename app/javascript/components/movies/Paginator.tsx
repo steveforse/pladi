@@ -1,4 +1,5 @@
 import React from 'react'
+import { Select } from '@/components/ui/select'
 
 export function Paginator({
   page,
@@ -41,16 +42,16 @@ export function Paginator({
         <button onClick={() => onPage(totalPages)} disabled={page === totalPages}
           className="btn px-3 py-1.5 text-sm">»</button>
       </div>
-      <select
+      <Select
         value={pageSize}
         onChange={(e) => onPageSize(Number(e.target.value))}
-        className="border rounded px-3 py-1.5 text-sm bg-background"
+        className="min-w-32"
       >
         {[25, 50, 100, 250].map((n) => (
           <option key={n} value={n}>{n} per page</option>
         ))}
         <option value={0}>All</option>
-      </select>
+      </Select>
     </div>
   )
 }

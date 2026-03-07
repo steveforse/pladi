@@ -1,4 +1,5 @@
 import React from 'react'
+import { Select } from '@/components/ui/select'
 
 type ServerOption = { id: number; name: string }
 type LibraryOption = { title: string }
@@ -28,42 +29,42 @@ export default function LibrarySelectors({
     <div className="flex items-center gap-4 flex-wrap">
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium text-muted-foreground">Server:</label>
-        <select
+        <Select
           value={selectedServerId ?? ''}
           onChange={(e) => onServerChange(Number(e.target.value))}
-          className="border rounded px-3 py-1.5 text-sm bg-background"
+          className="min-w-48"
         >
           {servers.map((server) => (
             <option key={server.id} value={server.id}>{server.name}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium text-muted-foreground">Library Type:</label>
-        <select
+        <Select
           aria-label="Library Type"
           value={libraryType}
           onChange={(e) => onLibraryTypeChange(e.target.value as 'movies' | 'shows')}
-          className="border rounded px-3 py-1.5 text-sm bg-background"
+          className="min-w-44"
         >
           <option value="movies">Movies</option>
           <option value="shows">TV Shows</option>
-        </select>
+        </Select>
       </div>
 
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium text-muted-foreground">Library:</label>
-        <select
+        <Select
           value={selectedLibrary ?? ''}
           onChange={(e) => onLibraryChange(e.target.value === '' ? null : e.target.value)}
-          className="border rounded px-3 py-1.5 text-sm bg-background"
+          className="min-w-52"
         >
           {libraries.map((library) => (
             <option key={library.title} value={library.title}>{library.title}</option>
           ))}
           <option value="">All libraries</option>
-        </select>
+        </Select>
       </div>
 
       {children}

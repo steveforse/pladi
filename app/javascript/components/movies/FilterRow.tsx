@@ -3,6 +3,7 @@ import type { ActiveFilter, FilterFieldDef, FilterFieldId, FilterGroup, FilterOp
 import { FILTER_FIELDS, STRING_OPS, NUMERIC_OPS, NULL_OPS, defaultOp } from '@/lib/filters'
 import { FieldPicker } from './FieldPicker'
 import DatePicker from '@/components/ui/date-picker'
+import { Select } from '@/components/ui/select'
 
 export function FilterRow({
   filter,
@@ -36,10 +37,10 @@ export function FilterRow({
     <div className="flex items-center gap-2 flex-wrap">
       <FieldPicker value={filter.field} onChange={handleFieldChange} fieldDefs={fieldDefs} fieldGroups={fieldGroups} />
 
-      <select
+      <Select
         value={filter.op}
         onChange={(e) => onChange({ ...filter, op: e.target.value as FilterOp, value: '' })}
-        className="border rounded px-2 py-1 text-sm bg-background"
+        className="px-2 min-w-28"
       >
         {!fieldDef.nullOnly && typeOps.map((o) => (
           <option key={o.id} value={o.id}>{o.label}</option>
@@ -48,7 +49,7 @@ export function FilterRow({
         {NULL_OPS.map((o) => (
           <option key={o.id} value={o.id}>{o.label}</option>
         ))}
-      </select>
+      </Select>
 
       {!isNullOp && (
         <div className="flex items-center gap-1">
@@ -77,7 +78,7 @@ export function FilterRow({
 
       <button
         onClick={onRemove}
-        className="btn px-2 py-0.5 text-sm text-muted-foreground hover:text-destructive"
+        className="btn h-9 px-3 text-sm text-destructive"
         aria-label="Remove filter"
       >
         ✕

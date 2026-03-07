@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { ChevronDown } from 'lucide-react'
 import type { FilterFieldDef, FilterFieldId, FilterGroup } from '@/lib/types'
 import { FILTER_FIELD_GROUPS, FILTER_FIELDS } from '@/lib/filters'
+import { fieldButtonClassName } from '@/components/ui/field'
 
 export function FieldPicker({
   value,
@@ -60,14 +62,14 @@ export function FieldPicker({
       <button
         type="button"
         onClick={toggleOpen}
-        className="border rounded px-2 py-1 text-sm bg-background flex items-center gap-1 min-w-[8rem] justify-between"
+        className={fieldButtonClassName('min-w-[8rem] justify-between px-2 py-1')}
       >
         <span>{selectedLabel}</span>
-        <span className="text-muted-foreground text-xs">▾</span>
+        <ChevronDown className="h-4 w-4 text-current/80" />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-52 rounded border bg-background shadow-lg">
+        <div className="absolute z-50 mt-1 w-52 rounded-md border bg-background shadow-lg">
           <div className="p-1 border-b">
             <input
               ref={inputRef}
@@ -75,7 +77,7 @@ export function FieldPicker({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search fields..."
-              className="w-full px-2 py-1 text-sm bg-transparent outline-none"
+              className="w-full px-2 py-1 text-sm"
             />
           </div>
           <div className="overflow-y-auto max-h-[32rem]">

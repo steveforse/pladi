@@ -6,6 +6,7 @@ import { BulkEditModal } from '@/components/movies/BulkEditModal'
 import { ImageModal } from '@/components/movies/ImageModal'
 import ShowFiltersPanel from '@/components/shows/ShowsFiltersPanel'
 import ShowsTableGrid from '@/components/shows/ShowsTableGrid'
+import { Select } from '@/components/ui/select'
 import { useBulkSelection } from '@/hooks/useBulkSelection'
 import { useBulkTagEdit } from '@/hooks/useBulkTagEdit'
 import { useRouteSync } from '@/hooks/useRouteSync'
@@ -194,7 +195,7 @@ export default function ShowsTable({
         >
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-muted-foreground">TV Mode:</label>
-            <select
+            <Select
               aria-label="TV Mode"
               value={viewMode}
               onChange={(event) => {
@@ -203,11 +204,11 @@ export default function ShowsTable({
                 tableState.handleViewModeChange(nextMode)
                 setViewMode(nextMode)
               }}
-              className="border rounded px-3 py-1.5 text-sm bg-background"
+              className="min-w-36"
             >
               <option value="shows">Shows</option>
               <option value="episodes">Episodes</option>
-            </select>
+            </Select>
           </div>
         </LibrarySelectors>
 
