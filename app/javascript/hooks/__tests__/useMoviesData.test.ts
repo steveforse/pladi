@@ -311,6 +311,10 @@ describe('useMoviesData', () => {
       { channel: 'BackgroundsChannel', server_id: 1 },
       expect.objectContaining({ received: expect.any(Function) })
     )
+    expect(cableSubscriptionsCreate).toHaveBeenCalledWith(
+      { channel: 'LibraryEnrichmentChannel', server_id: 1, library_type: 'movie', view_mode: 'shows' },
+      expect.objectContaining({ received: expect.any(Function) })
+    )
 
     act(() => {
       cableReceivedHandlers.PostersChannel?.({ media_id: 'ws-poster' })

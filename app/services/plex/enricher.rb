@@ -17,6 +17,7 @@ module Plex
     ].freeze
 
     ENRICH_THREADS = ENV.fetch('PLEX_ENRICH_THREADS', '3').to_i
+    STREAM_BATCH_SIZE = ENV.fetch('PLEX_ENRICH_BATCH_SIZE', '100').to_i
 
     def initialize(http_client, cache_store)
       @cache = cache_store
@@ -27,6 +28,18 @@ module Plex
 
     def enrich_sections(sections, scope: MediaScope.movies)
       sections.map { |section| enrich_section(section, scope:) }
+    end
+
+    def progressive_enriched_sections(sections, scope: MediaScope.movies)
+      pending_section_ids = []
+      hydrated_sections = sections.map do |section|
+        read_enriched_section(section, scope:) || begin
+          pending_section_ids << section[:id].to_s
+          section
+        end
+      end
+
+      { sections: hydrated_sections, pending_section_ids: pending_section_ids }
     end
 
     def metadata_for(media_id)
@@ -40,21 +53,33 @@ module Plex
       merge_detail({}, detail, file_path: file_path)
     end
 
-    private
-
     def enrich_section(section, scope:)
       key = enrich_section_key(section, scope:)
       @cache.fetch(key) do
-        items = section[:items]
-        details = concurrent_fetcher_for(items).fetch(items)
-
-        section.merge(
-          items: items.map do |item|
-            merge_detail(item, details[item[:id]] || {}, file_path: item[:file_path])
-          end
-        )
+        build_enriched_section(section)
       end
     end
+
+    def enrich_items(items)
+      details = concurrent_fetcher_for(items).fetch(items)
+
+      items.map do |item|
+        merge_detail(item, details[item[:id]] || {}, file_path: item[:file_path])
+      end
+    end
+
+    def enrich_section_key(section, scope:)
+      @cache.key(
+        'section',
+        *scope.cache_key_parts,
+        section[:id],
+        section[:updated_at],
+        'enriched',
+        @cache.enrich_version
+      )
+    end
+
+    private
 
     def build_detail_fetchers(http_client)
       DETAIL_PARSERS.to_h do |media_type, parser_class|
@@ -76,14 +101,18 @@ module Plex
       )
     end
 
-    def enrich_section_key(section, scope:)
-      @cache.key(
-        'section',
-        *scope.cache_key_parts,
-        section[:id],
-        section[:updated_at],
-        'enriched',
-        @cache.enrich_version
+    def read_enriched_section(section, scope:)
+      @cache.read(enrich_section_key(section, scope:))
+    end
+
+    def build_enriched_section(section)
+      items = section[:items]
+      details = concurrent_fetcher_for(items).fetch(items)
+
+      section.merge(
+        items: items.map do |item|
+          merge_detail(item, details[item[:id]] || {}, file_path: item[:file_path])
+        end
       )
     end
 

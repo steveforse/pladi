@@ -8,6 +8,7 @@ module Plex
     delegate :poster_for, :background_for, to: :image_store
 
     def initialize(server)
+      @server        = server
       @http_client   = HttpClient.new(server)
       @cache_store   = CacheStore.new(server.id)
       @library       = LibraryFetcher.new(@http_client, @cache_store)
@@ -39,14 +40,35 @@ module Plex
     end
 
     def enriched_library(scope: MediaScope.movies)
-      enriched_sections = @enricher.enrich_sections(
+      enrichment = @enricher.progressive_enriched_sections(
         sections(scope:),
         scope:
       )
+      pending_section_ids = enrichment[:pending_section_ids]
 
-      payload = { sections: enriched_sections }
-      payload.merge!(image_cache_payload(enriched_sections)) if scope.include_image_cache?
+      warm_library_enrichment(scope:, section_ids: pending_section_ids) if pending_section_ids.any?
+
+      payload = { sections: enrichment[:sections], pending_section_ids: pending_section_ids }
+      payload.merge!(image_cache_payload(enrichment[:sections])) if scope.include_image_cache?
       payload
+    end
+
+    def enrich_section(section, scope: MediaScope.movies)
+      @enricher.enrich_section(section, scope:)
+    end
+
+    def stream_enrich_section(section, scope: MediaScope.movies, batch_size: Plex::Enricher::STREAM_BATCH_SIZE)
+      enriched_items = []
+
+      section[:items].each_slice(batch_size) do |batch|
+        enriched_batch = @enricher.enrich_items(batch)
+        enriched_items.concat(enriched_batch)
+        yield enriched_batch if block_given?
+      end
+
+      enriched_section = section.merge(items: enriched_items)
+      @cache_store.write(section_enrichment_key(section, scope), enriched_section)
+      enriched_section
     end
 
     def update_media(media_id, fields, scope: MediaScope.movies, file_path: nil)
@@ -54,6 +76,21 @@ module Plex
     end
 
     private
+
+    def warm_library_enrichment(scope:, section_ids:)
+      WarmLibraryEnrichmentJob.perform_later(@server.id, scope.to_h, section_ids)
+    end
+
+    def section_enrichment_key(section, scope)
+      @cache_store.key(
+        'section',
+        *scope.cache_key_parts,
+        section[:id],
+        section[:updated_at],
+        'enriched',
+        @cache_store.enrich_version
+      )
+    end
 
     def refresh_sections(scope)
       @library.fetch_sections(scope:).tap do |section_data|

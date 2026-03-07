@@ -65,6 +65,15 @@ module Plex
       [library_type, view_mode].hash
     end
 
+    def to_h
+      { library_type: library_type, view_mode: view_mode }
+    end
+
+    def self.from_h(attributes)
+      attrs = attributes.to_h.symbolize_keys
+      new(library_type: attrs.fetch(:library_type), view_mode: attrs[:view_mode])
+    end
+
     private
 
     def accepted_media_types

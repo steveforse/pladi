@@ -84,6 +84,7 @@ RSpec.describe Api::MoviesController do
     before do
       allow(service).to receive(:enriched_library).with(scope: movie_scope).and_return(
         sections: [{ title: 'Movies', items: [{ id: '1' }] }],
+        pending_section_ids: ['10'],
         cached_poster_media_ids: ['1'],
         uncached_poster_items: [],
         cached_background_media_ids: [],
@@ -94,6 +95,10 @@ RSpec.describe Api::MoviesController do
 
     it 'returns enriched payload with serialized sections' do
       expect(json_body.fetch('sections')).to eq([{ 'title' => 'Movies', 'items' => [{ 'id' => '1' }] }])
+    end
+
+    it 'returns pending section ids for progressive enrichment' do
+      expect(json_body.fetch('pending_section_ids')).to eq(['10'])
     end
   end
 

@@ -106,7 +106,8 @@ RSpec.describe Api::ShowsController do
   describe 'GET /api/shows/enrich' do
     let(:enriched_response) do
       {
-        'sections' => serialized_show_section
+        'sections' => serialized_show_section,
+        'pending_section_ids' => ['2']
       }
     end
 
@@ -120,12 +121,17 @@ RSpec.describe Api::ShowsController do
             episode_count: 20,
             viewed_episode_count: 8
           }]
-        }]
+        }],
+        pending_section_ids: ['2']
       )
       get '/api/shows/enrich', params: { server_id: server.id }, as: :json
     end
 
     it { expect(json_body).to eq(enriched_response) }
+
+    it 'includes pending section ids for follow-up cable updates' do
+      expect(json_body.fetch('pending_section_ids')).to eq(['2'])
+    end
   end
 
   describe 'GET /api/shows with episode view_mode' do

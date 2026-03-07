@@ -3,6 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useShowsData } from '@/hooks/useShowsData'
 import { api } from '@/lib/apiClient'
 
+const cableSubscriptionsCreate = vi.fn()
+const cableDisconnect = vi.fn()
+
+vi.mock('@rails/actioncable', () => ({
+  createConsumer: () => ({
+    disconnect: cableDisconnect,
+    subscriptions: {
+      create: cableSubscriptionsCreate,
+    },
+  }),
+}))
+
 vi.mock('@/lib/apiClient', () => ({
   ApiError: class extends Error {},
   api: {
@@ -83,6 +95,7 @@ describe('useShowsData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('localStorage', createStorageMock())
+    cableSubscriptionsCreate.mockImplementation(() => ({ unsubscribe: vi.fn() }))
   })
 
   it('loads initial server and sections on mount', async () => {
@@ -95,7 +108,7 @@ describe('useShowsData', () => {
       }
       if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
       if (path === '/api/shows/refresh') return { ok: true, status: 200, data: baseSections }
-      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: enrichedSections } }
+      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: enrichedSections, pending_section_ids: [] } }
       return { ok: false, status: 404, data: null }
     })
 
@@ -156,7 +169,7 @@ describe('useShowsData', () => {
       if (path === '/api/shows' && options?.query?.server_id === 1) return { ok: true, status: 200, data: sectionsA }
       if (path === '/api/shows' && options?.query?.server_id === 2) return { ok: true, status: 200, data: sectionsB }
       if (path === '/api/shows/refresh') return { ok: true, status: 200, data: sectionsB }
-      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: sectionsB } }
+      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: sectionsB, pending_section_ids: [] } }
       return { ok: false, status: 404, data: null }
     })
 
@@ -182,7 +195,7 @@ describe('useShowsData', () => {
       }
       if (path === '/api/shows') return { ok: true, status: 200, data: baseSections }
       if (path === '/api/shows/refresh') return { ok: true, status: 200, data: baseSections }
-      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: baseSections } }
+      if (path === '/api/shows/enrich') return { ok: true, status: 200, data: { sections: baseSections, pending_section_ids: [] } }
       return { ok: false, status: 404, data: null }
     })
     mockedApi.patch.mockResolvedValue({ ok: true, status: 204, data: null })

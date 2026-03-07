@@ -221,6 +221,40 @@ RSpec.describe Plex::Enricher do
     end
   end
 
+  describe '#progressive_enriched_sections' do
+    let(:section) do
+      {
+        id: '10',
+        updated_at: 1234,
+        title: 'Movies',
+        items: [{ id: 'm1', media_type: 'movie', file_path: '/movies/m1.mkv', title: 'Movie 1' }]
+      }
+    end
+    let(:cached_section) { section.merge(items: [section[:items].first.merge(summary: 'Cached detail')]) }
+
+    before do
+      allow(cache_store).to receive(:enrich_version).and_return(7)
+      allow(cache_store).to receive(:key).with('section', 'movie', 'shows', '10', 1234, 'enriched',
+                                               7).and_return('section-cache-key')
+    end
+
+    it 'returns cached enriched sections immediately' do
+      allow(cache_store).to receive(:read).with('section-cache-key').and_return(cached_section)
+
+      result = enricher.progressive_enriched_sections([section], scope: Plex::MediaScope.movies)
+
+      expect(result).to eq(sections: [cached_section], pending_section_ids: [])
+    end
+
+    it 'falls back to base sections and marks cache misses as pending' do
+      allow(cache_store).to receive(:read).with('section-cache-key').and_return(nil)
+
+      result = enricher.progressive_enriched_sections([section], scope: Plex::MediaScope.movies)
+
+      expect(result).to eq(sections: [section], pending_section_ids: ['10'])
+    end
+  end
+
   describe '#enrich_sections for shows' do
     let(:section) do
       {
