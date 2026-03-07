@@ -3,6 +3,15 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import HistoryPage from '@/components/HistoryPage'
 
+vi.mock('@/components/movies/HamburgerMenu', () => ({
+  HamburgerMenu: ({ onSettings, onHistory }: { onSettings: () => void; onHistory: () => void }) => (
+    <div>
+      <button onClick={onSettings}>menu-settings</button>
+      <button onClick={onHistory}>menu-history</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/hooks/useHistory', () => ({
   useHistory: vi.fn(),
 }))
@@ -14,13 +23,16 @@ const mockedUseHistory = vi.mocked(useHistory)
 describe('HistoryPage', () => {
   it('renders loading state', () => {
     mockedUseHistory.mockReturnValue({ logs: [], loading: true, error: null })
-    render(<HistoryPage onBack={() => {}} />)
+    render(<HistoryPage onBack={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
     expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Change History' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'menu-settings' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'menu-history' })).toBeInTheDocument()
   })
 
   it('renders error state', () => {
     mockedUseHistory.mockReturnValue({ logs: [], loading: false, error: 'Boom' })
-    render(<HistoryPage onBack={() => {}} />)
+    render(<HistoryPage onBack={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
     expect(screen.getByText('Error: Boom')).toBeInTheDocument()
   })
 
@@ -43,7 +55,7 @@ describe('HistoryPage', () => {
       }],
     })
 
-    render(<HistoryPage onBack={() => {}} />)
+    render(<HistoryPage onBack={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
     expect(screen.getByRole('cell', { name: 'Movie (movie)' })).toBeInTheDocument()
     expect(screen.getByText('Old')).toBeInTheDocument()
     expect(screen.getByText('New')).toBeInTheDocument()
@@ -51,7 +63,7 @@ describe('HistoryPage', () => {
 
   it('renders empty state when no logs exist', () => {
     mockedUseHistory.mockReturnValue({ logs: [], loading: false, error: null })
-    render(<HistoryPage onBack={() => {}} />)
+    render(<HistoryPage onBack={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
     expect(screen.getByText('No edit history yet.')).toBeInTheDocument()
   })
 
@@ -89,7 +101,7 @@ describe('HistoryPage', () => {
       ],
     })
 
-    render(<HistoryPage onBack={() => {}} />)
+    render(<HistoryPage onBack={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
     expect(screen.getByText('A, B')).toBeInTheDocument()
     expect(screen.getByText('not-json')).toBeInTheDocument()
     expect(screen.getByText('labels')).toBeInTheDocument()
@@ -116,7 +128,7 @@ describe('HistoryPage', () => {
       }],
     })
 
-    render(<HistoryPage onBack={() => {}} />)
+    render(<HistoryPage onBack={() => {}} onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} />)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 })

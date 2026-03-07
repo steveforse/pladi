@@ -100,8 +100,8 @@ function AuthenticatedRoutes({
       <Route path="/movies" element={<MoviesRoute downloadImages={downloadImages} onLogout={onLogout} />} />
       <Route path="/shows" element={<ShowsRoute downloadImages={downloadImages} onLogout={onLogout} />} />
       <Route path="/settings" element={<Navigate to="/settings/account" replace />} />
-      <Route path="/settings/:tab" element={<SettingsRoute downloadImages={downloadImages} onDownloadImagesChange={onDownloadImagesChange} />} />
-      <Route path="/history" element={<HistoryRoute />} />
+      <Route path="/settings/:tab" element={<SettingsRoute downloadImages={downloadImages} onDownloadImagesChange={onDownloadImagesChange} onLogout={onLogout} />} />
+      <Route path="/history" element={<HistoryRoute onLogout={onLogout} />} />
       <Route path="*" element={<Navigate to="/movies" replace />} />
     </Routes>
   )
@@ -215,16 +215,21 @@ function ShowsRoute({
 function SettingsRoute({
   downloadImages,
   onDownloadImagesChange,
+  onLogout,
 }: {
   downloadImages: boolean
   onDownloadImagesChange: (value: boolean) => void
+  onLogout: () => void
 }) {
   const navigate = useNavigate()
   const { tab } = useParams()
   const activeTab: SettingsTab = tab === 'preferences' || tab === 'servers' ? tab : 'account'
   return (
     <SettingsPage
-      onBack={() => navigate(-1)}
+      onBack={() => navigate('/movies')}
+      onLogout={onLogout}
+      onSettings={() => navigate('/settings/account')}
+      onHistory={() => navigate('/history')}
       activeTab={activeTab}
       onTabChange={(next) => navigate(`/settings/${next}`)}
       downloadImages={downloadImages}
@@ -233,7 +238,14 @@ function SettingsRoute({
   )
 }
 
-function HistoryRoute() {
+function HistoryRoute({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate()
-  return <HistoryPage onBack={() => navigate(-1)} />
+  return (
+    <HistoryPage
+      onBack={() => navigate('/movies')}
+      onLogout={onLogout}
+      onSettings={() => navigate('/settings/account')}
+      onHistory={() => navigate('/history')}
+    />
+  )
 }

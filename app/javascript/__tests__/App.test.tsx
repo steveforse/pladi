@@ -55,9 +55,13 @@ vi.mock('@/components/SetupPage', () => ({
 vi.mock('@/components/SettingsPage', () => ({
   default: ({
     onBack,
+    onSettings,
+    onHistory,
     downloadImages,
   }: {
     onBack: () => void
+    onSettings: () => void
+    onHistory: () => void
     downloadImages: boolean
     onDownloadImagesChange: (value: boolean) => void
   }) => (
@@ -65,14 +69,17 @@ vi.mock('@/components/SettingsPage', () => ({
       <div>settings-page</div>
       <div>settings-images:{String(downloadImages)}</div>
       <button onClick={onBack}>settings-back</button>
+      <button onClick={onSettings}>settings-settings</button>
+      <button onClick={onHistory}>settings-history</button>
     </div>
   ),
 }))
 vi.mock('@/components/HistoryPage', () => ({
-  default: ({ onBack }: { onBack: () => void }) => (
+  default: ({ onBack, onSettings }: { onBack: () => void; onSettings: () => void }) => (
     <div>
       <div>history-page</div>
       <button onClick={onBack}>history-back</button>
+      <button onClick={onSettings}>history-settings</button>
     </div>
   ),
 }))
@@ -186,5 +193,41 @@ describe('App auth bootstrap', () => {
       expect(await screen.findByText('movies-page')).toBeInTheDocument()
       view.unmount()
     }
+  })
+
+  it('routes direct settings visits back to movies', async () => {
+    window.history.replaceState({}, '', '/settings/account')
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ email_address: 'user@example.com', download_images: false }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const view = render(<App />)
+
+    expect(await screen.findByText('settings-page')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'settings-back' }))
+    expect(await screen.findByText('movies-page')).toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('navigates between settings and history without returning to movies first', async () => {
+    window.history.replaceState({}, '', '/settings/account')
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ email_address: 'user@example.com', download_images: false }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const view = render(<App />)
+
+    expect(await screen.findByText('settings-page')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'settings-history' }))
+    expect(await screen.findByText('history-page')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'history-settings' }))
+    expect(await screen.findByText('settings-page')).toBeInTheDocument()
+    view.unmount()
   })
 })

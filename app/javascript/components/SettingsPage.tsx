@@ -25,8 +25,20 @@ type LookupNameResponse = z.infer<typeof LookupNameResponseSchema>
 
 export type SettingsTab = 'account' | 'preferences' | 'servers'
 
-export default function SettingsPage({ onBack, downloadImages, onDownloadImagesChange, activeTab, onTabChange }: {
+export default function SettingsPage({
+  onBack,
+  onLogout,
+  onSettings,
+  onHistory,
+  downloadImages,
+  onDownloadImagesChange,
+  activeTab,
+  onTabChange,
+}: {
   onBack: () => void
+  onLogout?: () => void
+  onSettings?: () => void
+  onHistory?: () => void
   downloadImages: boolean
   onDownloadImagesChange: (value: boolean) => void
   activeTab?: SettingsTab
@@ -227,7 +239,14 @@ export default function SettingsPage({ onBack, downloadImages, onDownloadImagesC
 
   return (
     <div>
-      <PageHeader title="Settings" onBack={onBack} />
+      <PageHeader
+        title="Settings"
+        onBack={onBack}
+        backLabel="Back to Library"
+        onLogout={onLogout}
+        onSettings={onSettings}
+        onHistory={onHistory}
+      />
       <SettingsTabs activeTab={tab} onSelectTab={selectTab} />
 
       {tab === 'account' && (

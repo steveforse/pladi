@@ -5,6 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsPage from '@/components/SettingsPage'
 import { ApiError, api } from '@/lib/apiClient'
 
+vi.mock('@/components/movies/HamburgerMenu', () => ({
+  HamburgerMenu: ({ onSettings, onHistory }: { onSettings: () => void; onHistory: () => void }) => (
+    <div>
+      <button onClick={onSettings}>menu-settings</button>
+      <button onClick={onHistory}>menu-history</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/lib/apiClient', () => {
   class MockApiError extends Error {
     status: number
@@ -72,9 +81,30 @@ describe('SettingsPage', () => {
     )
 
     expect(await screen.findByDisplayValue('user@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '← Back to Library' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Servers' }))
     expect(await screen.findByText('Home')).toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('shows header navigation menu actions', async () => {
+    mockBaseGets()
+    const view = render(
+      <SettingsPage
+        onBack={() => {}}
+        onLogout={() => {}}
+        onSettings={() => {}}
+        onHistory={() => {}}
+        downloadImages={false}
+        onDownloadImagesChange={() => {}}
+      />
+    )
+
+    expect(await screen.findByDisplayValue('user@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'menu-settings' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'menu-history' })).toBeInTheDocument()
     view.unmount()
   })
 

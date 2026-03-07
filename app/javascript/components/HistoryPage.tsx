@@ -31,12 +31,28 @@ function FieldLabel({ name }: { name: string }) {
   )
 }
 
-export default function HistoryPage({ onBack }: { onBack: () => void }) {
+export default function HistoryPage({
+  onBack,
+  onLogout,
+  onSettings,
+  onHistory,
+}: {
+  onBack: () => void
+  onLogout?: () => void
+  onSettings?: () => void
+  onHistory?: () => void
+}) {
   const { logs, loading, error } = useHistory()
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#161b1f' }}>
-      <PageHeader title="Change History" onBack={onBack} />
+      <PageHeader
+        title="Change History"
+        onBack={onBack}
+        onLogout={onLogout}
+        onSettings={onSettings}
+        onHistory={onHistory}
+      />
 
       <main className="px-8 py-4">
         {loading && (
