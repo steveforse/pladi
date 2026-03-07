@@ -9,6 +9,7 @@ export const FILTER_FIELD_GROUPS: FilterGroup[] = [
     { id: 'episode_number',       label: 'Episode Number',       type: 'string' },
     { id: 'added_at',             label: 'Added At',             type: 'date' },
     { id: 'updated_at',           label: 'Last Updated',         type: 'date' },
+    { id: 'view_count',           label: 'View Count',           type: 'numeric' },
     { id: 'originally_available', label: 'Originally Available', type: 'date' },
     { id: 'original_title',       label: 'Original Title',       type: 'string' },
     { id: 'sort_title',           label: 'Sort Title',           type: 'string' },

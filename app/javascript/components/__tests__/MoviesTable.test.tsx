@@ -277,6 +277,28 @@ describe('MoviesTable', () => {
     view.unmount()
   })
 
+  it('merges duplicate rows for watched and hides empty addition dates in stats', () => {
+    setupHookMocks({
+      moviesData: {
+        sections: [{
+          title: 'Movies',
+          items: [
+            { id: 'm1', title: 'Alpha', file_path: '/x-a', size: 2_147_483_648, duration: 7_200_000, year: 2024, originally_available: '2024-01-01', added_at: null, view_count: null },
+            { id: 'm1', title: 'Alpha', file_path: '/x-b', size: 3_221_225_472, duration: 7_200_000, year: 2024, originally_available: '2024-01-01', added_at: null, view_count: 1 },
+            { id: 'm2', title: 'Beta', file_path: '/y', size: 1_073_741_824, duration: 5_400_000, year: 1984, originally_available: '1984-06-08', added_at: 1_704_067_200, view_count: 0 },
+            { id: 'm3', title: 'Gamma', file_path: '/z', size: 536_870_912, duration: 3_600_000, year: 1999, originally_available: '1999-12-31', added_at: 1_722_470_400, view_count: 0 },
+          ],
+        }],
+      },
+    })
+    const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={() => {}} downloadImages={false} />)
+
+    expect(screen.getByText('1 / 3 (33%)')).toBeInTheDocument()
+    expect(screen.getByText('Beta (1-1-2024)')).toBeInTheDocument()
+    expect(screen.getByText('Gamma (8-1-2024)')).toBeInTheDocument()
+    view.unmount()
+  })
+
   it('toggles filters panel and writes localStorage state', async () => {
     const setItemSpy = vi.spyOn(globalThis.localStorage, 'setItem')
     setupHookMocks()
@@ -345,14 +367,19 @@ describe('MoviesTable', () => {
     const onShows = vi.fn()
     const view = render(<MoviesTable onLogout={() => {}} onSettings={() => {}} onHistory={() => {}} onShows={onShows} downloadImages={false} />)
 
-    const [serverSelect, libraryTypeSelect, librarySelect] = screen.getAllByRole('combobox')
-    await userEvent.selectOptions(serverSelect, '2')
+    const serverSelect = screen.getByRole('button', { name: 'Main' })
+    await userEvent.click(serverSelect)
+    await userEvent.click(screen.getByRole('button', { name: 'Backup' }))
     expect(baseData.handleServerChange).toHaveBeenCalledWith(2)
 
-    await userEvent.selectOptions(libraryTypeSelect, 'shows')
+    const libraryTypeSelect = screen.getByRole('button', { name: 'Library Type' })
+    await userEvent.click(libraryTypeSelect)
+    await userEvent.click(screen.getByRole('button', { name: 'TV Shows' }))
     expect(onShows).toHaveBeenCalledTimes(1)
 
-    await userEvent.selectOptions(librarySelect, 'Shows')
+    const librarySelect = screen.getByRole('button', { name: 'Movies' })
+    await userEvent.click(librarySelect)
+    await userEvent.click(screen.getByRole('button', { name: 'Shows' }))
     expect(baseData.setSelectedTitle).toHaveBeenCalledWith('Shows')
 
     await userEvent.click(screen.getByRole('button', { name: /Filters/ }))

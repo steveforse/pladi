@@ -12,6 +12,7 @@ const MOVIE_TABLE_COLUMNS: TableColumnSchema[] = [
   { id: 'original_title', label: 'Original Title', sortKey: 'original_title' },
   { id: 'sort_title', label: 'Sort Title', sortKey: 'sort_title' },
   { id: 'year', label: 'Year', sortKey: 'year' },
+  { id: 'view_count', label: 'View Count', sortKey: 'view_count' },
   { id: 'originally_available', label: 'Originally Available', sortKey: 'originally_available' },
   { id: 'added_at', label: 'Added At', sortKey: 'added_at' },
   { id: 'updated_at', label: 'Last Updated', sortKey: 'updated_at' },

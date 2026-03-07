@@ -52,6 +52,7 @@ function buildMovieStats(sections: Section[], selectedTitle: string | null) {
     : (sections.find((section) => section.title === selectedTitle)?.items ?? [])
 
   const uniqueMovies = dedupeMovies(items)
+  const moviesWithAddedAt = uniqueMovies.filter((movie) => movie.added_at != null)
   const totalBytes = uniqueMovies.reduce((sum, movie) => sum + (movie.size ?? 0), 0)
   const totalDurationMs = uniqueMovies.reduce((sum, movie) => sum + (movie.duration ?? 0), 0)
   const watchedCount = uniqueMovies.filter((movie) => (movie.view_count ?? 0) > 0).length
@@ -63,8 +64,8 @@ function buildMovieStats(sections: Section[], selectedTitle: string | null) {
     totalDuration: formatLongDuration(totalDurationMs),
     longestMovie: formatMovieWithDetail(maxBy(uniqueMovies, (movie) => movie.duration ?? -1), (movie) => formatMinutes(movie.duration)),
     oldestMovie: formatMovieWithDetail(minBy(uniqueMovies, (movie) => movie.year ?? Number.POSITIVE_INFINITY), (movie) => formatYearOrDate(movie)),
-    earliestAddition: formatMovieWithDetail(minBy(uniqueMovies, (movie) => movie.added_at ?? Number.POSITIVE_INFINITY), (movie) => formatAddedAt(movie)),
-    latestAddition: formatMovieWithDetail(maxBy(uniqueMovies, (movie) => movie.added_at ?? -1), (movie) => formatAddedAt(movie)),
+    earliestAddition: formatMovieWithDetail(minBy(moviesWithAddedAt, (movie) => movie.added_at ?? Number.POSITIVE_INFINITY), (movie) => formatAddedAt(movie)),
+    latestAddition: formatMovieWithDetail(maxBy(moviesWithAddedAt, (movie) => movie.added_at ?? -1), (movie) => formatAddedAt(movie)),
   }
 }
 
@@ -72,9 +73,41 @@ function dedupeMovies(items: Movie[]) {
   const byId = new Map<string, Movie>()
   for (const item of items) {
     const existing = byId.get(item.id)
-    if (!existing || (item.size ?? 0) > (existing.size ?? 0)) byId.set(item.id, item)
+    if (!existing) {
+      byId.set(item.id, item)
+      continue
+    }
+
+    byId.set(item.id, {
+      ...existing,
+      ...item,
+      size: maxDefined(existing.size, item.size),
+      duration: maxDefined(existing.duration, item.duration),
+      view_count: maxDefined(existing.view_count, item.view_count),
+      added_at: minDefined(existing.added_at, item.added_at),
+      year: minDefined(existing.year, item.year),
+      originally_available: earliestDateString(existing.originally_available, item.originally_available),
+    })
   }
   return [...byId.values()]
+}
+
+function maxDefined(left?: number | null, right?: number | null) {
+  if (left == null) return right ?? null
+  if (right == null) return left
+  return Math.max(left, right)
+}
+
+function minDefined(left?: number | null, right?: number | null) {
+  if (left == null) return right ?? null
+  if (right == null) return left
+  return Math.min(left, right)
+}
+
+function earliestDateString(left?: string | null, right?: string | null) {
+  if (!left) return right ?? null
+  if (!right) return left
+  return left <= right ? left : right
 }
 
 function maxBy<T>(items: T[], valueFor: (item: T) => number) {

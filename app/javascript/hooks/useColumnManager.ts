@@ -5,7 +5,7 @@ import { usePersistedTableState } from '@/hooks/usePersistedTableState'
 const STORAGE_KEY = 'pladi.columns'
 
 export const DEFAULT_VISIBLE = new Set<ColumnId>(
-  ['id', 'title', 'year', 'duration', 'video_codec', 'audio_codec', 'audio_channels', 'overall_bitrate', 'container', 'file_path', 'size', 'width', 'height']
+  ['id', 'title', 'year', 'view_count', 'duration', 'video_codec', 'audio_codec', 'audio_channels', 'overall_bitrate', 'container', 'file_path', 'size', 'width', 'height']
 )
 
 export function useColumnManager() {

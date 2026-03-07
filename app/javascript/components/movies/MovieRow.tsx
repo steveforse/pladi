@@ -121,6 +121,7 @@ export function MovieRow({
               className="px-4 py-2"
             />
           )
+          case 'view_count':     return <td key={id} className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{movie.view_count ?? '—'}</td>
           case 'content_rating':  return (
             <EditableCell key={id}
               value={movie.content_rating}
