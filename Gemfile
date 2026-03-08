@@ -46,6 +46,9 @@ group :development, :test do
   # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
   gem 'bundler-audit', require: false
 
+  # Audits the Ruby and RubyGems runtime for known vulnerabilities
+  gem 'ruby_audit', require: false
+
   # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
   gem 'brakeman', require: false
 

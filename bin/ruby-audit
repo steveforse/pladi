@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+require "rubygems"
+require "bundler/setup"
+
+ARGV.unshift("check") if ARGV.empty?
+
+load Gem.bin_path("ruby_audit", "ruby-audit")

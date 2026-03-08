@@ -6,6 +6,21 @@ on:
     branches: [ main ]
 
 jobs:
+  scan_secrets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Scan for leaked secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
+
   scan_ruby:
     runs-on: ubuntu-latest
 
@@ -23,6 +38,39 @@ jobs:
 
       - name: Scan for known security vulnerabilities in gems used
         run: bin/bundler-audit
+
+      - name: Scan Ruby and RubyGems versions for known vulnerabilities
+        run: bin/ruby-audit
+
+  scan_trivy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Scan repository for vulnerabilities and misconfigurations
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+  scan_bearer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Scan source for security issues
+        uses: bearer/bearer-action@v2
+        with:
+          scanner: sast
+          severity: high,critical
 
   scan_js:
     runs-on: ubuntu-latest
