@@ -1,7 +1,7 @@
 <div align="center">
   <img width="160" alt="Pladi logo" src="https://github.com/user-attachments/assets/5790d3ac-d0ee-4eb0-803f-2c0ad0787c66" />
 
-  <h1>Pladi</h1>
+  <h1 style="color: #E5A00D;">PLADI</h1>
   <p>
     <a href="https://github.com/steveforse/pladi/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/steveforse/pladi/actions/workflows/ci.yml/badge.svg" /></a>
     <a href="https://github.com/steveforse/pladi/actions/workflows/codeql.yml"><img alt="Security" src="https://github.com/steveforse/pladi/actions/workflows/codeql.yml/badge.svg" /></a>
