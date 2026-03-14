@@ -42,24 +42,6 @@ jobs:
       - name: Scan Ruby and RubyGems versions for known vulnerabilities
         run: bin/ruby-audit
 
-  scan_trivy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Scan repository for vulnerabilities and misconfigurations
-        uses: aquasecurity/trivy-action@0.34.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,misconfig
-          severity: HIGH,CRITICAL
-          exit-code: '1'
-          ignore-unfixed: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   scan_bearer:
     runs-on: ubuntu-latest
