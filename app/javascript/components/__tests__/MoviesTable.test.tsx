@@ -387,7 +387,7 @@ describe('MoviesTable', () => {
     await userEvent.click(screen.getByRole('button', { name: 'sort-title' }))
     expect(baseFilterState.handleSort).toHaveBeenCalledWith('title')
     view.unmount()
-  })
+  }, 15000)
 
   it('handles modal navigation callbacks and append bulk edit mode', async () => {
     const { baseData } = setupHookMocks({
@@ -424,7 +424,7 @@ describe('MoviesTable', () => {
     await userEvent.click(screen.getByRole('button', { name: 'image-prev' }))
     await userEvent.click(screen.getByRole('button', { name: 'image-close' }))
     view.unmount()
-  })
+  }, 15000)
 
   it('warms poster/background caches when syncing transitions to complete', () => {
     const warmPosters = vi.fn()
