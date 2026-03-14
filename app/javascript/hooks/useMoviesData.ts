@@ -199,6 +199,7 @@ export function useMoviesData(downloadImages: boolean) {
               previousSections: prev,
               enrichedSections: enrichData.sections as Section[],
               fields: ENRICHMENT_FIELDS,
+              pendingSectionIds: new Set(enrichData.pending_section_ids ?? []),
             })
             void saveEnrichmentCacheDelta(serverId, mergedSections, prev)
             return mergedSections

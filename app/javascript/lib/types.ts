@@ -60,6 +60,7 @@ export interface PlexServerInfo {
 }
 
 export interface Section {
+  id?: string
   title: string
   items: Movie[]
 }

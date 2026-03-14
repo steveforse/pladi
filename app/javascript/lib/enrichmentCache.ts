@@ -232,9 +232,11 @@ export async function saveEnrichmentCacheDelta(serverId: number, sections: Secti
   const indexedDbEntries = sections.flatMap((section) =>
     section.items.flatMap((movie) => {
       const rowKey = rowCacheKey(movie)
-      const enriched = diffCachedFields(movie, previousByRow.get(rowKey), ENRICHMENT_FIELDS)
-      return Object.keys(enriched).length > 0
-        ? [{ library: section.title, movieId: movie.id, rowKey, data: enriched }]
+      const diff = diffCachedFields(movie, previousByRow.get(rowKey), ENRICHMENT_FIELDS)
+      if (Object.keys(diff).length === 0) return []
+      const fullData = buildCachedFields(movie, ENRICHMENT_FIELDS)
+      return Object.keys(fullData).length > 0
+        ? [{ library: section.title, movieId: movie.id, rowKey, data: fullData }]
         : []
     })
   )
@@ -308,9 +310,11 @@ export async function saveShowEnrichmentCacheDelta(
   const indexedDbEntries = sections.flatMap((section) =>
     section.items.flatMap((show) => {
       const rowKey = rowCacheKey(show)
-      const enriched = diffCachedFields(show, previousByRow.get(rowKey), fields)
-      return Object.keys(enriched).length > 0
-        ? [{ library: section.title, movieId: show.id, rowKey, data: enriched }]
+      const diff = diffCachedFields(show, previousByRow.get(rowKey), fields)
+      if (Object.keys(diff).length === 0) return []
+      const fullData = buildCachedFields(show, fields)
+      return Object.keys(fullData).length > 0
+        ? [{ library: section.title, movieId: show.id, rowKey, data: fullData }]
         : []
     })
   )

@@ -151,16 +151,18 @@ export function useShowsData(viewMode: ShowsViewMode = 'shows') {
         })
         if (isStale()) return
         if (enrichRes.ok && enrichRes.data?.sections) {
+          const pendingIds = new Set(enrichRes.data.pending_section_ids ?? [])
           setSections((prev) => {
             const mergedSections = mergeEnrichedRows({
               previousSections: prev,
               enrichedSections: enrichRes.data.sections as Section[],
               fields: SHOW_ENRICHMENT_FIELDS,
+              pendingSectionIds: pendingIds,
             })
             void saveShowEnrichmentCacheDelta(serverId, mergedSections, prev, viewMode)
             return mergedSections
           })
-          pendingSectionIdsRef.current = new Set(enrichRes.data.pending_section_ids ?? [])
+          pendingSectionIdsRef.current = pendingIds
           setSyncing(pendingSectionIdsRef.current.size > 0)
         } else {
           pendingSectionIdsRef.current = new Set()

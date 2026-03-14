@@ -31,23 +31,42 @@ export function mergeEnrichedRows({
   previousSections,
   enrichedSections,
   fields,
+  pendingSectionIds,
 }: {
   previousSections: Section[]
   enrichedSections: Section[]
   fields: (keyof Movie)[]
+  pendingSectionIds?: Set<string>
 }): Section[] {
   const rowKey = (row: Pick<Movie, 'id' | 'file_path'>) => `${row.id}|${row.file_path ?? ''}`
   const previousByRow = new Map<string, Movie>()
   for (const section of previousSections) {
     for (const row of section.items) previousByRow.set(rowKey(row), row)
   }
-  return enrichedSections.map((section) => ({
-    ...section,
-    items: section.items.map((row) => {
-      const existing = previousByRow.get(rowKey(row))
-      if (!existing) return row
-      const changed = fields.some((field) => row[field] !== existing[field])
-      return changed ? row : existing
-    }),
-  }))
+  return enrichedSections.map((section) => {
+    const pending = section.id != null && (pendingSectionIds?.has(section.id) ?? false)
+    return {
+      ...section,
+      items: section.items.map((row) => {
+        const existing = previousByRow.get(rowKey(row))
+        if (!existing) return row
+        if (!pending) {
+          const changed = fields.some((field) => row[field] !== existing[field])
+          return changed ? row : existing
+        }
+        const merged = { ...existing }
+        let changed = false
+        for (const field of fields) {
+          const value = row[field]
+          if (value !== null && value !== undefined && value !== '') {
+            if (value !== existing[field]) {
+              merged[field] = value as never
+              changed = true
+            }
+          }
+        }
+        return changed ? merged : existing
+      }),
+    }
+  })
 }

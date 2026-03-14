@@ -99,6 +99,7 @@ export const MovieDetailSchema = z.object({
 }).strict()
 
 export const SectionSchema = z.object({
+  id: z.string().optional(),
   title: z.string(),
   items: z.array(MovieListItemSchema),
 })

@@ -30,8 +30,8 @@ type CacheStats = {
 const DB_NAME = 'pladi-cache'
 const DB_VERSION = 1
 const STORE_NAME = 'enrichment_rows'
-const MAX_RECORDS_PER_LIBRARY = 1500
-const MAX_BYTES_PER_LIBRARY = 1024 * 1024
+const MAX_RECORDS_PER_LIBRARY = 10_000
+const MAX_BYTES_PER_LIBRARY = 10 * 1024 * 1024
 
 function supportsIndexedDb() {
   return typeof indexedDB !== 'undefined'
