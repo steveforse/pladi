@@ -261,7 +261,7 @@ RSpec.describe Plex::Server do
       expect(plex_server_service.enriched_library[:uncached_background_items]).to eq([{ id: '1' }])
     end
 
-    # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+    # rubocop:disable-next RSpec/ExampleLength, RSpec/MultipleExpectations
     it 'schedules warm enrichment for pending sections' do
       allow(enricher).to receive(:progressive_enriched_sections).with(sections, scope: movie_scope).and_return(
         { sections: sections, pending_section_ids: ['2'] }
@@ -271,9 +271,8 @@ RSpec.describe Plex::Server do
       expect(plex_server_service.enriched_library[:pending_section_ids]).to eq(['2'])
       expect(WarmLibraryEnrichmentJob).to have_received(:perform_later).with(9, movie_scope.to_h, ['2'])
     end
-    # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
 
-    # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable-next RSpec/ExampleLength
     it 'omits image cache payload for shows' do
       allow(cache_store).to receive(:key).with('sections', 'show', 'shows').and_return('show-sections-key')
       allow(cache_store).to receive(:fetch).with('show-sections-key').and_return(sections)
@@ -283,7 +282,6 @@ RSpec.describe Plex::Server do
 
       expect(plex_server_service.enriched_library(scope: shows_scope)).to eq(sections:, pending_section_ids: [])
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#stream_enrich_section' do
@@ -310,7 +308,7 @@ RSpec.describe Plex::Server do
         .and_return([{ id: '2', summary: 'B' }])
     end
 
-    # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+    # rubocop:disable-next RSpec/ExampleLength, RSpec/MultipleExpectations
     it 'enriches batches, yields them, and writes the merged section to cache' do
       yielded_batches = []
 
@@ -322,7 +320,6 @@ RSpec.describe Plex::Server do
       expect(result).to eq(section.merge(items: [{ id: '1', summary: 'A' }, { id: '2', summary: 'B' }]))
       expect(cache_store).to have_received(:write).with('enriched-key', result)
     end
-    # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
 
     it 'enriches and caches the section even when no block is given' do
       allow(enricher).to receive(:enrich_items).with(section[:items]).and_return(

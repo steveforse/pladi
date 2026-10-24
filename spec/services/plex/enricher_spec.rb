@@ -256,7 +256,7 @@ RSpec.describe Plex::Enricher do
   end
 
   describe '#enrich_items' do
-    # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable-next RSpec/ExampleLength
     it 'merges fetched detail onto items using the row file path' do
       items = [{ id: 'm1', media_type: 'movie', file_path: '/movies/m1.mkv', title: 'Movie 1' }]
       allow(movie_concurrent_fetcher).to receive(:fetch).with(items).and_return(
@@ -278,7 +278,6 @@ RSpec.describe Plex::Enricher do
         ]
       )
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#enrich_sections for shows' do

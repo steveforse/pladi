@@ -18,7 +18,7 @@ RSpec.describe WarmLibraryEnrichmentJob do
     allow(service).to receive(:sections).with(scope:).and_return([section, { id: '2', title: 'Skip', items: [] }])
   end
 
-  # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+  # rubocop:disable-next RSpec/ExampleLength, RSpec/MultipleExpectations
   it 'broadcasts progress and completion for pending sections only' do
     allow(service).to receive(:stream_enrich_section).with(section, scope:).and_yield([{ id: 'm1', title: 'Movie 1' }])
 
@@ -34,9 +34,8 @@ RSpec.describe WarmLibraryEnrichmentJob do
     )
     expect(service).to have_received(:stream_enrich_section).once
   end
-  # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
 
-  # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+  # rubocop:disable-next RSpec/ExampleLength, RSpec/MultipleExpectations
   it 'broadcasts failure and logs when enrichment raises' do
     allow(service).to receive(:stream_enrich_section).with(section, scope:).and_raise(StandardError, 'boom')
     allow(Rails.logger).to receive(:warn)
@@ -50,5 +49,4 @@ RSpec.describe WarmLibraryEnrichmentJob do
     expect(Rails.logger).to have_received(:warn)
       .with("WarmLibraryEnrichmentJob failed for server=#{server.id} section=1")
   end
-  # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
 end

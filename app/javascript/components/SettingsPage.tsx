@@ -44,7 +44,8 @@ export default function SettingsPage({
   activeTab?: SettingsTab
   onTabChange?: (tab: SettingsTab) => void
 }) {
-  const [tab, setTab] = useState<SettingsTab>(activeTab ?? 'account')
+  const [localTab, setLocalTab] = useState<SettingsTab>(activeTab ?? 'account')
+  const tab = activeTab ?? localTab
   const [servers, setServers] = useState<PlexServer[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -74,10 +75,6 @@ export default function SettingsPage({
       if (res.ok && res.data) setEmail(res.data.email_address ?? '')
     }).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    if (activeTab && activeTab !== tab) setTab(activeTab)
-  }, [activeTab, tab])
 
   function handleEmailChange(value: string) {
     setEmail(value)
@@ -176,7 +173,13 @@ export default function SettingsPage({
   }
 
   useEffect(() => {
-    fetchServers()
+    api.get<PlexServer[]>('/api/plex_servers', {
+      throwOnError: false,
+      responseSchema: PlexServerInfoListSchema,
+    }).then((res) => {
+      if (res.ok && res.data) setServers(res.data)
+      setLoading(false)
+    }).catch(() => {})
   }, [])
 
   async function handleCreate(e: React.FormEvent) {
@@ -233,7 +236,7 @@ export default function SettingsPage({
   }
 
   function selectTab(next: SettingsTab) {
-    setTab(next)
+    setLocalTab(next)
     onTabChange?.(next)
   }
 

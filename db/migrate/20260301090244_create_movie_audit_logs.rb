@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class CreateMovieAuditLogs < ActiveRecord::Migration[8.1]
-  # rubocop:disable Metrics/MethodLength
+  # rubocop:disable-next Metrics/MethodLength
   def change
     create_table :movie_audit_logs do |t|
       t.integer :user_id, null: false
@@ -24,5 +24,4 @@ class CreateMovieAuditLogs < ActiveRecord::Migration[8.1]
     add_foreign_key :movie_audit_logs, :users
     add_foreign_key :movie_audit_logs, :plex_servers
   end
-  # rubocop:enable Metrics/MethodLength
 end

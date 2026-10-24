@@ -18,6 +18,8 @@ module Api
     end
 
     def load_current_server!(param_key)
+      # A missing or unknown server id should 404, not raise ParameterMissing (400) as params.expect would.
+      # rubocop:disable-next Rails/StrongParametersExpect
       @server = Current.user.plex_servers.find(params[param_key])
     rescue ActiveRecord::RecordNotFound
       raise Api::Errors::NotFound, 'Server not found'

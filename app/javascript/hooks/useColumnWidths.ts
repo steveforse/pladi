@@ -18,10 +18,13 @@ function loadWidths(storageKey: string): ColumnWidths {
 
 export function useColumnWidths(storageKey: string) {
   const [colWidths, setColWidths] = useState<ColumnWidths>(() => loadWidths(storageKey))
+  const [loadedKey, setLoadedKey] = useState(storageKey)
 
-  useEffect(() => {
+  // Reload saved widths when the storage key changes (adjusting state during render, not in an effect).
+  if (loadedKey !== storageKey) {
+    setLoadedKey(storageKey)
     setColWidths(loadWidths(storageKey))
-  }, [storageKey])
+  }
 
   useEffect(() => {
     try {

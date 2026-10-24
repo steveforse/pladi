@@ -43,3 +43,7 @@ RSpec/MultipleMemoizedHelpers:
 
 RSpec/NestedGroups:
   Max: 4
+
+# Specs stub perform_later and assert on the stub; keep that style.
+RSpecRails/ReceivePerformLater:
+  Enabled: false
