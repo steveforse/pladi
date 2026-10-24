@@ -1,0 +1,17 @@
+# Production stack for Portainer (or plain `docker compose up -d`).
+# The image is built and published by .github/workflows/docker.yml.
+# Set SECRET_KEY_BASE in the stack's environment variables: openssl rand -hex 64
+services:
+  pladi:
+    image: ghcr.io/steveforse/pladi:latest
+    restart: unless-stopped
+    ports:
+      - "${PLADI_PORT:-8080}:80"
+    environment:
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Set SECRET_KEY_BASE in the stack environment}
+      PLEX_ENRICH_THREADS: ${PLEX_ENRICH_THREADS:-3}
+    volumes:
+      - pladi_storage:/rails/storage
+
+volumes:
+  pladi_storage:
