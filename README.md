@@ -82,17 +82,21 @@ If you just want to browse Plex, this is probably not for you. Pladi is most use
 
 ## Self-Hosting
 
-Pladi is intended to be self-hosted alongside your existing Plex setup. The easiest path is Docker:
+Pladi is intended to be self-hosted alongside your existing Plex setup. Every push to `main` publishes an image to `ghcr.io/steveforse/pladi:latest`, and `docker-compose.yml` runs it:
 
 ```bash
-docker build -t pladi .
-docker run -d -p 80:80 \
-  -e SECRET_KEY_BASE=<generate-a-random-secret> \
-  -v pladi_storage:/rails/storage \
-  --name pladi pladi
+SECRET_KEY_BASE=$(openssl rand -hex 64) docker compose up -d
 ```
 
-Set `PLEX_ENRICH_THREADS` to control how many threads are used during metadata enrichment (default: 3). Lower this on resource-constrained hosts.
+In Portainer, add a stack from this repository with compose path `docker-compose.yml` and set the environment variables there. To pick up a new image, use **Pull and redeploy** on the stack.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SECRET_KEY_BASE` | required | Rails secret; generate with `openssl rand -hex 64` |
+| `PLADI_PORT` | `7462` | Host port Pladi is served on |
+| `PLEX_ENRICH_THREADS` | `3` | Threads used during metadata enrichment; lower this on resource-constrained hosts |
+
+To build the image yourself instead: `docker build -t pladi .` and run it with `-p 7462:80 -e SECRET_KEY_BASE=... -v pladi_storage:/rails/storage`.
 
 For production deployments, [Kamal](https://kamal-deploy.org/) is preconfigured in `config/deploy.yml`.
 
